@@ -245,7 +245,7 @@ if (isTRUE(all.equal(collate, 1))) {
     rnd_dig <- round(res@solution)
   } else if (scenario == "SSB_idx_exp") {
     rnd_dig <- round(res@solution, 1)
-  } else if (scenario == "SSB_idx_rfb_exp") {
+  } else if (scenario %in% c("SSB_idx_rfb_exp", "SSB_idx_rfb_exp_error")) {
     rnd_dig <- res@solution
     rnd_dig[1:4] <- round(rnd_dig[1:4])
     rnd_dig[5:7] <- round(rnd_dig[5:7], 1)
