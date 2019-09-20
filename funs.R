@@ -456,3 +456,79 @@ calc_lc <- function(stk, a, b) {
   return(Lc)
 }
 
+### ------------------------------------------------------------------------ ###
+### inter-annual variability ####
+### ------------------------------------------------------------------------ ###
+#' calculate inter-annual variability of FLQuant
+#'
+#' This function calculates survey indices from the numbers at age of an 
+#' FLStock object
+#'
+#' @param object Object of class \linkS4class{FLQuant} with values.
+#' @param period Select every n-th year, e.g. biennial (optional).
+#' @param from,to Optional year range for analysis.
+#' @param summary_per_iter Function for summarising per iter. Defaults to mean.
+#' @param summary Function for summarising over iter. Defaults to mean.
+#' @return An object of class \code{FLQuant} with inter-annual variability.
+#'
+#' @export
+#' 
+setGeneric("iav", function(object, period, from, to, summary_per_iter, 
+                           summary_year, summary_all) {
+  standardGeneric("iav")
+})
+
+### object = FLQuant
+#' @rdname iav
+setMethod(f = "iav",
+  signature = signature(object = "FLQuant"),
+  definition = function(object, 
+                        period, ### periodicity, e.g. use every 2nd value 
+                        from, to,### year range
+                        summary_per_iter, ### summarise values per iteration
+                        summary_year,
+                        summary_all) {
+            
+  ### subset years
+  if (!missing(from)) object <- FLCore::window(object, start = from)
+  if (!missing(to)) object <- FLCore::window(object, end = from)
+  
+  ### get years in object
+  yrs <- dimnames(object)$year
+  
+  ### select every n-th value, if requested
+  if (!missing(period)) {
+    yrs <- yrs[seq(from = 1, to = length(yrs), by = period)]
+  }
+  
+  ### reference years
+  yrs_ref <- yrs[-length(yrs)]
+  ### years to compare
+  yrs_comp <- yrs[-1]
+  
+  ### calculate variation (absolute values, ignore pos/neg)
+  res <- abs(1 - object[, yrs_comp] / object[, yrs_ref])
+  
+  ### replace Inf with NA (compared to 0 catch)
+  res <- ifelse(is.finite(res), res, NA)
+  
+  ### summarise per iteration
+  if (!missing(summary_per_iter)) {
+    res <- apply(res, 6, summary_per_iter, na.rm = TRUE)
+  }
+  
+  ### summarise per year
+  if (!missing(summary_year)) {
+    res <- apply(res, 1:5, summary_year, na.rm = TRUE)
+  }
+  
+  ### summarise over everything
+  if (!missing(summary_all)) {
+    
+    res <- summary_all(c(res), na.rm = TRUE)
+    
+  }
+  
+  return(res)
+  
+})
