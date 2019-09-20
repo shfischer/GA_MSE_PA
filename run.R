@@ -39,7 +39,7 @@ if (length(args) > 0) {
 ### ------------------------------------------------------------------------ ###
 
 ### load packages
-req_pckgs <- c("FLCore", "FLash", "mseDL", "GA", "doParallel", "doRNG")
+req_pckgs <- c("FLCore", "FLash", "mseDL", "GA", "doParallel", "doRNG", "FLBRP")
 for (i in req_pckgs) library(package = i, character.only = TRUE)
 
 ### load additional functions
@@ -164,8 +164,8 @@ if (isTRUE(opt_step %in% 1:2)) {
   input$oem@args$ssb <- TRUE
   input$oem@args$lngth <- TRUE
   input$oem@args$lngth_dev <- TRUE
-  ### IEM: activate uncertainty
-  input$iem@args$use_dev <- TRUE
+  ### IEM: do not activate uncertainty
+  input$iem@args$use_dev <- FALSE
   ### catch rule components
   input$ctrl.mp$ctrl.est@args$comp_r <- TRUE
   input$ctrl.mp$ctrl.est@args$comp_f <- TRUE

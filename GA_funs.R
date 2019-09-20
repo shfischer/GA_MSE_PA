@@ -33,9 +33,8 @@ mse_r <- function(params, input, path, check_file = FALSE,
     ### check if path exists
     if (!dir.exists(path)) dir.create(path, recursive = TRUE)
     ### check if run already exists
-    if (isTRUE(file.exists(paste0(path, run_i)))) {
-      obj <- scan(file = paste0(path, run_i),
-                  nlines = 1, nmax = 1, quiet = TRUE)
+    if (isTRUE(file.exists(paste0(path, run_i, ".rds")))) {
+      obj <- readRDS(paste0(path, run_i, ".rds"))$fitness
       ### if run already exists, return value and quit
       return(obj)
     }
@@ -70,30 +69,51 @@ mse_r <- function(params, input, path, check_file = FALSE,
     return(res_mp)
   }
   
+  ### get some values
+  SSBs <- FLCore::window(ssb(res_mp@stock), start = 101)
+  Bmsy <- c(input$refpts["msy", "ssb"])
+  Fmsy <- c(input$refpts["msy", "harvest"])
+  Cmsy <- c(input$refpts["msy", "yield"])
+  Blim <- input$Blim
+  
   ### objective function
   if (isTRUE(all.equal(scenario, "SSB_idx_r_only"))) {
     ### optimise component r:
     ### keep SSB time series at start value
-    ssbs <- FLCore::window(ssb(res_mp@stock), start = 201)
     ### SSB at begin of simulation
-    ssbs_start <- ssbs
-    ssbs_start[] <- ssb(res_mp@stock)[, "201"]
+    SSBs_start <- SSBs
+    SSBs_start[] <- ssb(res_mp@stock)[, "101"]
+    ### compare risk during simulation with start
+    risk_start <- mean(SSBs[, ac(101)] < input$Blim)
+    risk_sim <- mean(SSBs < Blim)
+    penalty <- ifelse(risk_sim > risk_start, risk_sim/risk_start, 1)
     ### objective: negative squared residuals
     ### GA maximises -> use negative
-    obj <- -sum((ssbs - ssbs_start)^2)
+    obj <- -sum((SSBs - SSBs_start)^2) * penalty
   } else if (isTRUE(scenario %in% c("SSB_idx_exp", "SSB_idx_rfb_exp",
                                     "SSB_idx_rfb_exp_error"))) {
     ### optimise exponents (weighting) of components:
     ### get stock to Bmsy
-    Bmsy <- c(input$refpts["msy", "ssb"])
-    ssbs <- FLCore::window(ssb(res_mp@stock), start = 201)
-    obj <- -sum((ssbs - Bmsy)^2)
+    obj <- -sum((SSBs - Bmsy)^2)
   }
   
+  ### calculate some stats
+  ret <- list()
+  ret$fitness <- obj
+  ret$Bmsy_dev <- median(c(sqrt((SSBs - Bmsy)^2), na.rm = TRUE))
+  ret$Blim_risk <- mean(c(SSBs < Blim, na.rm = TRUE))
+  ret$Bmsy_risk  <- mean(c(SSBs < Bmsy, na.rm = TRUE))
+  ret$halfBmsy_risk <- mean(c(SSBs < 0.5*Blim, na.rm = TRUE))
+  ret$collapse_risk <- mean(c(SSBs < 1, na.rm = TRUE))
+  ret$catch_rel <- median(c(FLCore::window(catch(res_mp@stock), start = 101) / Cmsy))
+  ret$SSB_rel <- median(c(FLCore::window(ssb(res_mp@stock), start = 101) / Bmsy))
+  ret$F_rel <- median(c(FLCore::window(fbar(res_mp@stock), start = 101) / Fmsy))
+  ret$icv <- iav(res_mp@stock@catch, period = 2, summary_all = median)
+
+
   ### save result in file
   if (isTRUE(check_file)) {
-    write(x = obj,
-          file = paste0(path, run_i))
+    saveRDS(ret, paste0(path, run_i, ".rds"))
   }
   
   ### housekeeping
