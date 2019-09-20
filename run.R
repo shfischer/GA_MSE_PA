@@ -220,25 +220,20 @@ saveRDS(object = res, file = paste0(path_out, "res.rds"))
 ### ------------------------------------------------------------------------ ###
 
 if (isTRUE(all.equal(collate, 1))) {
-  files <- list.files(path = path_out, pattern = "[0-9]*[0-9]$",
+  files <- list.files(path = path_out, pattern = "[0-9]*[0-9].rds",
                       full.names = FALSE)
-  scns <- lapply(files, strsplit, split = "_")
-  scns <- lapply(scns, "[[", 1)
-  scns <- lapply(scns, as.numeric)
+  scns <- lapply(files, function(x) {
+    pars <- an(strsplit(sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE), split = "_")[[1]])
+    names(pars) <- ga_names
+    stats <- readRDS(paste0(path_out, x))
+    mtime <- file.mtime(paste0(path_out, x))
+    c(stock = stock, file = x, pars, stats, mtime = mtime)
+  })
   scns <- do.call(rbind, scns)
-  scns <- as.data.frame(scns)
-  names(scns) <- ga_names
-  scns$file <- files
-  scns$fitness <- sapply(scns$file, function(x) {
-    scan(file = paste0(path_out, x),
-         nlines = 1, nmax = 1, quiet = TRUE)
-  })
-  scns$mtime <- sapply(scns$file, function(x) {
-    file.mtime(paste0(path_out, x))
-  })
+  scns <- as.data.frame(scns, stringsAsFactors = FALSE)
+  for (i in seq(ncol(scns))) scns[, i] <- unlist(scns[, i])
   scns <- scns[order(scns$fitness, decreasing = TRUE), ]
-  write.csv(scns, file = paste0(path_out, "runs.csv"), 
-            row.names = FALSE)
+  saveRDS(scns, file = paste0(path_out, "runs.rds"))
   ### add GA results to summary
   path_smry <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/")
   if (scenario == "SSB_idx_r_only") {
@@ -247,13 +242,11 @@ if (isTRUE(all.equal(collate, 1))) {
     rnd_dig <- round(res@solution, 1)
   } else if (scenario %in% c("SSB_idx_rfb_exp", "SSB_idx_rfb_exp_error")) {
     rnd_dig <- res@solution
+    if (isTRUE(nrow(rnd_dig) > 1)) rnd_dig <- rnd_dig[1,]
     rnd_dig[1:4] <- round(rnd_dig[1:4])
     rnd_dig[5:7] <- round(rnd_dig[5:7], 1)
   }
-  smry_add <- data.frame(stock = stock, rnd_dig, 
-                         iter = length(res@bestSol), 
-                         fitness = res@fitnessValue, stringsAsFactors = FALSE)
-  smry_add <- unique(smry_add)
+  smry_add <- scns[1,]
   if (file.exists(paste0(path_smry, "summary.csv"))) {
     smry <- read.csv(file = paste0(path_smry, "summary.csv"), 
                      stringsAsFactors = FALSE)
