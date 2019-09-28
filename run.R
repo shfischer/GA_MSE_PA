@@ -95,43 +95,22 @@ if (isTRUE(opt_step %in% 1:2)) {
   input$oem@args$lngth <- FALSE
   input$oem@args$lngth_dev <- FALSE
   
-  if (isTRUE(opt_step == 1)) {
-    scenario <- "SSB_idx_r_only"
-    ### catch rule components
-    input$ctrl.mp$ctrl.est@args$comp_r <- TRUE
-    input$ctrl.mp$ctrl.est@args$comp_f <- FALSE
-    input$ctrl.mp$ctrl.est@args$comp_b <- FALSE
-    ### GA arguments
-    ga_suggestions = rbind(c(0, 1, 1, 0, 1),
-                        c(1, 1, 1, 1, 1),
-                        c(1, 2, 3, 1, 1))
-    ga_lower = c(0, 1, 1, 0, 1)
-    ga_upper = c(5, 5, 5, 5, 5)
-    ga_names = c("lag_idx", "range_idx_1", "range_idx_2",
-                 "lag_catch", "range_catch")
-  } else if (isTRUE(opt_step == 2)) {
-    scenario <- "SSB_idx_exp"
-    input$ctrl.mp$ctrl.est@args$comp_r <- TRUE
-    input$ctrl.mp$ctrl.est@args$comp_f <- TRUE
-    input$ctrl.mp$ctrl.est@args$comp_b <- TRUE
-    ### insert optimised values
-    pars_opt <- read.csv(paste0("output/", n_iter, "_", n_yrs, 
-                                "/SSB_idx_r_only/summary.csv"), 
-                         stringsAsFactors = FALSE)
-    pars_opt <- pars_opt[pars_opt$stock == stock, ]
-    input$ctrl.mp$ctrl.est@args$idxB_lag     <- pars_opt$lag_idx
-    input$ctrl.mp$ctrl.est@args$idxB_range_1 <- pars_opt$range_idx_1
-    input$ctrl.mp$ctrl.est@args$idxB_range_2 <- pars_opt$range_idx_2
-    input$ctrl.mp$ctrl.est@args$catch_lag    <- pars_opt$lag_catch
-    input$ctrl.mp$ctrl.est@args$catch_range  <- pars_opt$range_catch
-    ### activate length index
-    input$oem@args$lngth <- TRUE
-    ### GA arguments
-    ### turning off/default of all components
-    ga_suggestions = as.matrix(expand.grid(0:1,0:1,0:1))
-    ga_lower = c(0, 0, 0)
-    ga_upper = c(2, 2, 2)
-    ga_names = c("exp_r", "exp_f", "exp_b")
+  scenario <- "SSB_idx_r_only"
+  ### catch rule components
+  input$ctrl.mp$ctrl.est@args$comp_r <- TRUE
+  input$ctrl.mp$ctrl.est@args$comp_f <- FALSE
+  input$ctrl.mp$ctrl.est@args$comp_b <- FALSE
+  ### GA arguments
+  ga_suggestions = rbind(c(0, 1, 1, 1),
+                         c(1, 1, 1, 1),
+                         c(1, 2, 3, 1))
+  ga_lower = c(0, 1, 1, 1)
+  ga_upper = c(5, 5, 5, 5)
+  ga_names = c("lag_idx", "range_idx_1", "range_idx_2",
+               "range_catch")
+  if (isTRUE(opt_step == 2)) {
+    scenario <- "SSB_idx_r_only_error"
+    input$oem@args$idx_dev <- TRUE
   }
 } else if (isTRUE(opt_step == 3)) {
   scenario <- "SSB_idx_rfb_exp"
@@ -236,11 +215,10 @@ if (isTRUE(all.equal(collate, 1))) {
   saveRDS(scns, file = paste0(path_out, "runs.rds"))
   ### add GA results to summary
   path_smry <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/")
-  if (scenario == "SSB_idx_r_only") {
+  if (isTRUE(scenario %in% c("SSB_idx_r_only", "SSB_idx_r_only_error"))) {
     rnd_dig <- round(res@solution)
-  } else if (scenario == "SSB_idx_exp") {
-    rnd_dig <- round(res@solution, 1)
-  } else if (scenario %in% c("SSB_idx_rfb_exp", "SSB_idx_rfb_exp_error")) {
+  } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
+                                    "SSB_idx_rfb_exp_error"))) {
     rnd_dig <- res@solution
     if (isTRUE(nrow(rnd_dig) > 1)) rnd_dig <- rnd_dig[1,]
     rnd_dig[1:4] <- round(rnd_dig[1:4])
@@ -253,7 +231,7 @@ if (isTRUE(all.equal(collate, 1))) {
   } else {
     smry <- smry_add[0, ]
   }
-  if (stock %in% smry$stock) {
+  if (isTRUE(stock %in% smry$stock)) {
     smry[smry$stock == stock, ] <- smry_add
   } else {
     smry <- rbind(smry, smry_add)

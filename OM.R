@@ -1,6 +1,7 @@
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(cowplot)
 #dir.create("R_lib")
 .libPaths(c("R_lib", .libPaths()))
 .libPaths()
@@ -41,25 +42,25 @@ f_array[, "val", ] <- f_array[, "val", ] * rlnorm(n = length(f_array[, "val", ])
 
 ### plot
 # f_plot <- melt(f_array)
-# names(f_plot) <- c("year", "target", "iter", "value") 
-# p1 <- ggplot(data = f_plot %>% 
+# names(f_plot) <- c("year", "target", "iter", "value")
+# p1 <- ggplot(data = f_plot %>%
 #          filter(target == "val") %>%
 #          group_by(year) %>%
 #          summarise(q5 = quantile(value, 0.05),
 #                    q25 = quantile(value, 0.25),
 #                    q50 = quantile(value, 0.5),
 #                    q75 = quantile(value, 0.75),
-#                    q95 = quantile(value, 0.95)), 
+#                    q95 = quantile(value, 0.95)),
 #        aes(x = year - 100)) +
-#   geom_ribbon(aes(ymin = q5, ymax = q95), colour = "grey", alpha = 0.5, 
+#   geom_ribbon(aes(ymin = q5, ymax = q95), colour = "grey", alpha = 0.5,
 #               linetype = 0) +
-#   geom_ribbon(aes(ymin = q25, ymax = q75), colour = "grey", alpha = 0.5, 
+#   geom_ribbon(aes(ymin = q25, ymax = q75), colour = "grey", alpha = 0.5,
 #               linetype = 0) +
 #   geom_line(aes(y = q50)) +
-#   geom_line(data = f_plot %>% 
+#   geom_line(data = f_plot %>%
 #               filter(target == "val" & iter %in% 11:15),
-#             aes(x = year - 100, y = value, colour = as.factor(iter)), 
-#             show.legend = FALSE, alpha = 0.8) + 
+#             aes(x = year - 100, y = value, colour = as.factor(iter)),
+#             show.legend = FALSE, alpha = 0.8) +
 #   theme_bw() +
 #   labs(x = "year", y = expression(F/F[MSY])) +
 #   coord_cartesian(ylim = c(0, 6.5), expand = FALSE) +
@@ -180,12 +181,16 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
 ### plot history for all stocks
 for (stock in stocks_subset) {
   stk1 <- readRDS(paste0("input/500_50/OM_1_hist/", stock, ".rds"))$stk
-  dimnames(stk1)$year <- (an(dimnames(stk1)$year) - 100)
+  stk1 <- window(stk1, start = -100)
+  stk1[, ac(-100:50)] <- stk1[, ac(0:150)]
   plot(window(stk1, end = 0),
        probs = c(0.05, 0.25, 0.5, 0.75, 0.95),
        iter = 11:20) +
     ylim(0, NA) +
-    labs(x = "year")
+    labs(x = "year") +
+    geom_hline(data = data.frame(qname = "SSB", 
+                                 data = c(refpts(brps[[stock]])["msy", "ssb"])),
+               aes(yintercept = data), linetype = "dashed", alpha = 0.5)
   ggsave(filename = paste0("input/", n_iter, "_", yrs_proj, "/SSB_hist_", 
                            stock, ".png"),
          width = 30, height = 20, units = "cm", dpi = 300, type = "cairo")

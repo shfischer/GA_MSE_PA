@@ -14,12 +14,9 @@ mse_r <- function(params, input, path, check_file = FALSE,
   }
   
   ### rounding of arguments
-  if (isTRUE(all.equal(scenario, "SSB_idx_r_only"))) {
+  if (isTRUE(scenario %in% c("SSB_idx_r_only", "SSB_idx_r_only_error"))) {
     ### arguments for catch rule component r: use round values (years)
     params <- round(params)
-  } else if (isTRUE(all.equal(scenario, "SSB_idx_exp"))) {
-    ### exponents for catch rule components: round to 1 decimal digit
-    params <- round(params, 1)
   } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
                                     "SSB_idx_rfb_exp_error")))  {
     params[1:4] <- round(params[1:4])
@@ -41,16 +38,11 @@ mse_r <- function(params, input, path, check_file = FALSE,
   }
   
   ### insert arguments into input object for mp
-  if (isTRUE(all.equal(scenario, "SSB_idx_r_only"))) {
+  if (isTRUE(isTRUE(scenario %in% c("SSB_idx_r_only", "SSB_idx_r_only_error")))) {
     input$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
     input$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
     input$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
-    input$ctrl.mp$ctrl.est@args$catch_lag    <- params[4]
-    input$ctrl.mp$ctrl.est@args$catch_range  <- params[5]
-  } else if (isTRUE(all.equal(scenario, "SSB_idx_exp"))) {
-    input$ctrl.mp$ctrl.phcr@args$exp_r <- params[1]
-    input$ctrl.mp$ctrl.phcr@args$exp_f <- params[2]
-    input$ctrl.mp$ctrl.phcr@args$exp_b <- params[3]
+    input$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
   } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
                                     "SSB_idx_rfb_exp_error"))) {
     input$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
@@ -77,7 +69,7 @@ mse_r <- function(params, input, path, check_file = FALSE,
   Blim <- input$Blim
   
   ### objective function
-  if (isTRUE(all.equal(scenario, "SSB_idx_r_only"))) {
+  if (isTRUE(scenario %in% c("SSB_idx_r_only", "SSB_idx_r_only_error"))) {
     ### optimise component r:
     ### keep SSB time series at start value
     ### SSB at begin of simulation
@@ -90,7 +82,7 @@ mse_r <- function(params, input, path, check_file = FALSE,
     ### objective: negative squared residuals
     ### GA maximises -> use negative
     obj <- -sum((SSBs - SSBs_start)^2) * penalty
-  } else if (isTRUE(scenario %in% c("SSB_idx_exp", "SSB_idx_rfb_exp",
+  } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp",
                                     "SSB_idx_rfb_exp_error"))) {
     ### optimise exponents (weighting) of components:
     ### get stock to Bmsy
