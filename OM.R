@@ -24,7 +24,7 @@ clusterEvalQ(cl, {source("funs.R");source("GA_funs.R")})
 ### create F-based history ####
 ### ------------------------------------------------------------------------ ###
 
-n_iter <- 500
+n_iter <- 25
 yrs_hist <- 100
 yrs_proj <- 50
 
@@ -236,6 +236,10 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   set.seed(205)
   iem_dev <- FLQuant(rlnoise(n = dims(stk_fwd)$iter,  catch(stk_fwd) %=% 0,
                             sd = 0.1, b = 0))
+  ### lowest observed  index in last 25 years
+  I_loss <- list()
+  I_loss$SSB_idx <- apply(idx$idxB[, ac(75:100)], 6, min)
+  I_loss$SSB_idx_dev <- apply((idx$idxB * idx_dev$idxB)[, ac(75:100)], 6, min)
   ### parameters for components
   pars_est <- list(
     comp_r = TRUE, comp_f = TRUE, comp_b = TRUE,
@@ -294,7 +298,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                 genArgs = genArgs,
                 scenario = "SSB_idx_comp_r", tracking = tracking, 
                 verbose = TRUE,
-                refpts = refpts, Blim = Blim)
+                refpts = refpts, Blim = Blim, I_loss = I_loss)
   
   ### save OM
   path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/")

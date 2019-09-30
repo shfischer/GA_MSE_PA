@@ -27,6 +27,7 @@ if (length(args) > 0) {
   if (!exists("run")) run <- maxiter
   if (!exists("opt_step")) opt_step <- 1
   if (!exists("collate")) collate <- 1
+  if (!exists("Itrigger")) Itrigger <- 0
   
 } else {
   
@@ -136,7 +137,7 @@ if (isTRUE(opt_step %in% 1:2)) {
                          c(1, 2, 3, 1, 0, 1, 1), ### f*b
                          c(1, 2, 3, 1, 0, 1, 0), ### f
                          c(1, 2, 3, 1, 0, 0, 1)) ### b  
-} else if (isTRUE(opt_step == 4)) {
+} else if (isTRUE(opt_step %in% c(4, 5))) {
   scenario <- "SSB_idx_rfb_exp_error"
   ### OEM: activate uncertainty
   input$oem@args$idx_dev <- TRUE
@@ -162,6 +163,11 @@ if (isTRUE(opt_step %in% 1:2)) {
                          c(1, 2, 3, 1, 0, 1, 1), ### f*b
                          c(1, 2, 3, 1, 0, 1, 0), ### f
                          c(1, 2, 3, 1, 0, 0, 1)) ### b  
+  if (isTRUE(opt_step %in% c(5))) {
+    scenario <- "SSB_idx_rfb_exp_error_Itrigger"
+    ### use Iloss
+    input$ctrl.mp$ctrl.est@args$I_trigger[] <- c(input$I_loss$SSB_idx_dev) * 1.4
+  }
 }
 path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/", 
                    stock, "/")

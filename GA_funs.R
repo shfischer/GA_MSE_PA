@@ -18,7 +18,8 @@ mse_r <- function(params, input, path, check_file = FALSE,
     ### arguments for catch rule component r: use round values (years)
     params <- round(params)
   } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
-                                    "SSB_idx_rfb_exp_error")))  {
+                                    "SSB_idx_rfb_exp_error",
+                                    "SSB_idx_rfb_exp_error_Itrigger")))  {
     params[1:4] <- round(params[1:4])
     params[5:7] <- round(params[5:7], 1)
   }
@@ -44,7 +45,8 @@ mse_r <- function(params, input, path, check_file = FALSE,
     input$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
     input$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
   } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
-                                    "SSB_idx_rfb_exp_error"))) {
+                                    "SSB_idx_rfb_exp_error",
+                                    "SSB_idx_rfb_exp_error_Itrigger"))) {
     input$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
     input$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
     input$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
@@ -83,7 +85,8 @@ mse_r <- function(params, input, path, check_file = FALSE,
     ### GA maximises -> use negative
     obj <- -sum((SSBs - SSBs_start)^2) * penalty
   } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp",
-                                    "SSB_idx_rfb_exp_error"))) {
+                                    "SSB_idx_rfb_exp_error",
+                                    "SSB_idx_rfb_exp_error_Itrigger"))) {
     ### optimise exponents (weighting) of components:
     ### get stock to Bmsy
     obj <- -sum((SSBs - Bmsy)^2)
