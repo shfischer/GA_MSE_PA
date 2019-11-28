@@ -24,7 +24,7 @@ clusterEvalQ(cl, {source("funs.R");source("GA_funs.R")})
 ### create F-based history ####
 ### ------------------------------------------------------------------------ ###
 
-n_iter <- 25
+n_iter <- 500
 yrs_hist <- 100
 yrs_proj <- 50
 
@@ -58,7 +58,7 @@ f_array[, "val", ] <- f_array[, "val", ] * rlnorm(n = length(f_array[, "val", ])
 #               linetype = 0) +
 #   geom_line(aes(y = q50)) +
 #   geom_line(data = f_plot %>%
-#               filter(target == "val" & iter %in% 11:15),
+#               filter(target == "val" & iter %in% c(1, 4, 11, 22, 64)),
 #             aes(x = year - 100, y = value, colour = as.factor(iter)),
 #             show.legend = FALSE, alpha = 0.8) +
 #   theme_bw() +
@@ -153,7 +153,7 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ctrl@trgtArray[,"val",] <- ctrl@trgtArray[,"val",] * 
     c(refpts["msy", "harvest"])
   ### project fishing history
-  stk_stf <- fwd(stk, ctrl, sr = stk_sr,
+  stk_stf <- fwd(stk, ctrl, sr = stk_sr, sr.residuals = residuals(stk_sr),
                  sr.residuals.mult = TRUE, maxF = 5) 
   #plot(stk_stf, iter = 1:50)
   #plot(ssb(stk_stf), iter = 1:50)
