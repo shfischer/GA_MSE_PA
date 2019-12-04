@@ -95,11 +95,11 @@ mse_r <- function(params, input, path, check_file = FALSE,
   ### calculate some stats
   ret <- list()
   ret$fitness <- obj
-  ret$Bmsy_dev <- median(c(sqrt((SSBs - Bmsy)^2), na.rm = TRUE))
-  ret$Blim_risk <- mean(c(SSBs < Blim, na.rm = TRUE))
-  ret$Bmsy_risk  <- mean(c(SSBs < Bmsy, na.rm = TRUE))
-  ret$halfBmsy_risk <- mean(c(SSBs < 0.5*Blim, na.rm = TRUE))
-  ret$collapse_risk <- mean(c(SSBs < 1, na.rm = TRUE))
+  ret$Bmsy_dev <- median(c(sqrt((SSBs - Bmsy)^2)), na.rm = TRUE)
+  ret$Blim_risk <- mean(c(SSBs < Blim), na.rm = TRUE)
+  ret$Bmsy_risk  <- mean(c(SSBs < Bmsy), na.rm = TRUE)
+  ret$halfBmsy_risk <- mean(c(SSBs < 0.5*Blim), na.rm = TRUE)
+  ret$collapse_risk <- mean(c(SSBs < 1), na.rm = TRUE)
   ret$catch_rel <- median(c(FLCore::window(catch(res_mp@stock), start = 101) / Cmsy))
   ret$SSB_rel <- median(c(FLCore::window(ssb(res_mp@stock), start = 101) / Bmsy))
   ret$F_rel <- median(c(FLCore::window(fbar(res_mp@stock), start = 101) / Fmsy))
