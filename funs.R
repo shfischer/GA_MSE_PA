@@ -35,7 +35,7 @@ wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
     } else {
       idx0$idxB <- quantSums(stk@stock.n * stk@stock.wt * 
                              observations$idx$sel * deviances$idx$sel)
-      if (isTRUE("idx" %in% names(deviances$idx)) & 
+      if (isTRUE("idxB" %in% names(deviances$idx)) & 
           all.equal(dim(deviances$idx$idxB), dim(idx0$idxB)))
         idx0$idxB <- idx0$idxB * deviances$idx$idxB
     }
@@ -140,6 +140,8 @@ est_f <- function(idx, ay,
   idx_ratio <- c(idx_mean / Lref)
   ### avoid negative values
   idx_ratio <- ifelse(idx_ratio > 0, idx_ratio, 0)
+  ### avoid NAs, happens if catch = 0
+  idx_ratio <- ifelse(is.na(idx_ratio), 1, idx_ratio)
   return(idx_ratio)
 }
 
