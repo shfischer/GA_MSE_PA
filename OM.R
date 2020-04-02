@@ -2,13 +2,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
-#dir.create("R_lib")
-.libPaths(c("R_lib", .libPaths()))
-.libPaths()
-#remotes::install_github("flr/FLash")
-#remotes::install_github("flr/FLife")
-#remotes::install_github("flr/FLBRP")
-library(FLife)
+library(FLife) ### GitHub SHA 25f481f1 2020-03-02
 library(FLash)
 library(mseDL)
 source("funs.R")
@@ -23,22 +17,49 @@ clusterEvalQ(cl, {source("funs.R");source("GA_funs.R")})
 ### ------------------------------------------------------------------------ ###
 ### create F-based history ####
 ### ------------------------------------------------------------------------ ###
+### with uniform distribution and random F trajectories
 
-n_iter <- 500
+n_iter <- 10
 yrs_hist <- 100
 yrs_proj <- 50
 
-set.seed(5)
-f_dist <- rlnorm(n = n_iter, sdlog = 1)
-hist(f_dist, breaks = 100)
+set.seed(2)
+start <- rep(0, n_iter)
+middle <- runif(n = n_iter, min = 0, max = 1)
+end <- runif(n = n_iter, min = 0, max = 1)
+df <- t(sapply(seq(n_iter), 
+  function(x) {
+    c(approx(x = c(1, yrs_hist/2), 
+             y = c(start[x], middle[x]), 
+             n = yrs_hist/2)$y,
+      approx(x = c(yrs_hist/2, yrs_hist + 1), 
+             y = c(middle[x], end[x]), 
+             n = (yrs_hist/2) + 1)$y[-1])
+  }))
+df2 <- as.data.frame(df)
+rownames(df2) <- seq(n_iter)
+colnames(df2) <- seq(yrs_hist)
+df2$iter <- seq(n_iter)
+df2 %>% 
+  gather(key = "year", value = "value", 1:100) %>%
+  mutate(year = as.numeric(as.character(year))) %>%
+  ggplot(aes(x = year, y = value, group = as.factor(iter))) +
+  geom_line(alpha = 0.5) +
+  theme_bw()
 
 f_array <- array(dim = c(yrs_hist, 3, n_iter),
                  dimnames = list(seq(yrs_hist), c("min","val","max"),
                                  iter = seq(n_iter)))
-f_array[, "val", ] <- rep(f_dist, each = yrs_hist)
-f_array[, "val", ] <- f_array[, "val", ] * rlnorm(n = length(f_array[, "val", ]),
-                                                  meanlog = 0, sdlog = 0.25)
-#names(dim(f_array)) <- 
+f_array[, "val", ] <- c(t(df))
+
+# set.seed(5)
+# f_dist <- rlnorm(n = n_iter, sdlog = 1)
+# hist(f_dist, breaks = 100)
+# 
+# f_array <- array(dim = c(yrs_hist, 3, n_iter),
+#                  dimnames = list(seq(yrs_hist), c("min","val","max"),
+#                                  iter = seq(n_iter)))
+# f_array[, "val", ] <- c(t(df))
 
 ### plot
 # f_plot <- melt(f_array)
@@ -88,44 +109,66 @@ f_array[, "val", ] <- f_array[, "val", ] * rlnorm(n = length(f_array[, "val", ])
 stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 
 ### create BRPs
-brps <- lapply(stocks$stock, function(stock) {
-  lh_i <- stocks[stocks$stock == stock, ]
-  lh_i <- lh_i[, c("a", "b", "linf", "l50", "a50", "t0", "k")]
-  ### default t0
-  lh_i$t0 <- ifelse(is.na(lh_i$t0), -0.1, lh_i$t0)
-  ### calc l50 if missing
-  # lh_i$l50 <- ifelse(!is.na(lh_i$l50), lh_i$l50, 
-  #                    vonB(age = lh_i$a50, 
-  #                         params = FLPar(k = lh_i$k, linf = lh_i$linf,
-  #                                        t0 = lh_i$t0)))
-  # lh_i <- lh_i[, !is.na(lh_i)]
-  ### estimate steepness h based on Wiff et al. 2018
-  # lh_i$s <- h_Wiff(l50 = lh_i$l50, linf = lh_i$linf)
-  lh_i$s <- 0.75
-  lh_i <- as(lh_i, "FLPar")
-  ### create missing values
-  lh_i <- lhPar(lh_i)
-  max_age <- ceiling(log(0.05)/(-c(lh_i["k"])) + c(lh_i["t0"]))
-  ### create brp
-  brp <- lhEql(lh_i, range = c(min = 1, max = max_age, 
-                               minfbar = 1, maxfbar = max_age, 
-                               plusgroup = max_age)
-  )
-  ### calculate blim, SSB where recruitment is 30% impaired
+# brps <- lapply(stocks$stock, function(stock) {
+#   lh_i <- stocks[stocks$stock == stock, ]
+#   lh_i <- lh_i[, c("a", "b", "linf", "l50", "a50", "t0", "k")]
+#   ### default t0
+#   lh_i$t0 <- ifelse(is.na(lh_i$t0), -0.1, lh_i$t0)
+#   ### calc l50 if missing
+#   # lh_i$l50 <- ifelse(!is.na(lh_i$l50), lh_i$l50, 
+#   #                    vonB(age = lh_i$a50, 
+#   #                         params = FLPar(k = lh_i$k, linf = lh_i$linf,
+#   #                                        t0 = lh_i$t0)))
+#   # lh_i <- lh_i[, !is.na(lh_i)]
+#   ### estimate steepness h based on Wiff et al. 2018
+#   # lh_i$s <- h_Wiff(l50 = lh_i$l50, linf = lh_i$linf)
+#   lh_i$s <- 0.75
+#   lh_i <- as(lh_i, "FLPar")
+#   ### create missing values
+#   lh_i <- lhPar(lh_i)
+#   max_age <- ceiling(log(0.05)/(-c(lh_i["k"])) + c(lh_i["t0"]))
+#   #if (max_age < 10) max_age <- 
+#   ### create brp
+#   brp <- lhEql(lh_i, range = c(min = 1, max = max_age, 
+#                                minfbar = 1, maxfbar = max_age, 
+#                                plusgroup = max_age)
+#   )
+#   ### calculate blim, SSB where recruitment is 30% impaired
+#   bv <- function(SSB, a, b) a*SSB/(b + SSB)
+#   solve <- function(SSB) {
+#     rec = bv(a = c(params(brp)["a"]), 
+#              b = c(params(brp)["b"]), SSB = SSB)
+#     abs((c(refpts(brp)["virgin", "rec"]) * 0.7) - rec)
+#   }
+#   attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
+#   
+#   return(brp)
+# })
+# names(brps) <- stocks$stock
+# saveRDS(brps, file = "input/OMs/brps.rds")
+# #brps <- readRDS("input/OMs/brps.rds")
+### use BRPs from paper
+brps <- readRDS("input/OMs/brps_paper.rds")$new_baseline
+brps <- brps[match(x = stocks$stock_old, table = names(brps))]
+names(brps) <- stocks$stock
+
+### calculate Blim
+brps <- lapply(brps, function(brp) {
   bv <- function(SSB, a, b) a*SSB/(b + SSB)
   solve <- function(SSB) {
-    rec = bv(a = c(params(brp)["a"]), 
+    rec = bv(a = c(params(brp)["a"]),
              b = c(params(brp)["b"]), SSB = SSB)
     abs((c(refpts(brp)["virgin", "rec"]) * 0.7) - rec)
   }
   attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
-  
   return(brp)
 })
-names(brps) <- stocks$stock
-saveRDS(brps, file = "input/OMs/brps.rds")
-#brps <- readRDS("input/OMs/brps.rds")
 
+saveRDS(brps, file = "input/OMs/brps.rds")
+
+sapply(brps, function(x) {
+  c(refpts(x)["crash", "harvest"]/refpts(x)["msy", "harvest"])
+})
 ### create FLStocks
 stocks_subset <- stocks$stock#rev(stocks$stock[-c(24,29)])#stocks$stock[]
 stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass", 
@@ -142,7 +185,7 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ### create residuals for (historical) projection
   set.seed(0)
   residuals(stk_sr) <- rlnoise(dim(stk)[6], rec(stk) %=% 0, 
-                               sd = 0.3, b = 0.2)
+                               sd = 0.6, b = 0)
   ### fishing history
   ### fwcControl template
   ctrl <- fwdControl(data.frame(year = seq(yrs_hist), 
@@ -151,7 +194,7 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ctrl@trgtArray <- f_array
   ### target * Fmsy
   ctrl@trgtArray[,"val",] <- ctrl@trgtArray[,"val",] * 
-    c(refpts["msy", "harvest"])
+    c(refpts["crash", "harvest"]) * 1
   ### project fishing history
   stk_stf <- fwd(stk, ctrl, sr = stk_sr, sr.residuals = residuals(stk_sr),
                  sr.residuals.mult = TRUE, maxF = 5) 
@@ -168,7 +211,16 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   saveRDS(list(stk = stk_stf, sr = stk_sr),
           file = paste0(path, stock, ".rds"))
   return(NULL)
+  #return(list(stk = stk_stf, sr = stk_sr))
 }
+names(stks_hist) <- stocks_subset
+
+### stock status
+res <- lapply(stocks_subset, function(stock) {
+  stk <- readRDS(paste0("input/1000_50/OM_1_hist/", stock, ".rds"))$stk
+  ssb(stk)[, ac(100)] / refpts(brps[[stock]])["msy", "ssb"]
+})
+
 
 # plot(stk_stf)
 # plot(stk_stf, iter = 1:100)
@@ -179,23 +231,27 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
 # plot(fbar(stk_stf)[, ac(101:200)])
 
 ### plot history for all stocks
-for (stock in stocks_subset) {
-  stk1 <- readRDS(paste0("input/500_50/OM_1_hist/", stock, ".rds"))$stk
-  stk1 <- window(stk1, start = -100)
-  stk1[, ac(-100:50)] <- stk1[, ac(0:150)]
-  plot(window(stk1, end = 0),
-       probs = c(0.05, 0.25, 0.5, 0.75, 0.95),
-       iter = 11:20) +
-    ylim(0, NA) +
-    labs(x = "year") +
-    geom_hline(data = data.frame(qname = "SSB", 
-                                 data = c(refpts(brps[[stock]])["msy", "ssb"])),
-               aes(yintercept = data), linetype = "dashed", alpha = 0.5)
-  ggsave(filename = paste0("input/", n_iter, "_", yrs_proj, "/SSB_hist_", 
-                           stock, ".png"),
-         width = 30, height = 20, units = "cm", dpi = 300, type = "cairo")
-}
-rm(stk1); gc()
+# for (stock in stocks_subset) {
+#   stk1 <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", stock, 
+#                          ".rds"))$stk
+#   stk1 <- window(stk1, start = -100)
+#   stk1[, ac(-100:50)] <- stk1[, ac(0:150)]
+#   plot(window(stk1, end = 0),
+#        probs = c(0.05, 0.25, 0.5, 0.75, 0.95),
+#        iter = 1:10) +
+#     ylim(0, NA) +
+#     labs(x = "year") +
+#     geom_hline(data = data.frame(qname = "SSB",
+#                                  data = c(refpts(brps[[stock]])["msy", "ssb"])),
+#                aes(yintercept = data), linetype = "dashed", alpha = 0.5) +
+#     geom_hline(data = data.frame(qname = "F",
+#                                  data = c(refpts(brps[[stock]])["msy", "harvest"])),
+#                aes(yintercept = data), linetype = "dashed", alpha = 0.5)
+#   ggsave(filename = paste0("input/", n_iter, "_", yrs_proj, "/SSB_hist_",
+#                            stock, ".png"),
+#          width = 30, height = 20, units = "cm", dpi = 300, type = "cairo")
+# }
+# rm(stk1); gc()
 
 ### ------------------------------------------------------------------------ ###
 ### prepare OMs for flr/mse MP ####
@@ -212,8 +268,8 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   lhist <- stocks[stocks$stock == stock, ]
   #range(stk_stf)
   ### cut of history
-  stk_fwd <- window(stk_fwd, start = 75)
-  stk_sr@residuals <- window(stk_sr@residuals, start = 75)
+  stk_fwd <- window(stk_fwd, start = 50)
+  stk_sr@residuals <- window(stk_sr@residuals, start = 50)
   ### length data
   pars_l <- FLPar(a = lhist$a,
                   b = lhist$b,
@@ -223,7 +279,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   q <- 1/(1 + exp(-1*(an(dimnames(stk_fwd)$age) - dims(stk_fwd)$max/10)))
   idx <- FLQuants(
     sel = stk_fwd@mat %=% q,
-    idxB = ssb(stk_fwd),
+    idxB = quantSums(stk_fwd@stock.n * stk_fwd@stock.wt * (stk_fwd@mat %=% q)),
     idxL = lmean(stk = stk_fwd, params = pars_l))
   ### index deviation
   set.seed(696)
@@ -236,10 +292,13 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   set.seed(205)
   iem_dev <- FLQuant(rlnoise(n = dims(stk_fwd)$iter,  catch(stk_fwd) %=% 0,
                             sd = 0.1, b = 0))
-  ### lowest observed  index in last 25 years
+  ### lowest observed index in last 50 years
   I_loss <- list()
-  I_loss$SSB_idx <- apply(idx$idxB[, ac(75:100)], 6, min)
-  I_loss$SSB_idx_dev <- apply((idx$idxB * idx_dev$idxB)[, ac(75:100)], 6, min)
+  I_loss$SSB_idx <- apply(ssb(stk_fwd)[, ac(50:100)], 6, min)
+  I_loss$SSB_idx_dev <- apply((ssb(stk_fwd) * idx_dev$idxB)[, ac(50:100)], 
+                              6, min)
+  I_loss$idx <- apply(idx$idxB[, ac(50:100)], 6, min)
+  I_loss$idx_dev <- apply((idx$idxB * idx_dev$idxB)[, ac(50:100)], 6, min)
   ### parameters for components
   pars_est <- list(
     comp_r = TRUE, comp_f = TRUE, comp_b = TRUE,
@@ -248,9 +307,11 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
     multiplier = 1,
     Lref = rep((lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5), n_iter),
     idxL_lag = 1, idxL_range = 1,
-    I_trigger = rep(brps[[stock]]@Blim, n_iter),
     exp_r = 1, exp_f = 1, exp_b = 1,
-    interval = 2)
+    interval = 2,
+    B_lim = rep(brps[[stock]]@Blim, n_iter),
+    I_trigger = c(I_loss$idx_dev * 1.4) ### default, can be overwritten later
+  )
   
   ### operating model
   om <- FLom(stock = stk_fwd, ### stock 
@@ -263,8 +324,8 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   oem <- FLoem(method = wklife_3.2.1_obs,
                observations = list(stk = stk_fwd, idx = idx), 
                deviances = list(stk = FLQuant(), idx = idx_dev),
-               args = list(idx_dev = FALSE, ssb = TRUE,
-                           lngth = TRUE, lngth_dev = FALSE,
+               args = list(idx_dev = TRUE, ssb = FALSE,
+                           lngth = TRUE, lngth_dev = TRUE,
                            lngth_par = pars_l))
   ctrl.mp <- mpCtrl(list(
     ctrl.est = mseCtrl(method = wklife_3.2.1_est,
@@ -277,9 +338,8 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                       args = list(upper_constraint = Inf,
                                   lower_constraint = 0))
   ))
-  # iem <- NULL
   iem <- FLiem(method = iem_r,
-               args = list(use_dev = FALSE, iem_dev = iem_dev))
+               args = list(use_dev = TRUE, iem_dev = iem_dev))
   ### genArgs
   genArgs <- list(fy = dims(stk_fwd)$maxyear, ### final simulation year
                   y0 = dims(stk_fwd)$minyear, ### first data year
@@ -311,7 +371,8 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
 # debugonce(wklife_3.2.1_obs)
 # debugonce(input$ctrl.mp$ctrl.hcr@method)
 # debugonce(mpDL)
-# input$genArgs$nblocks = 2
+# debugonce(goFishDL)
+# input$genArgs$nblocks = 250
 # res <- do.call(mpDL, input)
 # 
 # ### timing
