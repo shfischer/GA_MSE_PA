@@ -124,7 +124,7 @@ mse_r <- function(params, input, path, check_file = FALSE,
 ### ------------------------------------------------------------------------ ###
 ### objective function for multi species run ####
 ### ------------------------------------------------------------------------ ###
-mse_ms <- function(params, input, path, check_file = FALSE,
+mse_ms <- function(params, inp_file, path, check_file = FALSE,
                    scenario, 
                    return_res = FALSE,
                    ...) {
@@ -137,19 +137,10 @@ mse_ms <- function(params, input, path, check_file = FALSE,
   }
   
   ### rounding of arguments
-  if (isTRUE(scenario %in% c("SSB_idx_r_only", "SSB_idx_r_only_error"))) {
-    ### arguments for catch rule component r: use round values (years)
-    params <- round(params)
-  } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
-                                    "SSB_idx_rfb_exp_error",
-                                    "SSB_idx_rfb_exp_error_Itrigger",
-                                    "full")))  {
-    params[1:4] <- round(params[1:4])
-    params[5:7] <- round(params[5:7], 1)
-    if (isTRUE(scenario %in% c("full"))) {
-      params[8] <- round(params[8])
-    }
-  }
+  params[1:4] <- round(params[1:4])
+  params[5:7] <- round(params[5:7], 1)
+  params[8] <- round(params[8])
+  params[9] <- round(params[9], 2)
   
   ### check for files?
   if (isTRUE(check_file)) {
@@ -165,38 +156,22 @@ mse_ms <- function(params, input, path, check_file = FALSE,
     }
   }
   
+  ### load input file from disk
+  input <- readRDS(inp_file)
+  
   ### insert arguments into input object for mp
-  if (isTRUE(isTRUE(scenario %in% c("SSB_idx_r_only", 
-                                    "SSB_idx_r_only_error")))) {
-    input <- lapply(input, function(x) {
-      x$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
-      x$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
-      x$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
-      x$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
-      return(x)
-    })
-
-  } else if (isTRUE(scenario %in% c("SSB_idx_rfb_exp", 
-                                    "SSB_idx_rfb_exp_error",
-                                    "SSB_idx_rfb_exp_error_Itrigger",
-                                    "full"))) {
-    input <- lapply(input, function(x) {
-      x$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
-      x$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
-      x$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
-      x$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
-      x$ctrl.mp$ctrl.phcr@args$exp_r <- params[5]
-      x$ctrl.mp$ctrl.phcr@args$exp_f <- params[6]
-      x$ctrl.mp$ctrl.phcr@args$exp_b <- params[7]
-      return(x)
-    })
-    if (isTRUE(all.equal(scenario, "full"))) {
-      input <- lapply(input, function(x) {
-        x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
-        return(x)
-      })
-    }
-  }
+  input <- lapply(input, function(x) {
+    x$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
+    x$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
+    x$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
+    x$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
+    x$ctrl.mp$ctrl.phcr@args$exp_r <- params[5]
+    x$ctrl.mp$ctrl.phcr@args$exp_f <- params[6]
+    x$ctrl.mp$ctrl.phcr@args$exp_b <- params[7]
+    x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
+    x$ctrl.mp$ctrl.phcr@args$multiplier <- params[9]
+    return(x)
+  })
   
   ### run MP for each list element
   res_mp <- lapply(input, function(x) {
@@ -219,21 +194,21 @@ mse_ms <- function(params, input, path, check_file = FALSE,
     Blim <- input_i$Blim
     ### TAC interval
     TAC_intvl <- input_i$ctrl.mp$ctrl.hcr@args$interval
-    #stop("error before!!!")
     ### SSB/F/Catch objectives
     SSB_obj <- median(abs(c(SSBs/Bmsy - 1)), na.rm = TRUE)
-    #stop("error!!!")
     F_obj   <- median(abs(c(Fs/Fmsy - 1)), na.rm = TRUE)
     C_obj   <- median(abs(c(Cs/Cmsy - 1)), na.rm = TRUE)
-    ### risk, use Bmsy/2
-    risk_obj <- mean(c(SSBs < Bmsy/2), na.rm = TRUE)
+    ### risk, use Blim
+    # risk_obj <- mean(c(SSBs < Bmsy/2), na.rm = TRUE)
+    risk_obj <- mean(c(SSBs < Blim), na.rm = TRUE)
     ### ICV
     icv_obj <- iav(catch(res_mp_i@stock), from = 100, period = TAC_intvl,
                 summary_all = median)
     ### objective function
-    ### add all components
+    ### add components
     ### negative because GA maximises function
-    obj <- -(SSB_obj + F_obj + C_obj + risk_obj + icv_obj)
+    # obj <- -(SSB_obj + F_obj + C_obj + risk_obj + icv_obj)
+    obj <- -(SSB_obj + risk_obj + icv_obj)
     ### combine
     obj_i <- list(obj = obj,
                   obj_SSB = SSB_obj,
