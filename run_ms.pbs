@@ -1,10 +1,10 @@
 #!/bin/sh
 ## job name
-#PBS -N MS_test
+#PBS -N MPI_21
 ## maximum runtime
-#PBS -l walltime=24:00:00
+#PBS -l walltime=10:00:00
 ## select number of nodes, cpus (per node) and memory (per node)
-#PBS -l select=13:ncpus=24:mpiprocs=4:mem=120gb
+#PBS -l select=9:ncpus=24:mpiprocs=4:mem=100gb
 ## standard output standard error
 #PBS -o reports
 #PBS -e reports
@@ -25,14 +25,15 @@ cd $HOME/git/wklife9_GA
 ## load modules
 ## anaconda includes R and OpenMPI
 module purge
-module load mpi anaconda3/personal
+module load mpi/intel-2018.1.163 anaconda3/personal
 ### activate MPI environment
-source activate r_mpi
+source activate R_2020
 
 echo "starting the simulations..."
 ### run job
 ### when running with MPI, worker count is one less than selected cores
-mpiexec R CMD BATCH --vanilla --quiet "--args use_MPI=TRUE n_workers=5 n_blocks=5 maxiter=100 popSize=200 run=25 stock_id=c(22,23,24,25,26) n_iter=500 n_yrs=50 opt_step=4 collate=TRUE" $HOME/git/wklife9_GA/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+mpiexec R CMD BATCH --vanilla --quiet "--args use_MPI=TRUE n_workers=5 n_blocks=5 maxiter=2 popSize=5 run=25 stock_id=c(28, 29) n_iter=1000 n_yrs=50 collate=TRUE multiplier=TRUE" $HOME/git/wklife9_GA/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+### c(21,22,23,24,25,26,27,28,29)
 ## $PBS_ARRAY_INDEX
 
 echo "done!"
