@@ -135,6 +135,8 @@ mse_ms <- function(params, inp_file, path, check_file = FALSE,
     rm(res_mp)
     invisible(gc())
   }
+  if (getDoParWorkers() > 1)
+    . <- foreach(i = 1:getDoParWorkers()) %dopar% {invisible(gc())}
   
   ### rounding of arguments
   params[1:4] <- round(params[1:4])
@@ -175,6 +177,8 @@ mse_ms <- function(params, inp_file, path, check_file = FALSE,
   
   ### run MP for each list element
   res_mp <- lapply(input, function(x) {
+    if (getDoParWorkers() > 1)
+      . <- foreach(i = 1:getDoParWorkers()) %dopar% {invisible(gc())}
     do.call(mpDL, x)
   })
   
@@ -250,6 +254,8 @@ mse_ms <- function(params, inp_file, path, check_file = FALSE,
   ### housekeeping
   rm(res_mp, input)
   invisible(gc())
+  if (getDoParWorkers() > 1)
+    . <- foreach(i = 1:getDoParWorkers()) %dopar% {invisible(gc())}
   
   ### return MSE object or fitness value?
   return(stats$obj)
