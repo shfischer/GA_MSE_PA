@@ -29,6 +29,7 @@ if (length(args) > 0) {
   if (!exists("n_yrs")) n_yrs <- 50
   if (!exists("run")) run <- maxiter
   if (!exists("collate")) collate <- TRUE
+  if (!exists("fhist")) fhist <- ""
   
 } else {
   
@@ -113,7 +114,7 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 stock <- stocks$stock[stock_id]
 names(stock) <- stock
 input <- lapply(stock, function(x) {
-  readRDS(paste0("input/", n_iter, "_", n_yrs, "/OM_2_mp_input/", x,
+  readRDS(paste0("input/", n_iter, "_", n_yrs, "/OM_2_mp_input/", fhist, "/", x,
                         ".rds"))
 })
 
@@ -181,6 +182,7 @@ scn_pars <- paste0(ga_names[setdiff(seq_along(ga_names), pos_default)],
                    collapse = "-")
 scenario <- "trial"
 path_out <- paste0("output/", n_iter, "_", n_yrs, "/ms/", scenario, "/",
+                   fhist, "/",
                    paste0(stock, collapse = "_"), "/")
 dir.create(path_out, recursive = TRUE)
 
