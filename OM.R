@@ -15,90 +15,48 @@ registerDoParallel(cl)
 clusterEvalQ(cl, {source("funs.R");source("GA_funs.R")})
 
 ### ------------------------------------------------------------------------ ###
-### create F-based history ####
+### fishing history dimensions ####
 ### ------------------------------------------------------------------------ ###
-### with uniform distribution and random F trajectories
 
-n_iter <- 10
+n_iter <- 500
 yrs_hist <- 100
 yrs_proj <- 50
 
 set.seed(2)
-start <- rep(0, n_iter)
-middle <- runif(n = n_iter, min = 0, max = 1)
-end <- runif(n = n_iter, min = 0, max = 1)
-df <- t(sapply(seq(n_iter), 
-  function(x) {
-    c(approx(x = c(1, yrs_hist/2), 
-             y = c(start[x], middle[x]), 
-             n = yrs_hist/2)$y,
-      approx(x = c(yrs_hist/2, yrs_hist + 1), 
-             y = c(middle[x], end[x]), 
-             n = (yrs_hist/2) + 1)$y[-1])
-  }))
-df2 <- as.data.frame(df)
-rownames(df2) <- seq(n_iter)
-colnames(df2) <- seq(yrs_hist)
-df2$iter <- seq(n_iter)
-df2 %>% 
-  gather(key = "year", value = "value", 1:100) %>%
-  mutate(year = as.numeric(as.character(year))) %>%
-  ggplot(aes(x = year, y = value, group = as.factor(iter))) +
-  geom_line(alpha = 0.5) +
-  theme_bw()
 
-f_array <- array(dim = c(yrs_hist, 3, n_iter),
-                 dimnames = list(seq(yrs_hist), c("min","val","max"),
-                                 iter = seq(n_iter)))
-f_array[, "val", ] <- c(t(df))
-
-# set.seed(5)
-# f_dist <- rlnorm(n = n_iter, sdlog = 1)
-# hist(f_dist, breaks = 100)
-# 
-# f_array <- array(dim = c(yrs_hist, 3, n_iter),
-#                  dimnames = list(seq(yrs_hist), c("min","val","max"),
-#                                  iter = seq(n_iter)))
-# f_array[, "val", ] <- c(t(df))
-
-### plot
-# f_plot <- melt(f_array)
-# names(f_plot) <- c("year", "target", "iter", "value")
-# p1 <- ggplot(data = f_plot %>%
-#          filter(target == "val") %>%
-#          group_by(year) %>%
-#          summarise(q5 = quantile(value, 0.05),
-#                    q25 = quantile(value, 0.25),
-#                    q50 = quantile(value, 0.5),
-#                    q75 = quantile(value, 0.75),
-#                    q95 = quantile(value, 0.95)),
-#        aes(x = year - 100)) +
-#   geom_ribbon(aes(ymin = q5, ymax = q95), colour = "grey", alpha = 0.5,
-#               linetype = 0) +
-#   geom_ribbon(aes(ymin = q25, ymax = q75), colour = "grey", alpha = 0.5,
-#               linetype = 0) +
-#   geom_line(aes(y = q50)) +
-#   geom_line(data = f_plot %>%
-#               filter(target == "val" & iter %in% c(1, 4, 11, 22, 64)),
-#             aes(x = year - 100, y = value, colour = as.factor(iter)),
-#             show.legend = FALSE, alpha = 0.8) +
-#   theme_bw() +
-#   labs(x = "year", y = expression(F/F[MSY])) +
-#   coord_cartesian(ylim = c(0, 6.5), expand = FALSE) +
-#   theme(panel.spacing = unit(0, units = "cm"))
-# p2 <- ggplot(data = data.frame(x = f_dist), aes(x = x)) +
-#   geom_density() +
-#   coord_flip(expand = FALSE, xlim = c(0, 6.5), ylim = c(0, 0.55)) +
-#   labs(x = "", y = "density") +
-#   theme_bw() +
-#   theme(axis.title.y = element_blank(),
-#         axis.text.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         plot.margin = margin(c(1, 1, 1, 0)),
-#         panel.spacing = unit(0, units = "cm"))
-# plot_grid(p1, p2, rel_widths = c(1, 0.3), align = "h", nrow = 1)
-# ggsave(filename = paste0("input/", n_iter, "_", yrs_proj, "/F_hist.png"),
-#        width = 20, height = 14, units = "cm", dpi = 300, type = "cairo")
+### ------------------------------------------------------------------------ ###
+### with uniform distribution and random F trajectories ####
+### ------------------------------------------------------------------------ ###
+fhist <- "random"#"one-way"
+if (identical(fhist, "random")) {
+  start <- rep(0, n_iter)
+  middle <- runif(n = n_iter, min = 0, max = 1)
+  end <- runif(n = n_iter, min = 0, max = 1)
+  df <- t(sapply(seq(n_iter), 
+    function(x) {
+      c(approx(x = c(1, yrs_hist/2), 
+               y = c(start[x], middle[x]), 
+               n = yrs_hist/2)$y,
+        approx(x = c(yrs_hist/2, yrs_hist + 1), 
+               y = c(middle[x], end[x]), 
+               n = (yrs_hist/2) + 1)$y[-1])
+    }))
+  df2 <- as.data.frame(df)
+  rownames(df2) <- seq(n_iter)
+  colnames(df2) <- seq(yrs_hist)
+  df2$iter <- seq(n_iter)
+  df2 %>% 
+    gather(key = "year", value = "value", 1:100) %>%
+    mutate(year = as.numeric(as.character(year))) %>%
+    ggplot(aes(x = year, y = value, group = as.factor(iter))) +
+    geom_line(alpha = 0.5) +
+    theme_bw()
+  
+  f_array <- array(dim = c(yrs_hist, 3, n_iter),
+                   dimnames = list(seq(yrs_hist), c("min","val","max"),
+                                   iter = seq(n_iter)))
+  f_array[, "val", ] <- c(t(df))
+}
 
 ### ------------------------------------------------------------------------ ###
 ### create OMs ####
@@ -108,7 +66,7 @@ f_array[, "val", ] <- c(t(df))
 ### get lhist for stocks
 stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 
-### create BRPs
+### create BRPs (not used)
 # brps <- lapply(stocks$stock, function(stock) {
 #   lh_i <- stocks[stocks$stock == stock, ]
 #   lh_i <- lh_i[, c("a", "b", "linf", "l50", "a50", "t0", "k")]
@@ -147,30 +105,32 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 # names(brps) <- stocks$stock
 # saveRDS(brps, file = "input/OMs/brps.rds")
 # #brps <- readRDS("input/OMs/brps.rds")
-### use BRPs from paper
-brps <- readRDS("input/OMs/brps_paper.rds")$new_baseline
-brps <- brps[match(x = stocks$stock_old, table = names(brps))]
-names(brps) <- stocks$stock
 
-### calculate Blim
-brps <- lapply(brps, function(brp) {
-  bv <- function(SSB, a, b) a*SSB/(b + SSB)
-  solve <- function(SSB) {
-    rec = bv(a = c(params(brp)["a"]),
-             b = c(params(brp)["b"]), SSB = SSB)
-    abs((c(refpts(brp)["virgin", "rec"]) * 0.7) - rec)
-  }
-  attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
-  return(brp)
-})
+# ### use BRPs from paper
+# brps <- readRDS("input/OMs/brps_paper.rds")$new_baseline
+# brps <- brps[match(x = stocks$stock_old, table = names(brps))]
+# names(brps) <- stocks$stock
+# ### calculate Blim
+# brps <- lapply(brps, function(brp) {
+#   bv <- function(SSB, a, b) a*SSB/(b + SSB)
+#   solve <- function(SSB) {
+#     rec = bv(a = c(params(brp)["a"]),
+#              b = c(params(brp)["b"]), SSB = SSB)
+#     abs((c(refpts(brp)["virgin", "rec"]) * 0.7) - rec)
+#   }
+#   attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
+#   return(brp)
+# })
+# saveRDS(brps, file = "input/OMs/brps.rds")
 
-saveRDS(brps, file = "input/OMs/brps.rds")
+brps <- readRDS("input/OMs/brps.rds")
 
-sapply(brps, function(x) {
-  c(refpts(x)["crash", "harvest"]/refpts(x)["msy", "harvest"])
-})
+# sapply(brps, function(x) {
+#   c(refpts(x)["crash", "harvest"]/refpts(x)["msy", "harvest"])
+# })
+
 ### create FLStocks
-stocks_subset <- stocks$stock#rev(stocks$stock[-c(24,29)])#stocks$stock[]
+stocks_subset <- stocks$stock#"pol"
 stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass", 
                      .packages = c("FLCore", "FLash", "FLBRP")) %dopar% {
   stk <- as(brps[[stock]], "FLStock")
@@ -186,15 +146,39 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   set.seed(0)
   residuals(stk_sr) <- rlnoise(dim(stk)[6], rec(stk) %=% 0, 
                                sd = 0.6, b = 0)
-  ### fishing history
-  ### fwcControl template
-  ctrl <- fwdControl(data.frame(year = seq(yrs_hist), 
-                                quantity = c("f"), val = NA))
-  ### add iterations
-  ctrl@trgtArray <- f_array
-  ### target * Fmsy
-  ctrl@trgtArray[,"val",] <- ctrl@trgtArray[,"val",] * 
-    c(refpts["crash", "harvest"]) * 1
+  ### replicate residuals from catch rule paper for historical period
+  set.seed(0)
+  residuals <- rlnoise(dim(stk)[6], (rec(stk) %=% 0)[, ac(1:100)], 
+                       sd = 0.6, b = 0)
+  residuals(stk_sr)[, ac(1:100)] <- residuals[, ac(1:100)]
+  
+  ### fishing history from previous paper
+  if (isTRUE(fhist == "one-way")) {
+    
+    ### 0.5Fmsy until year 75, then increase to 0.8Fcrash
+    fs <- rep(c(refpts["msy", "harvest"]) * 0.5, 74)
+    f0 <- c(refpts["msy", "harvest"]) * 0.5
+    fmax <- c(refpts["crash", "harvest"]) * 0.8
+    rate <- exp((log(fmax) - log(f0)) / (25))
+    fs <- c(fs, rate ^ (1:25) * f0)
+    
+    ### control object
+    ctrl <- fwdControl(data.frame(year = 2:100, quantity = "f", val = fs))
+    
+  ### random F trajectories
+  } else if (isTRUE(fhist == "random")) {
+    
+    ### control object template
+    ctrl <- fwdControl(data.frame(year = seq(yrs_hist), 
+                                  quantity = c("f"), val = NA))
+    ### add iterations
+    ctrl@trgtArray <- f_array
+    ### target * Fmsy
+    ctrl@trgtArray[,"val",] <- ctrl@trgtArray[,"val",] * 
+      c(refpts["crash", "harvest"]) * 1
+    
+  }
+  
   ### project fishing history
   stk_stf <- fwd(stk, ctrl, sr = stk_sr, sr.residuals = residuals(stk_sr),
                  sr.residuals.mult = TRUE, maxF = 5) 
@@ -206,10 +190,9 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   #                  sr.residuals.mult = TRUE, maxF = 4)
   # }
   name(stk_stf) <- stock
-  path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/")
+  path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
   dir.create(path, recursive = TRUE)
-  saveRDS(list(stk = stk_stf, sr = stk_sr),
-          file = paste0(path, stock, ".rds"))
+  saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, ".rds"))
   return(NULL)
   #return(list(stk = stk_stf, sr = stk_sr))
 }
@@ -217,7 +200,8 @@ names(stks_hist) <- stocks_subset
 
 ### stock status
 res <- lapply(stocks_subset, function(stock) {
-  stk <- readRDS(paste0("input/1000_50/OM_1_hist/", stock, ".rds"))$stk
+  stk <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, 
+                        "/", stock, ".rds"))$stk
   ssb(stk)[, ac(100)] / refpts(brps[[stock]])["msy", "ssb"]
 })
 
@@ -260,8 +244,8 @@ res <- lapply(stocks_subset, function(stock) {
 stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass", 
                    .packages = c("FLCore", "mseDL")) %do% {
   ### load stock
-  tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", stock, 
-                        ".rds"))
+  tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
+                        "/", stock, ".rds"))
   stk_fwd <- tmp$stk
   stk_sr <- tmp$sr
   ### life-history data
@@ -361,7 +345,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                 refpts = refpts, Blim = Blim, I_loss = I_loss)
   
   ### save OM
-  path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/")
+  path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist, "/")
   dir.create(path, recursive = TRUE)
   saveRDS(object = input, file = paste0(path, stock, ".rds"))
   return(NULL)
