@@ -17,7 +17,8 @@ if (length(args) > 0) {
   
   ### extract arguments
   for (i in seq_along(args)) eval(parse(text = args[[i]]))
-  ### parallezation
+  ### set default arguments
+  ### parallelization
   if (!exists("use_MPI")) use_MPI <- FALSE
   if (!exists("n_blocks")) n_blocks <- 1
   if (!exists("n_workers")) n_workers <- 0
@@ -25,12 +26,19 @@ if (length(args) > 0) {
   if (!exists("popSize")) stop("popSize missing")
   if (!exists("maxiter")) stop("maxiter missing")
   if (!exists("stock_id")) stop("stock_id missing")
+  ### scenario definition
   if (!exists("n_iter")) n_iter <- 1000
   if (!exists("n_yrs")) n_yrs <- 50
   if (!exists("run")) run <- maxiter
   if (!exists("collate")) collate <- TRUE
   if (!exists("fhist")) fhist <- ""
-  
+  ### objective function elements
+  if (!exists("obj_SSB")) obj_SSB <- TRUE
+  if (!exists("obj_F")) obj_F <- FALSE
+  if (!exists("obj_C")) obj_C <- TRUE
+  if (!exists("obj_risk")) obj_risk <- TRUE
+  if (!exists("obj_ICV")) obj_ICV <- TRUE
+
 } else {
   
   stop("no argument passed to R")
@@ -65,7 +73,7 @@ if (isTRUE(use_MPI)) {
   cl_length_1
   
   ### 2nd: doParallel workers inside doMPI workers
-  foreach(i = seq(cl_length_1)) %dopar% {
+  . <- foreach(i = seq(cl_length_1)) %dopar% {
     ### load packages and functions into MPI workers
     for (i in req_pckgs) library(package = i, character.only = TRUE,
                                  warn.conflicts = FALSE, verbose = FALSE,
@@ -186,6 +194,11 @@ path_out <- paste0("output/", n_iter, "_", n_yrs, "/ms/", scenario, "/",
                    paste0(stock, collapse = "_"), "/")
 dir.create(path_out, recursive = TRUE)
 
+### objective function elements
+obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV")
+obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV)]
+obj_desc <- paste0("obj_", paste0(obj_desc, collapse = "_"), collapse = "")
+
 ### store input data in temp file
 inp_file <- tempfile()
 saveRDS(object = input, file = inp_file, compress = FALSE)
@@ -203,6 +216,8 @@ set.seed(1)
 ### run GA
 system.time({
   res <- ga(type = "real-valued", fitness = mse_ms, inp_file = inp_file,
+            obj_SSB = obj_SSB, obj_F = obj_F, obj_C = obj_C, 
+            obj_risk = obj_risk, obj_ICV = obj_ICV,
             path = path_out, check_file = TRUE,
             scenario = scenario,
             suggestions = ga_suggestions, lower = ga_lower, upper = ga_upper,
@@ -217,7 +232,8 @@ system.time({
 
 
 ### save result
-saveRDS(object = res, file = paste0(path_out, scn_pars, "_res.rds"))
+saveRDS(object = res, file = paste0(path_out, scn_pars, 
+                                    "--", obj_desc, "_res.rds"))
 
 ### ------------------------------------------------------------------------ ###
 ### collate runs ####
@@ -226,17 +242,20 @@ saveRDS(object = res, file = paste0(path_out, scn_pars, "_res.rds"))
 if (isTRUE(collate)) {
   files <- list.files(path = path_out, pattern = "[0-9]*[0-9].rds",
                       full.names = FALSE)
+  names(files) <- sapply(files, function(x) {
+    sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE)
+  })
   scns <- lapply(files, function(x) {
     pars <- an(strsplit(sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE), split = "_")[[1]])
     names(pars) <- ga_names
     ### only keep scenarios where requested parameters are changed
     if (!all(ga_default[pos_default] == pars[pos_default])) return(NULL)
     stats <- readRDS(paste0(path_out, x))
-    list(pars = pars, obj = stats$obj, stats = stats$stats)
+    list(pars = pars, stats = stats)
   })
   scns[sapply(scns, is.null)] <- NULL
-  scns <- scns[order(sapply(scns, "[[", "obj"), decreasing = TRUE)]
-  saveRDS(scns, file = paste0(path_out, scn_pars, "_runs.rds"))
+  #scns <- scns[order(sapply(scns, "[[", "obj"), decreasing = TRUE)]
+  saveRDS(scns, file = paste0(path_out, scn_pars, "--", obj_desc, "_runs.rds"))
 }
 
 ### ------------------------------------------------------------------------ ###
