@@ -3,11 +3,17 @@
 ### ------------------------------------------------------------------------ ###
 
 library(doParallel)
+library(doRNG)
 library(GA)
 library(ggplot2)
+library(cowplot)
+library(Cairo)
 library(tidyr)
 library(dplyr)
 library(FLCore)
+library(FLash)
+library(FLBRP)
+library(mseDL)
 
 ### ------------------------------------------------------------------------ ###
 ### collate results from HPC ####
@@ -16,7 +22,8 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 stocks <- stocks[-29, ]
 brps <- readRDS("input/OMs/brps.rds")
 
-path_scn <- "output/500_50/ms/SSB_idx_rfb_exp_error/whg_bll_lem_ane_jnd/"
+#path_scn <- "output/500_50/ms/SSB_idx_rfb_exp_error/whg_bll_lem_ane_jnd/"
+path_scn <- "output/500_50/ms/full/whg_bll_lem_ane_jnd/"
 
 ### GA results
 GA_res <- readRDS(paste0(path_scn, "res.rds"))
@@ -63,7 +70,8 @@ input <- lapply(stock, function(x) {
                  ".rds"))
 })
 
-scenario <- "SSB_idx_rfb_exp_error"
+# scenario <- "SSB_idx_rfb_exp_error"
+scenario <- "full"
 ### prepare input object(s) for MSE
 input <- lapply(input, function(x) {
   ### OEM: activate uncertainty
@@ -89,6 +97,7 @@ res_mp_def <- lapply(input, function(x) {
   do.call(mpDL, x)
 })
 saveRDS(res_mp_def, file = paste0(path_scn, "1_2_3_1_1_1_1.rds"))
+# res_mp_def <- readRDS(paste0(path_scn, "1_2_3_1_1_1_1.rds"))
 ### optimised parameters
 input_opt <- lapply(input, function(x) {
   ### insert optimised parameters
@@ -107,23 +116,31 @@ res_mp_opt <- lapply(input_opt, function(x) {
 })
 saveRDS(res_mp_opt, file = paste0(path_scn, paste0(par_opt, collapse = "_"), 
                                   ".rds"))
-  
+# res_mp_opt <- readRDS(paste0(path_scn, paste0(par_opt, collapse = "_"), 
+#                                   ".rds"))
 
 ### ------------------------------------------------------------------------ ###
 ### plot time series ####
 ### ------------------------------------------------------------------------ ###
 quantiles <- c(0.05, 0.25, 0.5, 0.75, 0.95)
-dfs <- lapply(names(res_mp_def), function(x) {
+dfs <- lapply(names(res_mp_def), function(x) {#browser()
   df_opt <- metrics(res_mp_opt[[x]]@stock, 
                     metrics = list(SSB = ssb, F = fbar, Catch = catch))
   df_opt$SSB <- df_opt$SSB/c(input_opt[[x]]$refpts["msy", "ssb"])
   df_opt$F <- df_opt$F/c(input_opt[[x]]$refpts["msy", "harvest"])
   df_opt$Catch <- df_opt$Catch/c(input_opt[[x]]$refpts["msy", "yield"])
-  df_opt <- lapply(df_opt, function(x) {
+  df_opt_p <- lapply(df_opt, function(x) {
     quantile(x, quantiles)
   })
-  df_opt <- as.data.frame(df_opt)
-  df_opt <- df_opt %>% tidyr::spread(key = iter, value = data)
+  df_opt_p <- as.data.frame(df_opt_p)
+  df_opt_p <- df_opt_p %>% tidyr::spread(key = iter, value = data)
+  df_opt_iter <- lapply(df_opt, function(x) {
+    iter(x, c(1, 3, 4, 10))
+  })
+  df_opt_iter <- as.data.frame(df_opt_iter)
+  df_opt_iter$iter <- an(ac(df_opt_iter$iter))
+  #df_opt <- full_join(df_opt_p, df_opt_iter)
+  
   df_def <- metrics(res_mp_def[[x]]@stock, 
                     metrics = list(SSB = ssb, F = fbar, Catch = catch))
   df_def$SSB <- df_def$SSB/c(input_opt[[x]]$refpts["msy", "ssb"])
@@ -132,17 +149,21 @@ dfs <- lapply(names(res_mp_def), function(x) {
   df_def <- lapply(df_def, iterMedians)
   df_def <- as.data.frame(df_def)
   names(df_def)[7] <- "default"
-  df_comb <- full_join(df_opt, df_def)
+  
+  df_comb <- full_join(df_opt_p, df_def)
   names(df_comb)[9] <- "optimised"
   df_comb <- df_comb %>% gather(key = "parameter", value = `50%`, 
                                 "optimised", "default")
   df_comb$stock <- x
-  return(df_comb)
+  df_opt_iter$stock <- x
+  return(list(quantiles = df_comb, iter = df_opt_iter))
 })
-dfs <- do.call(rbind, dfs)
-levels(dfs$qname) <- c("SSB/Bmsy", "F/Fmsy", "Catch/MSY")
+dfs_quantiles <- do.call(rbind, lapply(dfs, "[[", "quantiles"))
+dfs_iter <- do.call(rbind, lapply(dfs, "[[", "iter"))
+levels(dfs_quantiles$qname) <- c("SSB/Bmsy", "F/Fmsy", "Catch/MSY")
+levels(dfs_iter$qname) <- c("SSB/Bmsy", "F/Fmsy", "Catch/MSY")
 
-ggplot(data = dfs,
+ggplot(data = dfs_quantiles,
        aes(x = year - 100, y = `50%`)) +
   geom_ribbon(aes(ymin = `5%`, ymax = `95%`, alpha = "90%")) +
   geom_ribbon(aes(ymin = `25%`, ymax = `75%`, alpha = "50%")) +
@@ -150,12 +171,15 @@ ggplot(data = dfs,
   geom_line(aes(linetype = parameter)) +
   scale_linetype_manual(name = "parameters", 
                         values = c(default = "dotted", optimised = "solid")) +
+  geom_line(data = dfs_iter,
+            aes(x = year - 100, y = data, colour = as.factor(iter)),
+            alpha = 0.4, show.legend = FALSE) + 
   facet_grid(qname ~ stock, scales = "free_y") +
   geom_vline(xintercept = 0.5, alpha = 0.5) +
   #geom_hline(yintercept = 1, colour = "red", alpha = 0.3) +
   theme_bw() +
   labs(x = "year", y = "")
-ggsave(filename = paste0(path_scn, "timeseries.png"),
+ggsave(filename = paste0(path_scn, "timeseries_iter.png"),
        width = 30, height = 17, units = "cm", dpi = 300, type = "cairo")
 
 
@@ -163,8 +187,10 @@ ggsave(filename = paste0(path_scn, "timeseries.png"),
 ### plot stats ####
 ### ------------------------------------------------------------------------ ###
 
+# pos_def <- which(sapply(lapply(lapply(GA_runs, "[[", "pars"), function(x) { 
+#   x == c(1, 2, 3, 1, 1, 1, 1)}), sum) == 7)
 pos_def <- which(sapply(lapply(lapply(GA_runs, "[[", "pars"), function(x) { 
-  x == c(1, 2, 3, 1, 1, 1, 1)}), sum) == 7)
+  x == c(1, 2, 3, 1, 1, 1, 1, 1)}), sum) == 8)
 stats <- lapply(GA_runs[c(1, pos_def)], function(x) {
   tmp <- as.data.frame(apply(as.data.frame(x$stats), 2, unlist))
   tmp[2:6, ] <- -tmp[2:6, ]
@@ -206,3 +232,12 @@ ggsave(filename = paste0(path_scn, "stats.png"),
 
 
 
+### ------------------------------------------------------------------------ ###
+### multiplier ####
+### ------------------------------------------------------------------------ ###
+runs <- readRDS("C:/Users/sf02/OneDrive - CEFAS/WKLIFEVII/wklife9/component_r/output/1000_50/ms/trial/gut_whg_bll_lem_ane_jnd_sar_her_san/multiplier_runs.rds")
+res <- readRDS("C:/Users/sf02/OneDrive - CEFAS/WKLIFEVII/wklife9/component_r/output/1000_50/ms/trial/gut_whg_bll_lem_ane_jnd_sar_her_san/multiplier_res.rds")
+
+runs[[1]]
+
+plot(sapply(runs, function(x) x$obj) ~ sapply(runs, function(x) x$pars["multiplier"]))
