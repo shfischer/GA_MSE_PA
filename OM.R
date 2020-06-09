@@ -27,7 +27,7 @@ set.seed(2)
 ### ------------------------------------------------------------------------ ###
 ### with uniform distribution and random F trajectories ####
 ### ------------------------------------------------------------------------ ###
-fhist <- "random"#"one-way"
+fhist <- "one-way"#"random"#
 if (identical(fhist, "random")) {
   start <- rep(0, n_iter)
   middle <- runif(n = n_iter, min = 0, max = 1)
@@ -264,14 +264,25 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   idx <- FLQuants(
     sel = stk_fwd@mat %=% q,
     idxB = quantSums(stk_fwd@stock.n * stk_fwd@stock.wt * (stk_fwd@mat %=% q)),
-    idxL = lmean(stk = stk_fwd, params = pars_l))
+    idxL = lmean(stk = stk_fwd, params = pars_l),
+    PA_status = ssb(stk_fwd) %=% NA_integer_)
   ### index deviation
+  PA_status_dev <- FLQuant(NA, dimnames = list(age = c("positive", "negative"), 
+                                               year = dimnames(stk_fwd)$year, 
+                                               iter = dimnames(stk_fwd)$iter))
+  set.seed(1)
+  PA_status_dev["positive"] <- rbinom(n = PA_status_dev["positive"], 
+                                      size = 1, prob = 0.9886215)
+  set.seed(2)
+  PA_status_dev["negative"] <- rbinom(n = PA_status_dev["negative"], 
+                                      size = 1, prob = 1 - 0.4216946)
   set.seed(696)
   idx_dev <- FLQuants(sel = stk_fwd@mat %=% 1,
                       idxB = rlnoise(n = dims(idx$idxB)$iter, idx$idxB %=% 0, 
                                     sd = 0.2, b = 0),
                       idxL = rlnoise(n = dims(idx$idxL)$iter, idx$idxL %=% 0, 
-                                     sd = 0.2, b = 0))
+                                     sd = 0.2, b = 0),
+                      PA_status = PA_status_dev)
   ### iem deviation
   set.seed(205)
   iem_dev <- FLQuant(rlnoise(n = dims(stk_fwd)$iter,  catch(stk_fwd) %=% 0,
@@ -294,7 +305,10 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
     exp_r = 1, exp_f = 1, exp_b = 1,
     interval = 2,
     B_lim = rep(brps[[stock]]@Blim, n_iter),
-    I_trigger = c(I_loss$idx_dev * 1.4) ### default, can be overwritten later
+    I_trigger = c(I_loss$idx_dev * 1.4), ### default, can be overwritten later
+    pa_buffer = FALSE, pa_size = 0.8, pa_duration = 3,
+    upper_constraint = Inf,
+    lower_constraint = 0
   )
   
   ### operating model
@@ -310,7 +324,10 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                deviances = list(stk = FLQuant(), idx = idx_dev),
                args = list(idx_dev = TRUE, ssb = FALSE,
                            lngth = TRUE, lngth_dev = TRUE,
-                           lngth_par = pars_l))
+                           lngth_par = pars_l,
+                           PA_status = FALSE, PA_status_dev = FALSE,
+                           PA_Bmsy = c(refpts(brps[[stock]])["msy", "ssb"]), 
+                           PA_Fmsy = c(refpts(brps[[stock]])["msy", "harvest"])))
   ctrl.mp <- mpCtrl(list(
     ctrl.est = mseCtrl(method = wklife_3.2.1_est,
                        args = pars_est),
@@ -319,8 +336,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
     ctrl.hcr = mseCtrl(method = hcr_r,
                        args = pars_est),
     ctrl.is = mseCtrl(method = is_r,
-                      args = list(upper_constraint = Inf,
-                                  lower_constraint = 0))
+                      args = pars_est)
   ))
   iem <- FLiem(method = iem_r,
                args = list(use_dev = TRUE, iem_dev = iem_dev))

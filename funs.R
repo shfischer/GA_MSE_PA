@@ -7,6 +7,9 @@ wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
                              lngth = FALSE, ### catch length data?
                              lngth_dev = FALSE, 
                              lngth_par,
+                             PA_status = FALSE,
+                             PA_status_dev = FALSE,
+                             PA_Bmsy = FALSE, PA_Fmsy = FALSE,
                              ...) {
 
   #ay <- genArgs$ay
@@ -23,6 +26,11 @@ wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
   ### use mean length in catch?
   if (isTRUE(lngth)) {
     observations$idx$idxL <- lmean(stk = stk, params = lngth_par)
+  }
+  ### stock status for PA buffer?
+  if (isTRUE(PA_status)) {
+    observations$idx$PA_status[] <- ssb(observations$stk) > 0.5*PA_Bmsy & 
+                                    fbar(observations$stk) < PA_Fmsy
   }
   
   ### observation model
@@ -44,6 +52,13 @@ wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
   if (isTRUE(lngth) & isTRUE(lngth_dev)) {
     idx0$idxL <- observations$idx$idxL * deviances$idx$idxL
   }
+  ### uncertainty for stock status for PA buffer
+  if (isTRUE(PA_status) & isTRUE(PA_status_dev)) {
+    idx0$PA_status <- ifelse(observations$idx$PA_status == TRUE, 
+                             deviances$idx$PA_status["positive", ],
+                             deviances$idx$PA_status["negative", ])
+  }
+  
   
   return(list(stk = stk0, idx = idx0, observations = observations,
               tracking = tracking))
@@ -61,6 +76,8 @@ wklife_3.2.1_est <- function(stk, idx, tracking, genArgs,
                              catch_lag = 1, catch_range = 1,
                              Lref, I_trigger,
                              idxL_lag = 1, idxL_range = 1,
+                             pa_buffer = FALSE, pa_size = 0.8, pa_duration = 3,
+                             Bmsy = NA,
                              ...) {
   
   ay <- genArgs$ay
@@ -91,6 +108,12 @@ wklife_3.2.1_est <- function(stk, idx, tracking, genArgs,
                    idxB_range_3 = idxB_range_3)
   } else {
     b_res <- 1
+  }
+  ### PA buffer
+  if (isTRUE(pa_buffer)) {
+    b_res <- est_pa(idx = idx$PA_status, ay = ay, 
+                    tracking = tracking, idxB_lag = idxB_lag,
+                    pa_size = pa_size, pa_duration = pa_duration)
   }
   tracking["comp_b", ac(ay)] <- b_res
   
@@ -170,6 +193,28 @@ est_b <- function(idx, ay,
   
 }
 
+### biomass index trend
+est_pa <- function(idx, ay, tracking, pa_size, pa_duration, idxB_lag,
+                   ...) {
+  
+  ### find last year in which buffer was applied
+  last <- apply(tracking["comp_b",,, drop = FALSE], 6, FUN = function(x) {#browser()
+    ### positions (years) where buffer was applied
+    yr <- dimnames(x)$year[which(x < 1)]
+    ### return -Inf if buffer was never applied
+    ifelse(length(yr) > 0, as.numeric(yr), -Inf)
+  })
+  ### find iterations to check 
+  pos_check <- which(last <= (ay - pa_duration))
+  ### find negative stock status (SSB<0.5Bmsy or F>Fmsy)
+  pos_negative <- which(idx[, ac(ay - idxB_lag)] == 0)
+  ### apply only if buffer applications need to be checked and status is negative
+  pos_apply <- intersect(pos_check, pos_negative)
+  
+  return(ifelse(seq(dims(last)$iter) %in% pos_apply, pa_size, 1))
+  
+}
+
 ### ------------------------------------------------------------------------ ###
 ### phcr ####
 ### ------------------------------------------------------------------------ ###
@@ -242,38 +287,55 @@ hcr_r <- function(hcrpars, genArgs, tracking, interval = 1,
 ### no need to convert, already catch in tonnes
 ### apply TAC constraint, if required
 
-is_r <- function(ctrl, genArgs, tracking, 
+is_r <- function(ctrl, genArgs, tracking, interval = 1, 
                   upper_constraint = Inf, lower_constraint = 0, ...) {
   
-  ay <- genArgs$ay
+  ay <- genArgs$ay ### current year
+  iy <- genArgs$iy ### first simulation year
+  
   advice <- ctrl@trgtArray[ac(ay + genArgs$management_lag),"val",]
   
-  ### apply TAC constraint, if requested
-  if (!is.infinite(upper_constraint) | lower_constraint != 0) {
-    
-    ### get last advice
-    adv_last <- tracking["metric.is", ac(ay - 1)]
-    ### ratio of new advice/last advice
-    adv_ratio <- advice/adv_last
-    
-    ### upper constraint
-    if (!is.infinite(upper_constraint)) {
-      ### find positions
-      pos_upper <- which(adv_ratio > upper_constraint)
-      ### limit advice
-      if (length(pos_upper) > 0) {
-        advice[,,,,, pos_upper] <- adv_last[,,,,, pos_upper] * upper_constraint
+  ### check if new advice requested
+  if ((ay - iy) %% interval == 0) {
+  
+    ### apply TAC constraint, if requested
+    if (!is.infinite(upper_constraint) | lower_constraint != 0) {
+      
+      ### get last advice
+      if (isTRUE(ay == iy)) {
+        ### use OM value in first year of projection
+        adv_last <- tracking["C.om", ac(iy)]
+      } else {
+        adv_last <- tracking["metric.is", ac(ay - 1)]
       }
-      ### lower constraint
-    }
-    if (lower_constraint != 0) {
-      ### find positions
-      pos_lower <- which(adv_ratio < lower_constraint)
-      ### limit advice
-      if (length(pos_lower) > 0) {
-        advice[,,,,, pos_lower] <- adv_last[,,,,, pos_lower] * lower_constraint
+      ### ratio of new advice/last advice
+      adv_ratio <- advice/adv_last
+      
+      ### upper constraint
+      if (!is.infinite(upper_constraint)) {
+        ### find positions
+        pos_upper <- which(adv_ratio > upper_constraint)
+        ### limit advice
+        if (length(pos_upper) > 0) {
+          advice[pos_upper] <- adv_last[,,,,, pos_upper] * upper_constraint
+        }
+        ### lower constraint
+      }
+      if (lower_constraint != 0) {
+        ### find positions
+        pos_lower <- which(adv_ratio < lower_constraint)
+        ### limit advice
+        if (length(pos_lower) > 0) {
+          advice[pos_lower] <- adv_last[,,,,, pos_lower] * lower_constraint
+        }
       }
     }
+    
+  ### otherwise do not do anythin here and recycle last year's advice
+  } else {
+    
+    advice <- tracking["metric.is", ac(ay - 1)]
+    
   }
   ctrl@trgtArray[ac(ay + genArgs$management_lag),"val",] <- advice
   
