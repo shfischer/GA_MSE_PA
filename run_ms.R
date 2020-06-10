@@ -302,7 +302,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   }
 
 ### other catch rules
-} else if (isTRUE(catch_rule == "2over3")) {
+} else {
   
   ### output path
   path_out <- paste0("output/", n_iter, "_", n_yrs, "/ms/", catch_rule, "/",
