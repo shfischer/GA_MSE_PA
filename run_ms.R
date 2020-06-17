@@ -202,7 +202,7 @@ if (isTRUE(catch_rule == "2over3")) {
     x$ctrl.mp$ctrl.est@args$idxB_range <- 1
     ### phcr
     x$ctrl.mp$ctrl.phcr@method <- phcr_hr
-    x$ctrl.mp$ctrl.phcr@args$rate <- 1
+    x$ctrl.mp$ctrl.phcr@args$rate <- hr_rate
     ### hcr
     x$ctrl.mp$ctrl.hcr@method <- hcr_hr
     x$ctrl.mp$ctrl.hcr@args$interval <- 1
@@ -340,11 +340,18 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   res_mp <- lapply(input, function(x) {
     do.call(mpDL, x)
   })
-  saveRDS(res_mp, paste0(path_out, paste0(stock, collapse = "_"), "_mp.rds"))
+  file_name <- paste0(stock, collapse = "_")
+  if (isTRUE(catch_rule == "hr")) {
+    idx_quant <- i
+    file_name <- paste0("int-", input[[1]]$ctrl.mp$ctrl.hcr@args$interval, "_",
+                        "mult-", input[[1]]$ctrl.mp$ctrl.phcr@args$rate, "_",
+                        file_name)
+  }
+  saveRDS(res_mp, paste0(path_out, file_name, "_mp.rds"))
   
   ### stats
   stats <- mp_stats(input = input, res_mp = res_mp)
-  saveRDS(stats, paste0(path_out, paste0(stock, collapse = "_"), "_stats.rds"))
+  saveRDS(stats, paste0(path_out, file_name, "_stats.rds"))
   
 }
 
