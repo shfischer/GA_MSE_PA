@@ -830,3 +830,97 @@ ggsave(filename = "output/plots/stats_ms_and_single.png",
 ggsave(filename = "output/plots/stats_ms_and_single.pdf",
        width = 17, height = 12, units = "cm", dpi = 600)
 
+
+
+### ------------------------------------------------------------------------ ###
+### ICES default 2 over 3 rule ####
+### ------------------------------------------------------------------------ ###
+
+### stats from new catch rule: default and optimised
+stats_cc <- readRDS("output/500_50/ms/trial/all_stocks_one-way_stats.rds")
+stats_cc <- stats_cc %>%
+  mutate(catch_rule = ifelse(optimised, "optimised", "default"))
+
+### collate results from one-way fishing history
+stats_2over3_ow <- lapply(stocks_subset, function(x) {
+  readRDS(paste0("output/500_50/ms/2over3/one-way/", x, "_stats.rds"))
+})
+stats_2over3_ow <- do.call(cbind, stats_2over3_ow)
+stats_2over3_ow <- as.data.frame(t(stats_2over3_ow))
+stats_2over3_ow$fhist <- "one-way"
+stats_2over3_ow$catch_rule <- "2 over 3"
+stats_2over3_ow$stock <- rownames(stats_2over3_ow)
+### random fhist
+stats_2over3_rnd <- lapply(stocks_subset, function(x) {
+  readRDS(paste0("output/500_50/ms/2over3/random/", x, "_stats.rds"))
+})
+stats_2over3_rnd <- do.call(cbind, stats_2over3_rnd)
+stats_2over3_rnd <- as.data.frame(t(stats_2over3_rnd))
+stats_2over3_rnd$fhist <- "random"
+stats_2over3_rnd$catch_rule <- "2 over 3"
+stats_2over3_rnd$stock <- rownames(stats_2over3_rnd)
+### new catch rule random fhist
+stats_cc_rnd <- lapply(stocks_subset, function(x) {
+  readRDS(paste0("output/500_50/ms/catch_rule/random/", x, "_stats.rds"))
+})
+stats_cc_rnd <- do.call(cbind, stats_cc_rnd)
+stats_cc_rnd <- as.data.frame(t(stats_cc_rnd))
+stats_cc_rnd$fhist <- "random"
+stats_cc_rnd$catch_rule <- "default"
+stats_cc_rnd$stock <- rownames(stats_cc_rnd)
+
+### combine
+stats_2over3 <- rbind(rbind(stats_2over3_ow, stats_2over3_rnd), stats_cc_rnd)
+stats_2over3 <- lapply(stats_2over3, unlist)
+stats_2over3 <- as.data.frame(stats_2over3, stringsAsFactors = FALSE)
+stats_2over3 <- stats_2over3 %>%
+  group_by(stock, fhist, catch_rule) %>%
+  mutate(ga_fitnessValue = -sum(c(abs(SSB_rel - 1), abs(Catch_rel - 1), 
+                                  risk_Blim, ICV))) %>%
+  ungroup()
+stats_2over32 <- merge(stats_2over3, stocks[, c("stock", "k")])
+
+stats_2over3 %>% print(n = Inf, width = Inf)
+
+stats_2over3 <- bind_rows(stats_cc, stats_2over3)
+stats_2over3 <- stats_2over3 %>%
+  mutate(stock = factor(stock, levels = stocks$stock[order(stocks$k)]),
+         catch_rule = factor(catch_rule, levels = c("2 over 3", "default", "optimised")))
+
+stats_plot <- stats_2over3 %>% 
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
+                 ga_fitnessValue)) %>%
+  mutate(name = ifelse(name == "SSB_rel", "SSB/B[MSY]", name),
+         name = ifelse(name == "Fbar_rel", "F/F[MSY]", name),
+         name = ifelse(name == "Catch_rel", "Catch/MSY", name),
+         name = ifelse(name == "risk_Blim", "B[lim]~risk", name),
+         name = ifelse(name == "ICV", "ICV", name),
+         name = ifelse(name == "ga_fitnessValue", "fitness~value", 
+                       name)) %>%
+  mutate(name = factor(name, levels = unique(name)[c(1, 2, 3, 4, 5, 6)]),
+         fhist = factor(fhist, levels = c("one-way", "random")))
+stats_plot <- stats_plot %>%
+  mutate(value2 = value + 0.001)
+
+p_stats <- stats_plot %>%
+  ggplot(aes(x = stock, y = value2, fill = catch_rule, colour = catch_rule)) +
+  geom_col(position = position_dodge2(padding = 0.5), width = 0.8) +
+  scale_colour_discrete("catch\nrule") +
+  scale_fill_discrete("catch\nrule") + 
+  facet_grid(name ~ fhist, 
+             scales = "free_y", switch = "y", 
+             labeller = "label_parsed", space = "free_x") +
+  labs(x = "stock", y = "") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(), 
+        strip.text.y = element_text(size = 8),
+        panel.spacing.x = unit(0, units = "cm"),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
+        axis.title.y = element_blank(), 
+        legend.key.size = unit(0.3, "lines"))
+
+ggsave(filename = "output/plots/2over3_stats.png", plot = p_stats,
+       width = 17, height = 12, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/2over3_stats.pdf", plot = p_stats,
+       width = 17, height = 12, units = "cm", dpi = 600)
