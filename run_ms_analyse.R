@@ -924,3 +924,92 @@ ggsave(filename = "output/plots/2over3_stats.png", plot = p_stats,
        width = 17, height = 12, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/2over3_stats.pdf", plot = p_stats,
        width = 17, height = 12, units = "cm", dpi = 600)
+
+
+
+### ------------------------------------------------------------------------ ###
+### alternative MP: constant harvest rate ####
+### ------------------------------------------------------------------------ ###
+
+### scenario table
+hr_scns <- expand.grid(stock = stocks$stock[21:29], fhist = "one-way", interval = 1,
+                       hr_rate = seq(from = 0, to = 1, by = 0.1),
+                       catch_rule = "harvest_rate")
+hr_scns <- merge(hr_scns, stocks[, c("stock", "k")])
+hr_scns$file_name <- with(hr_scns, paste0("int-", interval, "_mult-", hr_rate,
+                                         "_", stock))
+hr_scns$seq <- seq(nrow(hr_scns))
+
+
+hr_stats <- lapply(split(hr_scns, hr_scns$seq), 
+                function(x) {
+    ### extract stats from default objective function run
+    tmp <- readRDS(paste0("output/500_50/ms/hr/", x$fhist, "/", 
+                          x$file_name, "_stats.rds"))
+    tmp <- cbind(x, as.data.frame(t(tmp)))
+  return(tmp)
+})
+hr_stats <- as.data.frame(do.call(rbind, hr_stats))
+hr_stats <- as.data.frame(lapply(hr_stats, unlist))
+hr_stats <- full_join(hr_stats, stocks[21:29, c("stock", "k")])
+hr_stats$stock <- factor(hr_stats$stock, levels = stocks$stock[order(stocks$k)])
+saveRDS(hr_stats, file = "output/500_50/ms/hr/all_stocks_one-way_stats.rds")
+hr_stats <- readRDS("output/500_50/ms/hr/all_stocks_one-way_stats.rds")
+
+### stats from new catch rule: default and optimised
+stats_cc <- readRDS("output/500_50/ms/trial/all_stocks_one-way_stats.rds")
+stats_cc <- stats_cc %>%
+  filter(optimised == FALSE &
+         stock %in% as.character(unique(hr_stats$stock))) %>%
+  mutate(catch_rule = "catch_rule")
+
+hr_stats <- bind_rows(stats_cc, hr_stats)
+hr_stats <- hr_stats %>%
+  mutate(stock = factor(stock, levels = stocks$stock[order(stocks$k)]),
+         catch_rule = factor(catch_rule, 
+                             levels = c("catch_rule", "harvest_rate"), 
+                             labels = c("catch rule", "harvest rate")))
+
+stats_plot <- hr_stats %>% 
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV)) %>%
+  mutate(name = ifelse(name == "SSB_rel", "SSB/B[MSY]", name),
+         name = ifelse(name == "Fbar_rel", "F/F[MSY]", name),
+         name = ifelse(name == "Catch_rel", "Catch/MSY", name),
+         name = ifelse(name == "risk_Blim", "B[lim]~risk", name),
+         name = ifelse(name == "ICV", "ICV", name)) %>%
+  mutate(name = factor(name, levels = unique(name)[c(1, 2, 3, 4, 5)]),
+         fhist = factor(fhist, levels = c("one-way", "random")))
+stats_plot <- stats_plot %>%
+  mutate(value2 = value + 0.001)
+
+p_stats <- stats_plot %>%
+  filter(catch_rule == "harvest rate") %>%
+  ggplot(aes(x = hr_rate * 100, y = value, colour = stock, fill = stock)) +
+  geom_line(show.legend = FALSE) + geom_point(show.legend = FALSE) +
+  facet_grid(name ~ stock, 
+             scales = "free_y", switch = "y", 
+             labeller = "label_parsed", space = "free_x") +
+  labs(x = "Harvest rate [%]", y = "") +
+  ylim(0, NA) +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(), 
+        strip.text.y = element_text(size = 8),
+        panel.spacing.x = unit(0, units = "cm"),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
+        axis.title.y = element_blank(), 
+        legend.key.size = unit(0.3, "lines"))
+
+ggsave(filename = "output/plots/harvest_rate_stats.png", plot = p_stats,
+       width = 17, height = 12, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/harvest_rate_stats.pdf", plot = p_stats,
+       width = 17, height = 12, units = "cm", dpi = 600)
+
+
+
+
+
+
+
+
+
