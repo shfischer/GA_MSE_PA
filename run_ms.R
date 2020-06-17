@@ -139,7 +139,8 @@ input <- lapply(stock, function(x) {
 input <- lapply(input, function(x) {
   ### OEM: activate uncertainty
   x$oem@args$idx_dev <- TRUE
-  x$oem@args$ssb <- FALSE
+  x$oem@args$ssb_idx <- FALSE
+  x$oem@args$tsb_idx <- FALSE
   x$oem@args$lngth <- TRUE
   x$oem@args$lngth_dev <- TRUE
   ### IEM: do not activate uncertainty
@@ -187,6 +188,31 @@ if (isTRUE(catch_rule == "2over3")) {
   #debugonce(goFishDL)
   #res <- do.call(mpDL, c(input$pol, cut_hist = FALSE))
   
+} else if (isTRUE(catch_rule == "hr")) {
+  input <- lapply(input, function(x) {
+    ### OEM
+    x$oem@method <- wklife_3.2.1_obs
+    x$oem@args$lngth <- FALSE
+    x$oem@args$lngth_dev <- FALSE
+    x$oem@args$ssb_idx <- FALSE
+    x$oem@args$tsb_idx <- TRUE
+    ### est
+    x$ctrl.mp$ctrl.est@method <- est_hr
+    x$ctrl.mp$ctrl.est@args$idxB_lag <- 1
+    x$ctrl.mp$ctrl.est@args$idxB_range <- 1
+    ### phcr
+    x$ctrl.mp$ctrl.phcr@method <- phcr_hr
+    x$ctrl.mp$ctrl.phcr@args$rate <- 1
+    ### hcr
+    x$ctrl.mp$ctrl.hcr@method <- hcr_hr
+    x$ctrl.mp$ctrl.hcr@args$interval <- 1
+    ### is
+    x$ctrl.mp$ctrl.is@method <- is_r
+    x$ctrl.mp$ctrl.is@args$interval <- 1
+    x$ctrl.mp$ctrl.is@args$upper_constraint <- Inf
+    x$ctrl.mp$ctrl.is@args$lower_constraint <- 0
+    return(x)
+  })
 }
 
 ### within scenario parallelisation?

@@ -2,7 +2,7 @@
 ### observations ####
 ### ------------------------------------------------------------------------ ###
 wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
-                             ssb = FALSE, ### use SSB as idx
+                             ssb_idx = FALSE, tsb_idx = FALSE, ### use SSB idx
                              idx_dev = FALSE,
                              lngth = FALSE, ### catch length data?
                              lngth_dev = FALSE, 
@@ -16,8 +16,11 @@ wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
   ### update observations
   observations$stk <- stk
   ### use SSB as index?
-  if (isTRUE(ssb)) {
+  if (isTRUE(ssb_idx)) {
     observations$idx$idxB <- ssb(observations$stk)
+  ### TSB?
+  } else  if (isTRUE(tsb_idx)) {
+      observations$idx$idxB <- tsb(observations$stk)
   ### otherwise calculate biomass index
   } else {
     observations$idx$idxB <- quantSums(stk@stock.n * stk@stock.wt * 
@@ -38,7 +41,7 @@ wklife_3.2.1_obs <- function(stk, observations, deviances, genArgs, tracking,
   idx0 <- observations$idx
   ### add deviances to index?
   if (isTRUE(idx_dev)) {
-    if (isTRUE(ssb)) {
+    if (isTRUE(ssb_idx) | isTRUE(tsb_idx)) {
       idx0$idxB <- observations$idx$idxB * deviances$idx$idxB
     } else {
       idx0$idxB <- quantSums(stk@stock.n * stk@stock.wt * 
@@ -215,6 +218,23 @@ est_pa <- function(idx, ay, tracking, pa_size, pa_duration, idxB_lag,
   
 }
 
+### harvest rate index
+est_hr <- function(stk, idx, tracking, genArgs,
+                   idxB_lag = 1, idxB_range = 1,
+                   ...) {
+  
+  ay <- genArgs$ay
+  
+  ### current index value
+  idx_yrs <- seq(to = ay - idxB_lag, 
+                 length.out = idxB_range)
+  idx_current <- yearMeans(idx$idxB[, ac(idx_yrs)])
+  tracking["I_current", ac(ay)] <- idx_current
+  
+  return(list(stk = stk, tracking = tracking))
+  
+}
+
 ### ------------------------------------------------------------------------ ###
 ### phcr ####
 ### ------------------------------------------------------------------------ ###
@@ -238,6 +258,20 @@ phcr_r <- function(tracking, genArgs, multiplier = 1,
   if (exp_f != 1) tracking["exp_f", ] <- exp_f
   if (exp_b != 1) tracking["exp_b", ] <- exp_b
   
+  
+  ### return results
+  return(list(tracking = tracking, hcrpars = hcrpars))
+  
+}
+
+### harvest rate: select
+phcr_hr <- function(tracking, genArgs, rate = 0.5,
+                   ...){
+  
+  ay <- genArgs$ay
+  
+  hcrpars <- tracking[c("I_current", "multiplier"), ac(ay)]
+  hcrpars["multiplier", ] <- rate
   
   ### return results
   return(list(tracking = tracking, hcrpars = hcrpars))
@@ -279,6 +313,21 @@ hcr_r <- function(hcrpars, genArgs, tracking, interval = 1,
   
   return(list(ctrl = ctrl, tracking = tracking))
   
+}
+
+### harvest rate
+hcr_hr <- function(hcrpars, genArgs, tracking, interval = 1, 
+                  ...) {
+  ay <- genArgs$ay
+  iy <- genArgs$iy
+  if ((ay - iy) %% interval == 0) {
+    advice <- hcrpars["I_current", ] * hcrpars["multiplier", ] 
+  } else {
+    advice <- tracking["metric.hcr", ac(ay - 1)]
+  }
+  ctrl <- getCtrl(values = c(advice), quantity = "catch", years = ay + 1, 
+                  it = dim(advice)[6])
+  return(list(ctrl = ctrl, tracking = tracking))
 }
 
 ### ------------------------------------------------------------------------ ###
