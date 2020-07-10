@@ -570,11 +570,16 @@ stats_pol <- stats_pol %>%
                                        "ICV", "ga_fitnessValue"), 
                        labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
                                   "B[lim]~risk", "ICV", "fitness~value")))
+stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                     "B[lim]~risk", "ICV", "fitness~value"),
+                            target = c(1, 1, 1, 0, 0, NA))
 
 p_pol_stats <- stats_pol %>% 
   ggplot(aes(x = obj_label, y = value, fill = obj_label,
              colour = obj_label)) +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8) +
+  geom_hline(data = stats_targets, aes(yintercept = target),
+             colour = "grey30", linetype = "dashed") +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -671,22 +676,25 @@ stats <- readRDS("output/500_50/ms/trial/all_stocks_one-way_stats.rds")
 stats_plot <- stats %>% 
   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
                  ga_fitnessValue)) %>%
-  mutate(name = ifelse(name == "SSB_rel", "SSB/B[MSY]", name),
-         name = ifelse(name == "Fbar_rel", "F/F[MSY]", name),
-         name = ifelse(name == "Catch_rel", "Catch/MSY", name),
-         name = ifelse(name == "risk_Blim", "B[lim]~risk", name),
-         name = ifelse(name == "ICV", "ICV", name),
-         name = ifelse(name == "ga_fitnessValue", "fitness~value", 
-                       name)) %>%
-  mutate(name = factor(name, levels = unique(name)[c(1, 2, 3, 4, 5, 6)]),
+  mutate(stat = name) %>%
+  mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
+         stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
+         stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
+         stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
+         stat = ifelse(stat == "ICV", "ICV", stat),
+         stat = ifelse(stat == "ga_fitnessValue", "fitness~value", 
+                       stat)) %>%
+  mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5, 6)]),
          rule = ifelse(optimised == TRUE, "optimised", "default"))
 
 p_stats <- stats_plot %>%
   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
   geom_col(position = position_dodge2(padding = 0.4), width = 0.8) +
+  geom_hline(data = stats_targets, aes(yintercept = target),
+             colour = "grey30", linetype = "dashed") +
   scale_colour_discrete("catch\nrule") +
   scale_fill_discrete("catch\nrule") + 
-  facet_grid(name ~ "stock~specific~optimisation", 
+  facet_grid(stat ~ "stock~specific~optimisation", 
              scales = "free_y", switch = "y", 
              labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -778,26 +786,29 @@ stats_ms_plot <- stats_ms_plot %>%
 stats_ms_plot <- stats_ms_plot %>% 
   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
                  ga_fitnessValue)) %>%
-  mutate(name = ifelse(name == "SSB_rel", "SSB/B[MSY]", name),
-         name = ifelse(name == "Fbar_rel", "F/F[MSY]", name),
-         name = ifelse(name == "Catch_rel", "Catch/MSY", name),
-         name = ifelse(name == "risk_Blim", "B[lim]~risk", name),
-         name = ifelse(name == "ICV", "ICV", name),
-         name = ifelse(name == "ga_fitnessValue", "fitness~value", 
-                       name)) %>%
-  mutate(name = factor(name, levels = unique(name)[c(1, 2, 3, 4, 5, 6)]),
+  mutate(stat = name) %>%
+  mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
+         stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
+         stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
+         stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
+         stat = ifelse(stat == "ICV", "ICV", stat),
+         stat = ifelse(stat == "ga_fitnessValue", "fitness~value", 
+                       stat)) %>%
+  mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5, 6)]),
          rule = ifelse(optimised == TRUE, "optimised", "default"),
          k_group = paste0(group, "-italic(k)~group"),
          k_group = factor(k_group, levels = unique(k_group)[c(2, 3, 1)]))
 
 p_stats_ms <- stats_ms_plot %>%
-  filter(name %in% c("SSB/B[MSY]", "Catch/MSY", "ICV", "F/F[MSY]", 
+  filter(stat %in% c("SSB/B[MSY]", "Catch/MSY", "ICV", "F/F[MSY]", 
                      "B[lim]~risk", "fitness~value")) %>%
   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
   geom_col(position = position_dodge2(padding = 0.4), width = 0.8) +
+  geom_hline(data = stats_targets, aes(yintercept = target),
+             colour = "grey30", linetype = "dashed") +
   scale_colour_discrete("catch rule") +
   scale_fill_discrete("catch rule") + 
-  facet_grid(name ~ k_group, space = "free_x", switch = "y",
+  facet_grid(stat ~ k_group, space = "free_x", switch = "y",
              scales = "free",# strip.position = "left", 
              labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -890,14 +901,15 @@ stats_2over3 <- stats_2over3 %>%
 stats_plot <- stats_2over3 %>% 
   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
                  ga_fitnessValue)) %>%
-  mutate(name = ifelse(name == "SSB_rel", "SSB/B[MSY]", name),
-         name = ifelse(name == "Fbar_rel", "F/F[MSY]", name),
-         name = ifelse(name == "Catch_rel", "Catch/MSY", name),
-         name = ifelse(name == "risk_Blim", "B[lim]~risk", name),
-         name = ifelse(name == "ICV", "ICV", name),
-         name = ifelse(name == "ga_fitnessValue", "fitness~value", 
-                       name)) %>%
-  mutate(name = factor(name, levels = unique(name)[c(1, 2, 3, 4, 5, 6)]),
+  mutate(stat = name) %>%
+  mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
+         stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
+         stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
+         stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
+         stat = ifelse(stat == "ICV", "ICV", stat),
+         stat = ifelse(stat == "ga_fitnessValue", "fitness~value", 
+                       stat)) %>%
+  mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5, 6)]),
          fhist = factor(fhist, levels = c("one-way", "random")))
 stats_plot <- stats_plot %>%
   mutate(value2 = value + 0.001)
@@ -905,9 +917,11 @@ stats_plot <- stats_plot %>%
 p_stats <- stats_plot %>%
   ggplot(aes(x = stock, y = value2, fill = catch_rule, colour = catch_rule)) +
   geom_col(position = position_dodge2(padding = 0.5), width = 0.8) +
+  geom_hline(data = stats_targets, aes(yintercept = target),
+             colour = "grey30", linetype = "dashed") +
   scale_colour_discrete("catch\nrule") +
   scale_fill_discrete("catch\nrule") + 
-  facet_grid(name ~ fhist, 
+  facet_grid(stat ~ fhist, 
              scales = "free_y", switch = "y", 
              labeller = "label_parsed", space = "free_x") +
   labs(x = "stock", y = "") +
@@ -981,11 +995,14 @@ stats_plot <- hr_stats %>%
          fhist = factor(fhist, levels = c("one-way", "random")))
 stats_plot <- stats_plot %>%
   mutate(value2 = value + 0.001)
+stats_plot <- stats_plot %>%
+  mutate(value = ifelse(name == "ICV" & hr_rate == 0, NA, value))
 
 p_stats <- stats_plot %>%
   filter(catch_rule == "harvest rate") %>%
   ggplot(aes(x = hr_rate * 100, y = value, colour = stock, fill = stock)) +
-  geom_line(show.legend = FALSE) + geom_point(show.legend = FALSE) +
+  geom_line(show.legend = FALSE) + 
+  geom_point(show.legend = FALSE, size = 0.8) +
   facet_grid(name ~ stock, 
              scales = "free_y", switch = "y", 
              labeller = "label_parsed", space = "free_x") +
