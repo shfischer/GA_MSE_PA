@@ -753,13 +753,21 @@ stats_ms <- lapply(res_par$seq, function(x) {#browser()
                          "_res.rds"))
     tmp$ga_popSize <- ga@popSize
     tmp$ga_iter <- ga@iter
-    tmp$ga_fitnessValue <- ga@fitnessValue
+    #tmp$ga_fitnessValue <- ga@fitnessValue
+    tmp$ga_fitnessValue <- -abs(unlist(tmp$SSB_rel) - 1) -
+      abs(unlist(tmp$Catch_rel) - 1) -
+      unlist(tmp$risk_Blim) -
+      unlist(tmp$ICV)
   } else {
     tmp$ga_popSize <- NA
     tmp$ga_iter <- NA
-    tmp$ga_fitnessValue <- -sum(c(abs(unlist(tmp$SSB_rel) - 1), 
-                                  abs(unlist(tmp$Catch_rel) - 1),
-                                  unlist(tmp$risk_Blim), unlist(tmp$ICV)))#NA
+    # tmp$ga_fitnessValue <- -sum(c(abs(unlist(tmp$SSB_rel) - 1), 
+    #                               abs(unlist(tmp$Catch_rel) - 1),
+    #                               unlist(tmp$risk_Blim), unlist(tmp$ICV)))#NA
+    tmp$ga_fitnessValue <- -abs(unlist(tmp$SSB_rel) - 1) -
+      abs(unlist(tmp$Catch_rel) - 1) -
+      unlist(tmp$risk_Blim) -
+      unlist(tmp$ICV)
   }
   tmp <- bind_cols(res_par[rep(x, nrow(tmp)), ], tmp)
   return(tmp)
@@ -774,7 +782,7 @@ stats_ms <- readRDS("output/500_50/ms/trial/ms_stats.rds")
 stats_ms_plot <- stats_ms %>% 
   select(stocks, stock, group, optimised, ga_fitnessValue) %>%
   group_by(group, optimised) %>%
-  summarise(ga_fitnessValue = first(ga_fitnessValue)) %>%
+  summarise(ga_fitnessValue = sum(ga_fitnessValue)) %>%
   mutate(stock = "group", k = Inf) %>%
   ungroup() %>%
   full_join(stats_ms)
@@ -841,7 +849,22 @@ ggsave(filename = "output/plots/stats_ms_and_single.png",
 ggsave(filename = "output/plots/stats_ms_and_single.pdf",
        width = 17, height = 12, units = "cm", dpi = 600)
 
-
+### compare stock fitness: stock-specific vs groups ####
+stats <- readRDS("output/500_50/ms/trial/all_stocks_one-way_stats.rds")
+stats_ms <- readRDS("output/500_50/ms/trial/ms_stats.rds")
+stats_tmp <- stats_ms %>%
+  rename(ga_fitnessValue_ms = ga_fitnessValue,
+         ga_iter_ms = ga_iter) %>%
+  select(fhist, optimised, stock, group, ga_iter_ms, ga_fitnessValue_ms) %>%
+  left_join(stats) %>%
+  select(optimised, stock, group, ga_iter, ga_iter_ms, ga_fitnessValue, 
+         ga_fitnessValue_ms) %>%
+  mutate(fitness_ratio = ga_fitnessValue_ms/ga_fitnessValue)
+stats_tmp
+### check fitness per group
+stats_tmp %>% group_by(optimised, group) %>%
+  summarise(ga_fitnessValue = sum(ga_fitnessValue),
+            ga_fitnessValue_ms = sum(ga_fitnessValue_ms))
 
 ### ------------------------------------------------------------------------ ###
 ### ICES default 2 over 3 rule ####
