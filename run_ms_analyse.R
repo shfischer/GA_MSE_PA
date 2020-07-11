@@ -692,8 +692,10 @@ p_stats <- stats_plot %>%
   geom_col(position = position_dodge2(padding = 0.4), width = 0.8) +
   geom_hline(data = stats_targets, aes(yintercept = target),
              colour = "grey30", linetype = "dashed") +
-  scale_colour_discrete("catch\nrule") +
-  scale_fill_discrete("catch\nrule") + 
+  scale_colour_manual("catch\nrule", 
+                      values = c(default = "#F8766D", optimised = "#619CFF")) +
+  scale_fill_manual("catch\nrule", 
+                    values = c(default = "#F8766D", optimised = "#619CFF")) + 
   facet_grid(stat ~ "stock~specific~optimisation", 
              scales = "free_y", switch = "y", 
              labeller = "label_parsed") +
@@ -814,8 +816,10 @@ p_stats_ms <- stats_ms_plot %>%
   geom_col(position = position_dodge2(padding = 0.4), width = 0.8) +
   geom_hline(data = stats_targets, aes(yintercept = target),
              colour = "grey30", linetype = "dashed") +
-  scale_colour_discrete("catch rule") +
-  scale_fill_discrete("catch rule") + 
+  scale_colour_manual("catch rule", 
+                      values = c(default = "#F8766D", optimised = "#619CFF")) +
+  scale_fill_manual("catch rule", 
+                    values = c(default = "#F8766D", optimised = "#619CFF")) + 
   facet_grid(stat ~ k_group, space = "free_x", switch = "y",
              scales = "free",# strip.position = "left", 
              labeller = "label_parsed") +
@@ -942,8 +946,12 @@ p_stats <- stats_plot %>%
   geom_col(position = position_dodge2(padding = 0.5), width = 0.8) +
   geom_hline(data = stats_targets, aes(yintercept = target),
              colour = "grey30", linetype = "dashed") +
-  scale_colour_discrete("catch\nrule") +
-  scale_fill_discrete("catch\nrule") + 
+  scale_colour_manual("catch\nrule", 
+                      values = c(default = "#F8766D", optimised = "#619CFF",
+                                 "2 over 3" = "#00BA38")) +
+  scale_fill_manual("catch\nrule", 
+                    values = c(default = "#F8766D", optimised = "#619CFF",
+                               "2 over 3" = "#00BA38")) + 
   facet_grid(stat ~ fhist, 
              scales = "free_y", switch = "y", 
              labeller = "label_parsed", space = "free_x") +
