@@ -1711,10 +1711,57 @@ ggsave(filename = "output/plots/harvest_rate_stats.pdf", plot = p_stats,
        width = 17, height = 12, units = "cm", dpi = 600)
 
 
+### ------------------------------------------------------------------------ ###
+### TAC frequency ####
+### ------------------------------------------------------------------------ ###
 
-
-
-
-
+### load GA results for rfb-rule with 1/2/3 years
+yrs <- c("1" = 1, "2" = 2, "3" = 3)
+freq_ga <- lapply(yrs, function(x) {
+  readRDS(paste0("output/500_50/ms/trial/one-way/pol/lag_idx-range_idx_1-", 
+                 "range_idx_2-exp_r-exp_f-exp_b-interval", x, "-multiplier--",
+                 "obj_SSB_C_risk_ICV_res.rds"))
+})
+freq_runs <- lapply(yrs, function(x) {
+  readRDS(paste0("output/500_50/ms/trial/one-way/pol/lag_idx-range_idx_1-", 
+                 "range_idx_2-exp_r-exp_f-exp_b-interval", x, "-multiplier--",
+                 "obj_SSB_C_risk_ICV_runs.rds"))
+})
+sapply(freq_ga, function(x) x@fitnessValue)
+### get results for GA optimised solutions
+freq_par <- lapply(yrs, function(x) {
+  pars <- freq_ga[[as.character(x)]]@solution[1, ]
+  pars[c(1:4,8)] <- round(pars[c(1:4,8)])
+  pars[c(5:7)] <- round(pars[c(5:7)], 1)
+  pars[c(9)] <- round(pars[c(9)], 2)
+  prefix <- paste0(pars, collapse = "_")
+  return(prefix)
+})
+### add default catch rule, with interval 1, 2 and 3
+freq_par <- c(freq_par, "1_2_3_1_1_1_1_1_1", "1_2_3_1_1_1_1_2_1", 
+              "1_2_3_1_1_1_1_3_1")
+### get results from all runs
+path_runs <- "output/500_50/ms/trial/one-way/pol/"
+files_runs <- list.files(path = path_runs, pattern = "_runs.rds", full.names = TRUE)
+res_runs <- lapply(files_runs, readRDS)
+res_runs <- do.call(c, res_runs)
+res_runs <- res_runs[unique(names(res_runs))]
+### pick stats
+freq_res <- lapply(freq_par, function(x) {
+  tmp <- res_runs[[x]]
+  tmp_res <- as.list(as.data.frame(t(tmp$stats)))
+  tmp_res <- lapply(tmp_res, "[[", 1)
+  tmp_res <- c(as.list(tmp$pars), tmp_res)
+  tmp_res$fitness <- -abs(tmp_res$SSB_rel - 1) - abs(tmp_res$Catch_rel - 1) - 
+    tmp_res$risk_Blim - tmp_res$ICV
+  return(tmp_res)
+})
+freq_res <- as.data.frame(do.call(rbind, freq_res))
+freq_res <- as.data.frame(lapply(freq_res, unlist))
+freq_res$rule <- rep(c("optimised", "default"), each = 3)
+freq_res %>% 
+  group_by(rule) %>%
+  mutate(fitness_rel = (fitness/max(fitness) - 1)*100) %>%
+  select(rule, fitness, fitness_rel)
 
 
