@@ -244,8 +244,16 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   pos_default <- which(!unlist(mget(ga_names, ifnotfound = FALSE)))
   ga_lower[pos_default] <- ga_default[pos_default]
   ga_upper[pos_default] <- ga_default[pos_default]
+  ### fix parameters?
+  pos_fixed <- which(sapply(mget(ga_names, ifnotfound = FALSE), is.numeric))
+  par_fixed <- names(pos_fixed)
+  val_fixed <- as.vector(unlist(mget(ga_names, ifnotfound = FALSE)[pos_fixed]))
+  ga_lower[pos_fixed] <- val_fixed
+  ga_upper[pos_fixed] <- val_fixed
   ### remove not requested parameters from suggestions
   ga_suggestions[, pos_default] <- rep(ga_default[pos_default], 
+                                       each = nrow(ga_suggestions))
+  ga_suggestions[, pos_fixed] <- rep(val_fixed, 
                                        each = nrow(ga_suggestions))
   ga_suggestions <- unique(ga_suggestions)
   
@@ -254,9 +262,11 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ### ---------------------------------------------------------------------- ###
   
   ### output path
-  # ### set name depending on which GA parameters are used
-  scn_pars <- paste0(ga_names[setdiff(seq_along(ga_names), pos_default)],
-                     collapse = "-")
+  ### set name depending on which GA parameters are used
+  scn_pars <- ga_names[setdiff(seq_along(ga_names), pos_default)]
+  scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
+    scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
+  scn_pars <- paste0(scn_pars, collapse = "-")
   scenario <- "trial"
   path_out <- paste0("output/", n_iter, "_", n_yrs, "/ms/", scenario, "/",
                      fhist, "/",
@@ -319,6 +329,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
       names(pars) <- ga_names
       ### only keep scenarios where requested parameters are changed
       if (!all(ga_default[pos_default] == pars[pos_default])) return(NULL)
+      if (!all(val_fixed == pars[pos_fixed])) return(NULL)
       stats <- readRDS(paste0(path_out, x))
       list(pars = pars, stats = stats)
     })
