@@ -615,8 +615,7 @@ p_pol_stats_SSB <- stats_pol %>%
              colour = obj_label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
-           show.legend = FALSE) +
-           #colour = "black", size = 0.1) +
+           show.legend = FALSE, colour = "black", size = 0.1) +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -624,10 +623,10 @@ p_pol_stats_SSB <- stats_pol %>%
     values = setNames(c("black", "grey", scales::hue_pal()(4)),
                       c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
                         "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
-  scale_colour_manual("fitness\nfunction", 
-    values = setNames(c("black", "grey", scales::hue_pal()(4)),
-                      c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
-                        "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
+  # scale_colour_manual("fitness\nfunction", 
+  #   values = setNames(c("black", "grey", scales::hue_pal()(4)),
+  #                     c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
+  #                       "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.placement.y = "outside",
@@ -643,7 +642,8 @@ p_pol_stats_F <- stats_pol %>%
   ggplot(aes(x = obj_label, y = value, fill = obj_label,
              colour = obj_label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8) +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -651,10 +651,10 @@ p_pol_stats_F <- stats_pol %>%
     values = setNames(c("black", "grey", scales::hue_pal()(4)),
                       c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
                         "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
-  scale_colour_manual("fitness\nfunction", 
-    values = setNames(c("black", "grey", scales::hue_pal()(4)),
-                      c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
-                        "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
+  # scale_colour_manual("fitness\nfunction", 
+  #   values = setNames(c("black", "grey", scales::hue_pal()(4)),
+  #                     c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
+  #                       "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -671,7 +671,8 @@ p_pol_stats_C <- stats_pol %>%
   ggplot(aes(x = obj_label, y = value, fill = obj_label,
              colour = obj_label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8) +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -679,10 +680,10 @@ p_pol_stats_C <- stats_pol %>%
     values = setNames(c("black", "grey", scales::hue_pal()(4)),
                       c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
                         "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
-  scale_colour_manual("fitness\nfunction", 
-    values = setNames(c("black", "grey", scales::hue_pal()(4)),
-                      c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
-                        "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
+  # scale_colour_manual("fitness\nfunction", 
+  #   values = setNames(c("black", "grey", scales::hue_pal()(4)),
+  #                     c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
+  #                       "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -699,7 +700,8 @@ p_pol_stats_risk <- stats_pol %>%
   ggplot(aes(x = obj_label, y = value, fill = obj_label,
              colour = obj_label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8) +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -707,10 +709,10 @@ p_pol_stats_risk <- stats_pol %>%
     values = setNames(c("black", "grey", scales::hue_pal()(4)),
                       c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
                         "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
-  scale_colour_manual("fitness\nfunction", 
-    values = setNames(c("black", "grey", scales::hue_pal()(4)),
-                      c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
-                        "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
+  # scale_colour_manual("fitness\nfunction", 
+  #   values = setNames(c("black", "grey", scales::hue_pal()(4)),
+  #                     c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
+  #                       "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -727,7 +729,8 @@ p_pol_stats_ICV <- stats_pol %>%
   ggplot(aes(x = obj_label, y = value, fill = obj_label,
              colour = obj_label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8) +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -735,10 +738,10 @@ p_pol_stats_ICV <- stats_pol %>%
     values = setNames(c("black", "grey", scales::hue_pal()(4)),
                       c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
                         "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
-  scale_colour_manual("fitness\nfunction", 
-    values = setNames(c("black", "grey", scales::hue_pal()(4)),
-                      c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
-                        "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
+  # scale_colour_manual("fitness\nfunction", 
+  #   values = setNames(c("black", "grey", scales::hue_pal()(4)),
+  #                     c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
+  #                       "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -755,7 +758,8 @@ p_pol_stats_fitness <- stats_pol %>%
   ggplot(aes(x = obj_label, y = value, fill = obj_label,
              colour = obj_label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8) +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
@@ -763,10 +767,10 @@ p_pol_stats_fitness <- stats_pol %>%
     values = setNames(c("black", "grey", scales::hue_pal()(4)),
                       c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
                         "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
-  scale_colour_manual("fitness\nfunction", 
-    values = setNames(c("black", "grey", scales::hue_pal()(4)),
-                      c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
-                        "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
+  # scale_colour_manual("fitness\nfunction", 
+  #   values = setNames(c("black", "grey", scales::hue_pal()(4)),
+  #                     c("not optimised", "SSB+Catch+\nrisk+ICV", "Catch", "SSB",
+  #                       "SSB+risk+ICV", "SSB+F+Catch+\nrisk+ICV"))) +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -775,8 +779,9 @@ p_pol_stats_fitness <- stats_pol %>%
         strip.text.y = element_text(size = 8),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt")) +
-  scale_y_continuous(trans = trans_from(0), limits = c(NA, NA),
-                     breaks = c(0, -0.5))
+  scale_y_continuous(trans = trans_from(0), limits = c(-y_max, NA),
+                     breaks = c(0, -0.5, -1), 
+                     minor_breaks = c(-0.25, -0.75, -1.25))
 p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, p_pol_stats_F, p_pol_stats_C,
                               p_pol_stats_risk, p_pol_stats_ICV,
                               p_pol_stats_fitness,
@@ -1685,13 +1690,16 @@ stats_plot <- stats_plot %>%
   mutate(value2 = value + 0.001)
 stats_plot <- stats_plot %>%
   mutate(value = ifelse(name == "ICV" & hr_rate == 0, NA, value))
+stats_plot <- stats_plot %>%
+  mutate(label = paste0(stock, "~~(italic(k)==", k, ")")) %>%
+  mutate(label = factor(label, levels = unique(label)[order(k)]))
 
 p_stats <- stats_plot %>%
   filter(catch_rule == "harvest rate") %>%
   ggplot(aes(x = hr_rate * 100, y = value, colour = stock, fill = stock)) +
   geom_line(show.legend = FALSE) + 
   geom_point(show.legend = FALSE, size = 0.8) +
-  facet_grid(name ~ stock, 
+  facet_grid(name ~ label, 
              scales = "free_y", switch = "y", 
              labeller = "label_parsed", space = "free_x") +
   labs(x = "Harvest rate [%]", y = "") +
