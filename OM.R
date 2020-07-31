@@ -66,48 +66,8 @@ if (identical(fhist, "random")) {
 ### get lhist for stocks
 stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 
-### create BRPs (not used)
-# brps <- lapply(stocks$stock, function(stock) {
-#   lh_i <- stocks[stocks$stock == stock, ]
-#   lh_i <- lh_i[, c("a", "b", "linf", "l50", "a50", "t0", "k")]
-#   ### default t0
-#   lh_i$t0 <- ifelse(is.na(lh_i$t0), -0.1, lh_i$t0)
-#   ### calc l50 if missing
-#   # lh_i$l50 <- ifelse(!is.na(lh_i$l50), lh_i$l50, 
-#   #                    vonB(age = lh_i$a50, 
-#   #                         params = FLPar(k = lh_i$k, linf = lh_i$linf,
-#   #                                        t0 = lh_i$t0)))
-#   # lh_i <- lh_i[, !is.na(lh_i)]
-#   ### estimate steepness h based on Wiff et al. 2018
-#   # lh_i$s <- h_Wiff(l50 = lh_i$l50, linf = lh_i$linf)
-#   lh_i$s <- 0.75
-#   lh_i <- as(lh_i, "FLPar")
-#   ### create missing values
-#   lh_i <- lhPar(lh_i)
-#   max_age <- ceiling(log(0.05)/(-c(lh_i["k"])) + c(lh_i["t0"]))
-#   #if (max_age < 10) max_age <- 
-#   ### create brp
-#   brp <- lhEql(lh_i, range = c(min = 1, max = max_age, 
-#                                minfbar = 1, maxfbar = max_age, 
-#                                plusgroup = max_age)
-#   )
-#   ### calculate blim, SSB where recruitment is 30% impaired
-#   bv <- function(SSB, a, b) a*SSB/(b + SSB)
-#   solve <- function(SSB) {
-#     rec = bv(a = c(params(brp)["a"]), 
-#              b = c(params(brp)["b"]), SSB = SSB)
-#     abs((c(refpts(brp)["virgin", "rec"]) * 0.7) - rec)
-#   }
-#   attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
-#   
-#   return(brp)
-# })
-# names(brps) <- stocks$stock
-# saveRDS(brps, file = "input/OMs/brps.rds")
-# #brps <- readRDS("input/OMs/brps.rds")
-
 # ### use BRPs from paper
-# brps <- readRDS("input/OMs/brps_paper.rds")$new_baseline
+# brps <- readRDS("input/OMs/brps.rds")$new_baseline
 # brps <- brps[match(x = stocks$stock_old, table = names(brps))]
 # names(brps) <- stocks$stock
 # ### calculate Blim
@@ -121,9 +81,9 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 #   attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
 #   return(brp)
 # })
-# saveRDS(brps, file = "input/OMs/brps.rds")
+# saveRDS(brps, file = "input/brps.rds")
 
-brps <- readRDS("input/OMs/brps.rds")
+brps <- readRDS("input/brps.rds")
 
 # sapply(brps, function(x) {
 #   c(refpts(x)["crash", "harvest"]/refpts(x)["msy", "harvest"])
