@@ -124,7 +124,7 @@ mse_r <- function(params, input, path, check_file = FALSE,
 ### ------------------------------------------------------------------------ ###
 ### objective function for multi species run ####
 ### ------------------------------------------------------------------------ ###
-mse_ms <- function(params, inp_file, path, check_file = FALSE,
+mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                    scenario, 
                    return_res = FALSE,
                    collapse_correction = TRUE,
@@ -146,6 +146,7 @@ mse_ms <- function(params, inp_file, path, check_file = FALSE,
   params[5:7] <- round(params[5:7], 1)
   params[8] <- round(params[8])
   params[9] <- round(params[9], 2)
+  params[10:11] <- round(params[10:11], 2)
   
   ### check for files?
   if (isTRUE(check_file)) {
@@ -177,11 +178,15 @@ mse_ms <- function(params, inp_file, path, check_file = FALSE,
       x$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
       x$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
       x$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
+      x$ctrl.mp$ctrl.est@args$comp_m <- params[9]
       x$ctrl.mp$ctrl.phcr@args$exp_r <- params[5]
       x$ctrl.mp$ctrl.phcr@args$exp_f <- params[6]
       x$ctrl.mp$ctrl.phcr@args$exp_b <- params[7]
       x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
-      x$ctrl.mp$ctrl.phcr@args$multiplier <- params[9]
+      x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
+      x$ctrl.mp$ctrl.is@args$upper_constraint <- params[10]
+      x$ctrl.mp$ctrl.is@args$lower_constraint <- params[11]
+      
       return(x)
     })
     

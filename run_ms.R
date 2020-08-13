@@ -27,6 +27,7 @@ if (length(args) > 0) {
   if (!exists("n_yrs")) n_yrs <- 50
   if (!exists("fhist")) fhist <- "one-way"
   if (!exists("catch_rule")) catch_rule <- "catch_rule"
+  if (!exists("scenario")) scenario <- "test"
   ### GA search
   if (!exists("ga_search")) ga_search <- TRUE
   if (isTRUE(ga_search)) {
@@ -231,15 +232,19 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
 
   ### GA arguments
   ga_names <- c("lag_idx", "range_idx_1", "range_idx_2", "range_catch",
-               "exp_r", "exp_f", "exp_b", "interval", "multiplier")
-  ga_suggestions <- rbind(c(0, 1, 1, 1, 1, 1, 1, 1, 1), ### most current data
-                          c(0, 1, 1, 1, 1, 1, 1, 2, 1),
-                          c(0, 1, 1, 1, 0, 0, 0, 2, 1), ### constant catch
+               "exp_r", "exp_f", "exp_b", "interval", "multiplier",
+               "upper_constraint", "lower_constraint")
+  ga_suggestions <- rbind(c(0, 1, 1, 1, 1, 1, 1, 1, 1, Inf, 0), ### most current data
+                          c(0, 1, 1, 1, 1, 1, 1, 2, 1, Inf, 0),
+                          c(0, 1, 1, 1, 0, 0, 0, 2, 1, Inf, 0), ### constant catch
                           ### default, annual/biennial, turning off elements
-                          expand.grid(1, 2, 3, 1, 0:1, 0:1, 0:1, 1:2, 0:1))
-  ga_default <- c(1, 2, 3, 1, 1, 1, 1, 2, 1)
-  ga_lower <- c(0, 1, 1, 1, 0, 0, 0, 1, 0)
-  ga_upper <- c(1, 5, 5, 1, 2, 2, 2, 5, 2)
+                          expand.grid(1, 2, 3, 1, 0:1, 0:1, 0:1, 1:2, 0:1, 
+                                      Inf, 0),
+                          ### default uncertainty cap
+                          c(1, 2, 3, 1, 1, 1, 1, 2, 1, 1.2, 0.8))
+  ga_default <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
+  ga_lower <- c(0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0)
+  ga_upper <- c(1, 5, 5, 1, 2, 2, 2, 5, 2, 2, 1)
   ### turn of parameters not requested, i.e. limit to default value
   pos_default <- which(!unlist(mget(ga_names, ifnotfound = FALSE)))
   ga_lower[pos_default] <- ga_default[pos_default]
@@ -267,8 +272,8 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
     scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
   scn_pars <- paste0(scn_pars, collapse = "-")
-  scenario <- "trial"
-  path_out <- paste0("output/", n_iter, "_", n_yrs, "/ms/", scenario, "/",
+  #scenario <- "trial"
+  path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
                      fhist, "/",
                      paste0(stock, collapse = "_"), "/")
   dir.create(path_out, recursive = TRUE)
@@ -294,7 +299,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   ### run GA
   system.time({
-    res <- ga(type = "real-valued", fitness = mse_ms, inp_file = inp_file,
+    res <- ga(type = "real-valued", fitness = mp_fitness, inp_file = inp_file,
               obj_SSB = obj_SSB, obj_F = obj_F, obj_C = obj_C, 
               obj_risk = obj_risk, obj_ICV = obj_ICV,
               path = path_out, check_file = TRUE,
