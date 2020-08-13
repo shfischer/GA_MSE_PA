@@ -61,12 +61,11 @@ if (identical(fhist, "random")) {
 ### ------------------------------------------------------------------------ ###
 ### create OMs ####
 ### ------------------------------------------------------------------------ ###
-### use latest FLife
 
 ### get lhist for stocks
 stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 
-# ### use BRPs from paper
+### BRPs from Fischer et al. (2020)
 # brps <- readRDS("input/OMs/brps.rds")$new_baseline
 # brps <- brps[match(x = stocks$stock_old, table = names(brps))]
 # names(brps) <- stocks$stock
@@ -133,7 +132,7 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
                                   quantity = c("f"), val = NA))
     ### add iterations
     ctrl@trgtArray <- f_array
-    ### target * Fmsy
+    ### target * Fcrash
     ctrl@trgtArray[,"val",] <- ctrl@trgtArray[,"val",] * 
       c(refpts["crash", "harvest"]) * 1
     
@@ -153,10 +152,11 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
   dir.create(path, recursive = TRUE)
   saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, ".rds"))
+  
   return(NULL)
   #return(list(stk = stk_stf, sr = stk_sr))
 }
-names(stks_hist) <- stocks_subset
+# names(stks_hist) <- stocks_subset
 
 ### stock status
 res <- lapply(stocks_subset, function(stock) {
@@ -257,13 +257,13 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ### parameters for components
   pars_est <- list(
     comp_r = TRUE, comp_f = TRUE, comp_b = TRUE,
+    comp_c = TRUE, comp_m = 1,
     idxB_lag = 1, idxB_range_1 = 2, idxB_range_2 = 3, idxB_range_3 = 1,
     catch_lag = 1, catch_range = 1,
-    multiplier = 1,
-    Lref = rep((lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5), n_iter),
+    interval = 2,
     idxL_lag = 1, idxL_range = 1,
     exp_r = 1, exp_f = 1, exp_b = 1,
-    interval = 2,
+    Lref = rep((lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5), n_iter),
     B_lim = rep(brps[[stock]]@Blim, n_iter),
     I_trigger = c(I_loss$idx_dev * 1.4), ### default, can be overwritten later
     pa_buffer = FALSE, pa_size = 0.8, pa_duration = 3,
@@ -277,9 +277,9 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
              fleetBehaviour = mseCtrl(),
              projection = mseCtrl(method = fwd_attr,
                                   args = list(dupl_trgt = TRUE)))
-  tracking = c("C_current", "I_current", "comp_r", "comp_f", "comp_b",
+  tracking = c("comp_c", "comp_i", "comp_r", "comp_f", "comp_b",
                "multiplier", "exp_r", "exp_f", "exp_b")
-  oem <- FLoem(method = wklife_3.2.1_obs,
+  oem <- FLoem(method = obs_generic,
                observations = list(stk = stk_fwd, idx = idx), 
                deviances = list(stk = FLQuant(), idx = idx_dev),
                args = list(idx_dev = TRUE, ssb = FALSE,
@@ -289,17 +289,17 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                            PA_Bmsy = c(refpts(brps[[stock]])["msy", "ssb"]), 
                            PA_Fmsy = c(refpts(brps[[stock]])["msy", "harvest"])))
   ctrl.mp <- mpCtrl(list(
-    ctrl.est = mseCtrl(method = wklife_3.2.1_est,
+    ctrl.est = mseCtrl(method = est_comps,
                        args = pars_est),
-    ctrl.phcr = mseCtrl(method = phcr_r,
+    ctrl.phcr = mseCtrl(method = phcr_comps,
                         args = pars_est),
-    ctrl.hcr = mseCtrl(method = hcr_r,
+    ctrl.hcr = mseCtrl(method = hcr_comps,
                        args = pars_est),
-    ctrl.is = mseCtrl(method = is_r,
+    ctrl.is = mseCtrl(method = is_comps,
                       args = pars_est)
   ))
-  iem <- FLiem(method = iem_r,
-               args = list(use_dev = TRUE, iem_dev = iem_dev))
+  iem <- FLiem(method = iem_comps,
+               args = list(use_dev = FALSE, iem_dev = iem_dev))
   ### genArgs
   genArgs <- list(fy = dims(stk_fwd)$maxyear, ### final simulation year
                   y0 = dims(stk_fwd)$minyear, ### first data year
@@ -316,7 +316,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ### list with input to mpDL()
   input <- list(om = om, oem = oem, iem = iem, ctrl.mp = ctrl.mp, 
                 genArgs = genArgs,
-                scenario = "SSB_idx_comp_r", tracking = tracking, 
+                scenario = "GA", tracking = tracking, 
                 verbose = TRUE,
                 refpts = refpts, Blim = Blim, I_loss = I_loss)
   

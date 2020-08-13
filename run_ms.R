@@ -60,7 +60,7 @@ for (i in req_pckgs) library(package = i, character.only = TRUE)
 
 ### load additional functions
 source("funs.R")
-source("GA_funs.R")
+source("funs_GA.R")
 
 ### ------------------------------------------------------------------------ ###
 ### setup parallel environment ####
@@ -83,7 +83,7 @@ if (isTRUE(use_MPI)) {
                                  warn.conflicts = FALSE, verbose = FALSE,
                                  quietly = TRUE)
     source("funs.R", echo = FALSE)
-    source("GA_funs.R", echo = FALSE)
+    source("funs_GA.R", echo = FALSE)
     ### start doParallel
     if (isTRUE(n_workers > 1)) {
       cl2 <- makeCluster(n_workers)
@@ -95,7 +95,7 @@ if (isTRUE(use_MPI)) {
                                      warn.conflicts = FALSE, verbose = FALSE,
                                      quietly = TRUE)
         source("funs.R", echo = FALSE)
-        source("GA_funs.R", echo = FALSE)
+        source("funs_GA.R", echo = FALSE)
       }
     }
   }
@@ -111,7 +111,7 @@ if (isTRUE(use_MPI)) {
                                    warn.conflicts = FALSE, verbose = FALSE,
                                    quietly = TRUE)
       source("funs.R", echo = FALSE)
-      source("GA_funs.R", echo = FALSE)
+      source("funs_GA.R", echo = FALSE)
     }
   } else {
     cl1 <- FALSE
@@ -191,7 +191,7 @@ if (isTRUE(catch_rule == "2over3")) {
 } else if (isTRUE(catch_rule == "hr")) {
   input <- lapply(input, function(x) {
     ### OEM
-    x$oem@method <- wklife_3.2.1_obs
+    x$oem@method <- obs_generic
     x$oem@args$lngth <- FALSE
     x$oem@args$lngth_dev <- FALSE
     x$oem@args$ssb_idx <- FALSE
