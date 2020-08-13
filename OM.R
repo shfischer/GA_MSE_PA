@@ -6,13 +6,13 @@ library(FLife) ### GitHub SHA 25f481f1 2020-03-02
 library(FLash)
 library(mseDL)
 source("funs.R")
-source("GA_funs.R")
+source("funs_GA.R")
 
 ### parallel environment
 library(doParallel)
 cl <- makeCluster(10)
 registerDoParallel(cl)
-clusterEvalQ(cl, {source("funs.R");source("GA_funs.R")})
+clusterEvalQ(cl, {source("funs.R");source("funs_GA.R")})
 
 ### ------------------------------------------------------------------------ ###
 ### fishing history dimensions ####
