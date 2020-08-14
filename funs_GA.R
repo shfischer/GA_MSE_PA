@@ -129,7 +129,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                    return_res = FALSE,
                    collapse_correction = TRUE,
                    obj_SSB = TRUE, obj_C = TRUE, obj_F = FALSE,
-                   obj_risk = TRUE, obj_ICV = TRUE,
+                   obj_risk = TRUE, obj_ICV = TRUE, obj_ICES_PA = FALSE,
                    ...) {
   
   ### housekeeping
@@ -213,13 +213,21 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
   
   ### objective function
   obj <- 0
-  if (isTRUE(obj_SSB)) obj <- obj + sum(abs(unlist(stats["SSB_rel", ]) - 1))
-  if (isTRUE(obj_C)) obj <- obj + sum(abs(unlist(stats["Catch_rel", ]) - 1))
-  if (isTRUE(obj_F)) obj <- obj + sum(abs(unlist(stats["Fbar_rel", ]) - 1))
-  if (isTRUE(obj_risk)) obj <- obj + sum(unlist(stats["risk_Blim", ]))
-  if (isTRUE(obj_ICV)) obj <- obj + sum(unlist(stats["ICV", ]))
-  ### negative because GA maximises function
-  obj <- -obj
+  ### MSY objectives: target MSY reference values
+  if (isTRUE(obj_SSB)) obj <- obj - sum(abs(unlist(stats["SSB_rel", ]) - 1))
+  if (isTRUE(obj_C)) obj <- obj - sum(abs(unlist(stats["Catch_rel", ]) - 1))
+  if (isTRUE(obj_F)) obj <- obj - sum(abs(unlist(stats["Fbar_rel", ]) - 1))
+  ### reduce risk & ICV
+  if (isTRUE(obj_risk)) obj <- obj - sum(unlist(stats["risk_Blim", ]))
+  if (isTRUE(obj_ICV)) obj <- obj - sum(unlist(stats["ICV", ]))
+  ### ICES approach: maximise catch while keeping risk <5%
+  if (isTRUE(obj_ICES_PA)) {
+    obj <- obj + sum(unlist(stats["Catch_rel", ]))
+    ### penalise of risk above 5%
+    obj <- obj - sum(ifelse(test = unlist(stats["risk_Blim", ]) <= 0.05,
+                            yes = 0,
+                            no = 10)) 
+  }
   
   ### housekeeping
   rm(res_mp, input)

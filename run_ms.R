@@ -42,6 +42,7 @@ if (length(args) > 0) {
     if (!exists("obj_C")) obj_C <- TRUE
     if (!exists("obj_risk")) obj_risk <- TRUE
     if (!exists("obj_ICV")) obj_ICV <- TRUE
+    if (!exists("obj_ICES_PA")) obj_ICES_PA <- FALSE
   }
 
 } else {
@@ -279,8 +280,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   dir.create(path_out, recursive = TRUE)
   
   ### objective function elements
-  obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV")
-  obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV)]
+  obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA")
+  obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV,
+                                 obj_ICES_PA)]
   obj_desc <- paste0("obj_", paste0(obj_desc, collapse = "_"), collapse = "")
   
   ### store input data in temp file
@@ -301,7 +303,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   system.time({
     res <- ga(type = "real-valued", fitness = mp_fitness, inp_file = inp_file,
               obj_SSB = obj_SSB, obj_F = obj_F, obj_C = obj_C, 
-              obj_risk = obj_risk, obj_ICV = obj_ICV,
+              obj_risk = obj_risk, obj_ICV = obj_ICV, obj_ICES_PA = obj_ICES_PA,
               path = path_out, check_file = TRUE,
               scenario = scenario,
               suggestions = ga_suggestions, lower = ga_lower, upper = ga_upper,
