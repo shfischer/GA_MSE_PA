@@ -147,6 +147,8 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
   params[8] <- round(params[8])
   params[9] <- round(params[9], 2)
   params[10:11] <- round(params[10:11], 2)
+  ### fix NaN for upper_constraint
+  if (is.nan(params[10])) params[10] <- Inf
   
   ### check for files?
   if (isTRUE(check_file)) {
