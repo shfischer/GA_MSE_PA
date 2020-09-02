@@ -130,6 +130,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                    collapse_correction = TRUE,
                    obj_SSB = TRUE, obj_C = TRUE, obj_F = FALSE,
                    obj_risk = TRUE, obj_ICV = TRUE, obj_ICES_PA = FALSE,
+                   obj_ICES_PA2 = FALSE,
                    ...) {
   
   ### housekeeping
@@ -225,10 +226,17 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
   ### ICES approach: maximise catch while keeping risk <5%
   if (isTRUE(obj_ICES_PA)) {
     obj <- obj + sum(unlist(stats["Catch_rel", ]))
-    ### penalise of risk above 5%
+    ### penalise risk above 5%
     obj <- obj - sum(ifelse(test = unlist(stats["risk_Blim", ]) <= 0.05,
                             yes = 0,
                             no = 10)) 
+  }
+  if (isTRUE(obj_ICES_PA2)) {
+    obj <- obj + sum(unlist(stats["Catch_rel", ]))
+    ### penalise risk above 5% - gradual
+    obj <- obj - sum(penalty(x = unlist(stats["risk_Blim", ]), 
+                             negative = FALSE, max = 1, inflection = 0.06, 
+                             steepness = 0.5e+3))
   }
   
   ### housekeeping
@@ -303,3 +311,13 @@ mp_stats <- function(input, res_mp, collapse_correction = TRUE) {
   
 }
 
+### ------------------------------------------------------------------------ ###
+### penalty function ####
+### ------------------------------------------------------------------------ ###
+
+penalty <- function(x, negative = FALSE, max = 1,
+                    inflection = 0.06, steepness = 0.5e+3) {
+  y <- max / (1 + exp(-(x - inflection)*steepness))
+  if (isTRUE(negative)) y <- -y
+  return(y)
+}
