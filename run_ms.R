@@ -72,8 +72,10 @@ source("funs_GA.R")
 ### hybrid MPI
 if (isTRUE(use_MPI)) {
   ### 1st: doMPI cluster with 1 worker per node
+  message("starting doMPI")
   library(doMPI)
   cl1 <- startMPIcluster()
+  message("startMPIcluster() succeeded")
   print(cl1)
   registerDoMPI(cl1)
   cl_length_1 <- cl1$workerCount
@@ -85,10 +87,16 @@ if (isTRUE(use_MPI)) {
     for (i in req_pckgs) library(package = i, character.only = TRUE,
                                  warn.conflicts = FALSE, verbose = FALSE,
                                  quietly = TRUE)
+  }
+  message("MPI package loading succeeded")
+  . <- foreach(i = seq(cl_length_1)) %dopar% {
     source("funs.R", echo = FALSE)
     source("funs_GA.R", echo = FALSE)
-    ### start doParallel
-    if (isTRUE(n_workers > 1)) {
+  }
+  message("MPI script loading succeeded")
+  ### start doParallel inside MPI processes
+  if (isTRUE(n_workers > 1)) {
+    . <- foreach(i = seq(cl_length_1)) %dopar% {
       cl2 <- makeCluster(n_workers)
       registerDoParallel(cl2)
       cl_length_2 <- length(cl2)
@@ -102,6 +110,7 @@ if (isTRUE(use_MPI)) {
       }
     }
   }
+  message("setting up doParallel inside MPI succeeded")
 } else {
   if (isTRUE(n_workers > 1)) {
     ### start doParallel cluster
