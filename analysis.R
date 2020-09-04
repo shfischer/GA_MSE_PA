@@ -1773,3 +1773,374 @@ freq_res %>%
   select(rule, fitness, fitness_rel)
 
 
+### ------------------------------------------------------------------------ ###
+### uncertainty cap - MSY fitness function ####
+### ------------------------------------------------------------------------ ###
+### GA runs for pollack
+
+ga_solution <- function(object) {
+  res <- tail(object@bestSol, 1)[[1]][1, ]
+  names(res) <- object@names
+  res[c(1:4, 8)] <- round(res[c(1:4, 8)])
+  res[c(5:7)] <- round(res[c(5:7)], 1)
+  res[c(9:11)] <- round(res[c(9:11)], 2)
+  return(res)
+}
+
+res <- foreach(fhist = c("one-way", "random")) %:%
+  foreach(obj = c("PA", "MSY")) %:%
+  foreach(params = c("default", "multiplier", "cap", "cap_multiplier", "full", 
+                     "full_cap")) %do% {
+    #browser()
+    
+    ### load data
+    par_file <- switch(params,
+      "default" = "multiplier-upper_constraint-lower_constraint", 
+      "multiplier" = "multiplier", 
+      "cap" = "upper_constraint-lower_constraint", 
+      "cap_multiplier" = "multiplier-upper_constraint-lower_constraint", 
+      "full" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
+                      "interval-multiplier"), 
+      "full_cap" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
+                      "interval-multiplier-upper_constraint-lower_constraint")
+    )
+    obj_file <- switch(obj,
+      "PA" = "obj_ICES_PA",
+      "MSY" = "obj_SSB_C_risk_ICV"
+    )
+    path <- paste0("C:/Users/sf02/OneDrive - CEFAS/data-limited/wklife9_GA/", 
+                   "output/500_50/uncertainty_cap/", fhist, "/pol/",
+                   par_file, "--", obj_file)
+    ### use GA paper results for "full" GA
+    if (isTRUE(obj == "MSY" & params == "full")) {
+      path <- paste0("C:/Users/sf02/OneDrive - CEFAS/data-limited/wklife9_GA/", 
+                   "output/500_50/ms/trial/", fhist, "/pol/",
+                   par_file, "--", obj_file)
+    }
+    if (!file.exists(paste0(path, "_res.rds"))) return(NULL)
+    ga_res <- readRDS(paste0(path, "_res.rds"))
+    ga_runs <- readRDS(paste0(path, "_runs.rds"))
+    
+    ### optimised parameters
+    if (isFALSE(params == "default")) {
+      pars <- ga_solution(ga_res)
+    } else {
+      pars <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
+    }
+    pars[which(is.nan(pars))] <- Inf
+    tmp <- as.data.frame(t(pars))
+    names(tmp) <- c("lag_idx", "range_idx_1", "range_idx_2", "range_catch",
+                    "exp_r", "exp_f", "exp_b", "interval", "multiplier",
+                    "upper_constraint", "lower_constraint")
+    #if (is.nan(tmp$upper_constraint)) tmp$upper_constraint <- Inf
+    tmp$obj <- obj
+    tmp$fhist <- fhist
+    tmp$ga_obj <- params
+    
+    ### stats
+    par_scn <- pars
+    if (isTRUE(length(which(is.na(par_scn))) > 0)) {
+      par_scn <- par_scn[-which(is.na(par_scn))]
+    }
+    par_scn <- paste0(par_scn, collapse = "_")
+    stats_tmp <- ga_runs[[par_scn]]
+    stats_tmp <- as.data.frame(lapply(as.data.frame(t(stats_tmp$stats)), unlist))
+    
+    ### combine pars and stats
+    tmp <- cbind(tmp, stats_tmp)
+    
+    ### recreate fitness
+    if (isTRUE(obj == "PA")) {
+      tmp$fitness <- sum(ifelse(test = tmp$risk_Blim <= 0.05, yes = 0, no = -10),
+                         tmp$Catch_rel)
+    } else if (isTRUE(obj == "MSY")) {
+      tmp$fitness <- -sum(abs(tmp$SSB_rel - 1),
+                          abs(tmp$Catch_rel - 1),
+                          tmp$ICV, tmp$risk_Blim)
+    }
+    
+    return(tmp)
+}
+
+res <- unlist(unlist(res, FALSE), FALSE)
+res <- res[-which(sapply(res, is.null))]
+res <- do.call(rbind, res)
+res %>%
+  filter(obj == "PA")
+saveRDS(res, file = "output/500_50/uncertainty_cap/results.rds")
+
+
+### format for plotting
+stats_pol <- res %>%
+  select(obj, fhist, ga_obj, risk_Blim, SSB_rel, Fbar_rel, Catch_rel,
+         ICV, fitness) %>%
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, fitness), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel", "risk_Blim", 
+                                       "ICV", "fitness"), 
+                       labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                  "B[lim]~risk", "ICV", "fitness~value"))) %>%
+  mutate(scenario = factor(ga_obj,
+                           levels = c("default", "multiplier", "cap", 
+                                      "cap_multiplier", "full", "full_cap"),
+                           labels = c("default", "GA multiplier", "GA cap", 
+                                      "GA cap+\nmultiplier", 
+                                      "GA all w/o cap", "GA all")))
+stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                     "B[lim]~risk", "ICV", "fitness~value"),
+                            target = c(1, 1, 1, 0, 0, NA))
+
+### plots for MSY fitness function
+y_max <- 1.5
+p_theme <- theme_bw(base_size = 8, base_family = "sans") +
+  theme(panel.spacing.x = unit(0, units = "cm"),
+        strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank())
+p_pol_stats_SSB <- stats_pol %>% 
+  filter(stat %in% c("SSB/B[MSY]") &
+           obj == "MSY") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
+           show.legend = FALSE, colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+p_pol_stats_F <- stats_pol %>% 
+  filter(stat %in% c("F/F[MSY]") &
+           obj == "MSY") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+p_pol_stats_C <- stats_pol %>% 
+  filter(stat %in% c("Catch/MSY") &
+           obj == "MSY") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+p_pol_stats_risk <- stats_pol %>% 
+  filter(stat %in% c("B[lim]~risk") &
+           obj == "MSY") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(trans = trans_from(0), limits = c(0, y_max))
+p_pol_stats_ICV <- stats_pol %>% 
+  filter(stat %in% c("ICV") &
+           obj == "MSY") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(trans = trans_from(0), limits = c(0, y_max))
+p_pol_stats_fitness <- stats_pol %>% 
+  filter(stat %in% c("fitness~value") &
+           obj == "MSY") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(panel.spacing.x = unit(0, units = "cm"),
+        strip.text.x = element_blank(),
+        strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        plot.margin = unit(x = c(0, 3, 3, 3), units = "pt")) +
+  scale_y_continuous(trans = trans_from(0), limits = c(-y_max, NA),
+                     breaks = c(0, -0.5, -1, -1.5), 
+                     minor_breaks = c(-0.25, -0.75, -1.25)
+                     )
+p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, p_pol_stats_F, p_pol_stats_C,
+                              p_pol_stats_risk, p_pol_stats_ICV,
+                              p_pol_stats_fitness,
+                              ncol = 1, align = "v",
+                              rel_heights = c(1.25, 1, 1, 1, 1, 2.1))
+
+ggsave(filename = "output/plots/PA/pol_GA_params_MSY.png",
+       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/pol_GA_params_MSY.pdf",
+      width = 17, height = 13, units = "cm", dpi = 600)
+
+### PA fitness function
+y_max <- 1
+p_pol_stats_SSB <- stats_pol %>% 
+  filter(stat %in% c("SSB/B[MSY]") &
+           obj == "PA") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
+           show.legend = FALSE, colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme# +
+  #scale_y_continuous(limits = c(0, y_max))
+p_pol_stats_F <- stats_pol %>% 
+  filter(stat %in% c("F/F[MSY]") &
+           obj == "PA") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(limits = c(0, y_max))
+p_pol_stats_C <- stats_pol %>% 
+  filter(stat %in% c("Catch/MSY") &
+           obj == "PA") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(limits = c(0, y_max))
+p_pol_stats_risk <- stats_pol %>% 
+  filter(stat %in% c("B[lim]~risk") &
+           obj == "PA") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(limits = c(0, y_max))
+p_pol_stats_ICV <- stats_pol %>% 
+  filter(stat %in% c("ICV") &
+           obj == "PA") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  #geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "fitness function") +
+  p_theme +
+  theme(strip.text.x = element_blank(),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt")) + 
+  scale_y_continuous(limits = c(0, y_max))
+p_pol_stats_fitness <- stats_pol %>% 
+  filter(stat %in% c("fitness~value") &
+           obj == "PA") %>%
+  ggplot(aes(x = scenario, y = value, fill = scenario,
+             colour = scenario)) +
+  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+           colour = "black", size = 0.1) +
+  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(panel.spacing.x = unit(0, units = "cm"),
+        strip.text.x = element_blank(),
+        strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        plot.margin = unit(x = c(0, 3, 3, 3), units = "pt")) +
+  coord_cartesian(ylim = c(-0.1, 1)) +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1),
+                     minor_breaks = c(-0.125, 0.125, 0.375, 0.625, 0.875)
+                     )
+p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, p_pol_stats_F, p_pol_stats_C,
+                              p_pol_stats_risk, p_pol_stats_ICV,
+                              p_pol_stats_fitness,
+                              ncol = 1, align = "v",
+                              rel_heights = c(1.25, 1, 1, 1, 1, 2.1))
+
+ggsave(filename = "output/plots/PA/pol_GA_params_PA.png",
+       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/pol_GA_params_PA.pdf",
+      width = 17, height = 13, units = "cm", dpi = 600)
+
+
+### ------------------------------------------------------------------------ ###
+### fitness penalty visualisation ####
+### ------------------------------------------------------------------------ ###
+
+penalty <- function(x, negative = FALSE, max = 10,
+                    inflection = 0.06, steepness = 0.75e+3) {
+  y <- max / (1 + exp(-(x - inflection)*steepness))
+  if (isTRUE(negative)) y <- -y
+  return(y)
+}
+
+p <- ggplot() +
+  geom_function(fun = penalty, n = 1000) +
+  geom_vline(xintercept = 0.05, colour = "red") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  #scale_x_continuous(expand = c(0, 0)) +
+  xlim(c(0, 1)) + 
+  coord_cartesian(xlim = c(0, 0.5)) +
+  labs(x = expression(italic(B)[lim]~risk),
+       y = "fitness penalty")
+p
+ggsave(filename = "output/plots/PA/Blim_penalty_curve.png",
+       width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/Blim_penalty_curve.pdf",
+      width = 8.5, height = 6, units = "cm", dpi = 600)
+
