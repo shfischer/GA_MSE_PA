@@ -4,7 +4,7 @@ library(ggplot2)
 library(cowplot)
 library(FLife) ### GitHub SHA 25f481f1 2020-03-02
 library(FLash)
-library(mseDL)
+library(mseDL2.0)
 source("funs.R")
 source("funs_GA.R")
 
@@ -202,7 +202,7 @@ res <- lapply(stocks_subset, function(stock) {
 ### ------------------------------------------------------------------------ ###
 
 stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass", 
-                   .packages = c("FLCore", "mseDL")) %do% {
+                   .packages = c("FLCore", "mseDL2.0")) %do% {
   ### load stock
   tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
                         "/", stock, ".rds"))

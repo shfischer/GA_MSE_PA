@@ -58,7 +58,7 @@ if (length(args) > 0) {
 
 ### load packages
 ## GA fork from GitHub devtools::install_github("shfischer/GA")
-req_pckgs <- c("FLCore", "FLash", "mseDL", "GA", "doParallel", "doRNG", "FLBRP")
+req_pckgs <- c("FLCore", "FLash", "mseDL2.0", "GA", "doParallel", "doRNG", "FLBRP")
 for (i in req_pckgs) library(package = i, character.only = TRUE)
 
 ### load additional functions
