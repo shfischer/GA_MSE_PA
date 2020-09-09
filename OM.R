@@ -290,20 +290,20 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                            PA_status = FALSE, PA_status_dev = FALSE,
                            PA_Bmsy = c(refpts(brps[[stock]])["msy", "ssb"]), 
                            PA_Fmsy = c(refpts(brps[[stock]])["msy", "harvest"])))
-  ctrl.mp <- mpCtrl(list(
-    ctrl.est = mseCtrl(method = est_comps,
+  ctrl <- mpCtrl(list(
+    est = mseCtrl(method = est_comps,
                        args = pars_est),
-    ctrl.phcr = mseCtrl(method = phcr_comps,
+    phcr = mseCtrl(method = phcr_comps,
                         args = pars_est),
-    ctrl.hcr = mseCtrl(method = hcr_comps,
+    hcr = mseCtrl(method = hcr_comps,
                        args = pars_est),
-    ctrl.is = mseCtrl(method = is_comps,
+    isys = mseCtrl(method = is_comps,
                       args = pars_est)
   ))
   iem <- FLiem(method = iem_comps,
                args = list(use_dev = FALSE, iem_dev = iem_dev))
-  ### genArgs
-  genArgs <- list(fy = dims(stk_fwd)$maxyear, ### final simulation year
+  ### args
+  args <- list(fy = dims(stk_fwd)$maxyear, ### final simulation year
                   y0 = dims(stk_fwd)$minyear, ### first data year
                   iy = 100, ### first simulation (intermediate) year
                   nsqy = 3, ### not used, but has to provided
@@ -316,8 +316,8 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   Blim <- attr(brps[[stock]], "Blim")
   
   ### list with input to mpDL()
-  input <- list(om = om, oem = oem, iem = iem, ctrl.mp = ctrl.mp, 
-                genArgs = genArgs,
+  input <- list(om = om, oem = oem, iem = iem, ctrl = ctrl, 
+                args = args,
                 scenario = "GA", tracking = tracking, 
                 verbose = TRUE,
                 refpts = refpts, Blim = Blim, I_loss = I_loss)
@@ -331,10 +331,10 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
 
 # debugonce(wklife_3.2.1_est)
 # debugonce(wklife_3.2.1_obs)
-# debugonce(input$ctrl.mp$ctrl.hcr@method)
+# debugonce(input$ctrl$hcr@method)
 # debugonce(mpDL)
 # debugonce(goFishDL)
-# input$genArgs$nblocks = 250
+# input$args$nblocks = 250
 # res <- do.call(mpDL, input)
 # 
 # ### timing

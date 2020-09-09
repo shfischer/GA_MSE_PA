@@ -160,11 +160,11 @@ input <- lapply(input, function(x) {
   ### IEM: do not activate uncertainty
   x$iem@args$use_dev <- FALSE
   ### catch rule components
-  x$ctrl.mp$ctrl.est@args$comp_r <- TRUE
-  x$ctrl.mp$ctrl.est@args$comp_f <- TRUE
-  x$ctrl.mp$ctrl.est@args$comp_b <- TRUE
+  x$ctrl$est@args$comp_r <- TRUE
+  x$ctrl$est@args$comp_f <- TRUE
+  x$ctrl$est@args$comp_b <- TRUE
   ### catch lag fixed
-  x$ctrl.mp$ctrl.est@args$catch_lag <- 1
+  x$ctrl$est@args$catch_lag <- 1
   return(x)
 })
 
@@ -178,27 +178,27 @@ if (isTRUE(catch_rule == "2over3")) {
     x$oem@args$PA_status <- TRUE
     x$oem@args$PA_status_dev <- TRUE
     ### catch rule components: turn of f & b, 2 over 3 rule
-    x$ctrl.mp$ctrl.est@args$comp_f <- FALSE
-    x$ctrl.mp$ctrl.est@args$comp_b <- FALSE
-    x$ctrl.mp$ctrl.est@args$idxB_lag <- 1
-    x$ctrl.mp$ctrl.est@args$idxB_range_1 <- 2
-    x$ctrl.mp$ctrl.est@args$idxB_range_2 <- 3
+    x$ctrl$est@args$comp_f <- FALSE
+    x$ctrl$est@args$comp_b <- FALSE
+    x$ctrl$est@args$idxB_lag <- 1
+    x$ctrl$est@args$idxB_range_1 <- 2
+    x$ctrl$est@args$idxB_range_2 <- 3
     ### PA buffer
-    x$ctrl.mp$ctrl.est@args$pa_buffer <- TRUE
+    x$ctrl$est@args$pa_buffer <- TRUE
     ###
-    x$ctrl.mp$ctrl.phcr@args$exp_r <- 1
-    x$ctrl.mp$ctrl.phcr@args$exp_f <- 0
-    x$ctrl.mp$ctrl.phcr@args$exp_b <- 1 ### PA buffer
+    x$ctrl$phcr@args$exp_r <- 1
+    x$ctrl$phcr@args$exp_f <- 0
+    x$ctrl$phcr@args$exp_b <- 1 ### PA buffer
     ### biennial
-    #x$ctrl.mp$ctrl.hcr@args$interval <- 2
+    #x$ctrl$hcr@args$interval <- 2
     ### uncertainty cap
-    x$ctrl.mp$ctrl.is@args$upper_constraint <- 1.2
-    x$ctrl.mp$ctrl.is@args$lower_constraint <- 0.8
+    x$ctrl$isys@args$upper_constraint <- 1.2
+    x$ctrl$isys@args$lower_constraint <- 0.8
     return(x)
   })
   # input$pol$oem@method <- wklife_3.2.1_obs
-  # input$pol$ctrl.mp$ctrl.est@method <- wklife_3.2.1_est
-  # input$pol$ctrl.mp$ctrl.is@method <- is_r
+  # input$pol$ctrl$est@method <- wklife_3.2.1_est
+  # input$pol$ctrl$isys@method <- is_r
   #debugonce(goFishDL)
   #res <- do.call(mpDL, c(input$pol, cut_hist = FALSE))
   
@@ -211,20 +211,20 @@ if (isTRUE(catch_rule == "2over3")) {
     x$oem@args$ssb_idx <- FALSE
     x$oem@args$tsb_idx <- TRUE
     ### est
-    x$ctrl.mp$ctrl.est@method <- est_hr
-    x$ctrl.mp$ctrl.est@args$idxB_lag <- 1
-    x$ctrl.mp$ctrl.est@args$idxB_range <- 1
+    x$ctrl$est@method <- est_hr
+    x$ctrl$est@args$idxB_lag <- 1
+    x$ctrl$est@args$idxB_range <- 1
     ### phcr
-    x$ctrl.mp$ctrl.phcr@method <- phcr_hr
-    x$ctrl.mp$ctrl.phcr@args$rate <- hr_rate
+    x$ctrl$phcr@method <- phcr_hr
+    x$ctrl$phcr@args$rate <- hr_rate
     ### hcr
-    x$ctrl.mp$ctrl.hcr@method <- hcr_hr
-    x$ctrl.mp$ctrl.hcr@args$interval <- 1
+    x$ctrl$hcr@method <- hcr_hr
+    x$ctrl$hcr@args$interval <- 1
     ### is
-    x$ctrl.mp$ctrl.is@method <- is_r
-    x$ctrl.mp$ctrl.is@args$interval <- 1
-    x$ctrl.mp$ctrl.is@args$upper_constraint <- Inf
-    x$ctrl.mp$ctrl.is@args$lower_constraint <- 0
+    x$ctrl$isys@method <- is_r
+    x$ctrl$isys@args$interval <- 1
+    x$ctrl$isys@args$upper_constraint <- Inf
+    x$ctrl$isys@args$lower_constraint <- 0
     return(x)
   })
 }
@@ -233,7 +233,7 @@ if (isTRUE(catch_rule == "2over3")) {
 if (isTRUE(n_workers > 1) & isTRUE(n_blocks > 1)) {
   ### use Iloss
   input <- lapply(input, function(x) {
-    x$genArgs$nblocks <- n_blocks
+    x$args$nblocks <- n_blocks
     return(x)
   })
 }
@@ -374,8 +374,8 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   file_name <- paste0(stock, collapse = "_")
   if (isTRUE(catch_rule == "hr")) {
     idx_quant <- i
-    file_name <- paste0("int-", input[[1]]$ctrl.mp$ctrl.hcr@args$interval, "_",
-                        "mult-", input[[1]]$ctrl.mp$ctrl.phcr@args$rate, "_",
+    file_name <- paste0("int-", input[[1]]$ctrl$hcr@args$interval, "_",
+                        "mult-", input[[1]]$ctrl$phcr@args$rate, "_",
                         file_name)
   }
   saveRDS(res_mp, paste0(path_out, file_name, "_mp.rds"))
