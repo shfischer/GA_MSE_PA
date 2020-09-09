@@ -24,7 +24,7 @@ cat $PBS_NODEFILE
 echo ""
 
 ### set working directory
-cd $HOME/git/DLM_MSE_risk
+cd $HOME/git/wklife9_GA-risk
 
 ## load modules
 ## anaconda includes R and OpenMPI

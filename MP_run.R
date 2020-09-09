@@ -51,7 +51,7 @@ if (length(args) > 0) {
 ### load packages
 ### GA fork from GitHub remotes::install_github("shfischer/GA")
 ### use mse fork from shfischer/mse, branch mseDL2.0 
-### remotes::install_github("shfischer/mse", ref = "mseDL2.0)
+### remotes::install_github("shfischer/mse", ref = "mseDL2.0")
 req_pckgs <- c("FLCore", "FLash", "mse", "GA", "doParallel", "doRNG", "FLBRP")
 for (i in req_pckgs) library(package = i, character.only = TRUE)
 
@@ -217,8 +217,7 @@ path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
 dir.create(path_out, recursive = TRUE)
 
 
-. <- foreach(par_i = split(pars, seq(nrow(pars))), 
-             .errorhandling = "pass") %do_pars% {
+. <- foreach(par_i = split(pars, seq(nrow(pars)))) %do_pars% {
   
   input_i <- input
   
