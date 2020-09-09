@@ -58,11 +58,10 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       x$ctrl$est@args$idxB_range_1 <- params[2]
       x$ctrl$est@args$idxB_range_2 <- params[3]
       x$ctrl$est@args$catch_range  <- params[4]
-      x$ctrl$est@args$comp_m <- params[9]
+      x$ctrl$est@args$comp_m <- params[9] # multiplier
       x$ctrl$phcr@args$exp_r <- params[5]
       x$ctrl$phcr@args$exp_f <- params[6]
       x$ctrl$phcr@args$exp_b <- params[7]
-      x$ctrl$hcr@args$interval <- params[8]
       x$ctrl$hcr@args$interval <- params[8]
       x$ctrl$isys@args$upper_constraint <- params[10]
       x$ctrl$isys@args$lower_constraint <- params[11]
