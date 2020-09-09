@@ -266,7 +266,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
   refpts <- refpts(brps[[stock]])
   Blim <- attr(brps[[stock]], "Blim")
   
-  ### list with input to mpDL()
+  ### list with input to mp()
   input <- list(om = om, oem = oem, iem = iem, ctrl = ctrl, 
                 args = args,
                 scenario = "risk", tracking = tracking, 
@@ -295,4 +295,3 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
 # 
 # input$args$nblocks <- 10
 # input$cut_hist <- FALSE
-

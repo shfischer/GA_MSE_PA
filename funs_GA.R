@@ -74,7 +74,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     res_mp <- lapply(input, function(x) {
       if (getDoParWorkers() > 1)
         . <- foreach(i = 1:getDoParWorkers()) %dopar% {invisible(gc())}
-      do.call(mpDL, x)
+      do.call(mp, x)
     })
     
     if (isTRUE(return_res)) {

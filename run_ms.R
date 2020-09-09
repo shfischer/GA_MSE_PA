@@ -200,7 +200,7 @@ if (isTRUE(catch_rule == "2over3")) {
   # input$pol$ctrl$est@method <- wklife_3.2.1_est
   # input$pol$ctrl$isys@method <- is_r
   #debugonce(goFishDL)
-  #res <- do.call(mpDL, c(input$pol, cut_hist = FALSE))
+  #res <- do.call(mp, c(input$pol, cut_hist = FALSE))
   
 } else if (isTRUE(catch_rule == "hr")) {
   input <- lapply(input, function(x) {
@@ -369,7 +369,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ### run MSE
   ### run MP for each list element
   res_mp <- lapply(input, function(x) {
-    do.call(mpDL, x)
+    do.call(mp, x)
   })
   file_name <- paste0(stock, collapse = "_")
   if (isTRUE(catch_rule == "hr")) {
