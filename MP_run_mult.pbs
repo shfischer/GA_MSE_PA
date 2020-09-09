@@ -37,7 +37,7 @@ echo "starting the simulations..."
 ### run job
 ### when running with MPI, worker count is one less than selected cores
 #mpiexec 
-R CMD BATCH --vanilla --quiet "--args use_MPI=FALSE n_workers=15 n_blocks=1 stock_id=12 n_iter=500 n_yrs=50 fhist='random' catch_rule='catch_rule' multiplier=seq(from=0,to=2,by=0.01) saveMP=FALSE collate=TRUE" $HOME/git/DLM_MSE_risk/MP_run_uncertainty.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+R CMD BATCH --vanilla --quiet "--args use_MPI=FALSE n_workers=15 n_blocks=1 stock_id=12 n_iter=500 n_yrs=50 fhist='random' catch_rule='catch_rule' multiplier=seq(from=0,to=2,by=0.01) saveMP=FALSE collate=TRUE" $HOME/git/DLM_MSE_risk/MP_run.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
 ## $PBS_ARRAY_INDEX
 
 echo ""
