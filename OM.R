@@ -315,7 +315,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   refpts <- refpts(brps[[stock]])
   Blim <- attr(brps[[stock]], "Blim")
   
-  ### list with input to mpDL()
+  ### list with input to mp()
   input <- list(om = om, oem = oem, iem = iem, ctrl = ctrl, 
                 args = args,
                 scenario = "GA", tracking = tracking, 
@@ -332,12 +332,12 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
 # debugonce(wklife_3.2.1_est)
 # debugonce(wklife_3.2.1_obs)
 # debugonce(input$ctrl$hcr@method)
-# debugonce(mpDL)
+# debugonce(mp)
 # debugonce(goFishDL)
 # input$args$nblocks = 250
-# res <- do.call(mpDL, input)
+# res <- do.call(mp, input)
 # 
 # ### timing
-# system.time({res1 <- do.call(mpDL, input)})
+# system.time({res1 <- do.call(mp, input)})
 
 
