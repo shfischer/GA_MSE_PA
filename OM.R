@@ -1,35 +1,55 @@
-library(tidyr)
-library(dplyr)
-library(ggplot2)
-library(cowplot)
-library(FLife) ### GitHub SHA 25f481f1 2020-03-02
-library(FLash)
+### ------------------------------------------------------------------------ ###
+### arguments ####
+### ------------------------------------------------------------------------ ###
+
+args <- commandArgs(TRUE)
+print("arguments passed on to this script:")
+print(args)
+
+### evaluate arguments, if they are passed to R:
+if (length(args) > 0) {
+  
+  ### extract arguments
+  for (i in seq_along(args)) eval(parse(text = args[[i]]))
+
+  ### scenario definition
+  if (!exists("n_iter")) stop("n_iter missing")
+  if (!exists("yrs_hist")) stop("yrs_hist missing")
+  if (!exists("yrs_proj")) stop("yrs_proj missing")
+  if (!exists("fhist")) stop("fhist missing")
+  if (!exists("stock_id")) stop("stock_id missing")
+
+} else {
+  
+  stop("no argument passed to R")
+  
+}
+
+# n_iter <- 500
+# yrs_hist <- 100
+# yrs_proj <- 100
+# stock_id <- 12
+# fhist <- "random"
+
+### ------------------------------------------------------------------------ ###
+### set up environment ####
+### ------------------------------------------------------------------------ ###
+
+### load packages
 ### use mse fork from shfischer/mse, branch mseDL2.0 
 ### remotes::install_github("shfischer/mse", ref = "mseDL2.0)
-library(mse)
+req_pckgs <- c("FLCore", "FLash", "FLBRP", "mse", "FLife", 
+               "tidyr", "dplyr", "foreach", "doParallel")
+for (i in req_pckgs) library(package = i, character.only = TRUE)
+
+### load additional functions
 source("funs.R")
-source("funs_GA.R")
-
-### parallel environment
-library(doParallel)
-cl <- makeCluster(10)
-registerDoParallel(cl)
-clusterEvalQ(cl, {source("funs.R");source("funs_GA.R")})
-
-### ------------------------------------------------------------------------ ###
-### fishing history dimensions ####
-### ------------------------------------------------------------------------ ###
-
-n_iter <- 500
-yrs_hist <- 100
-yrs_proj <- 50
-
-set.seed(2)
 
 ### ------------------------------------------------------------------------ ###
 ### with uniform distribution and random F trajectories ####
 ### ------------------------------------------------------------------------ ###
-fhist <- "one-way"#"random"#
+set.seed(2)
+# fhist <- "random"
 if (identical(fhist, "random")) {
   start <- rep(0, n_iter)
   middle <- runif(n = n_iter, min = 0, max = 1)
@@ -43,17 +63,6 @@ if (identical(fhist, "random")) {
                y = c(middle[x], end[x]), 
                n = (yrs_hist/2) + 1)$y[-1])
     }))
-  df2 <- as.data.frame(df)
-  rownames(df2) <- seq(n_iter)
-  colnames(df2) <- seq(yrs_hist)
-  df2$iter <- seq(n_iter)
-  df2 %>% 
-    gather(key = "year", value = "value", 1:100) %>%
-    mutate(year = as.numeric(as.character(year))) %>%
-    ggplot(aes(x = year, y = value, group = as.factor(iter))) +
-    geom_line(alpha = 0.5) +
-    theme_bw()
-  
   f_array <- array(dim = c(yrs_hist, 3, n_iter),
                    dimnames = list(seq(yrs_hist), c("min","val","max"),
                                    iter = seq(n_iter)))
@@ -68,32 +77,10 @@ if (identical(fhist, "random")) {
 stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 
 ### BRPs from Fischer et al. (2020)
-# brps <- readRDS("input/OMs/brps.rds")$new_baseline
-# brps <- brps[match(x = stocks$stock_old, table = names(brps))]
-# names(brps) <- stocks$stock
-# ### calculate Blim
-# brps <- lapply(brps, function(brp) {
-#   bv <- function(SSB, a, b) a*SSB/(b + SSB)
-#   solve <- function(SSB) {
-#     rec = bv(a = c(params(brp)["a"]),
-#              b = c(params(brp)["b"]), SSB = SSB)
-#     abs((c(refpts(brp)["virgin", "rec"]) * 0.7) - rec)
-#   }
-#   attr(brp, "Blim") <- optimize(f = solve, lower = 1, upper = 1000)$minimum
-#   return(brp)
-# })
-# saveRDS(brps, file = "input/brps.rds")
-
 brps <- readRDS("input/brps.rds")
 
-# sapply(brps, function(x) {
-#   c(refpts(x)["crash", "harvest"]/refpts(x)["msy", "harvest"])
-# })
-
-### create FLStocks
-stocks_subset <- stocks$stock#"pol"
-stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass", 
-                     .packages = c("FLCore", "FLash", "FLBRP")) %dopar% {
+stocks_subset <- stocks$stock[stock_id]#"pol"
+stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
   stk <- as(brps[[stock]], "FLStock")
   refpts <- refpts(brps[[stock]])
   stk <- qapply(stk, function(x) {#browser()
@@ -103,11 +90,14 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   stk <- propagate(stk, n_iter)
   ### create stock recruitment model
   stk_sr <- FLSR(params = params(brps[[stock]]), model = model(brps[[stock]]))
-  ### create residuals for (historical) projection
+  ### residuals
+  set.seed(1)
+  residuals(stk_sr) <- rlnoise(dim(stk)[6], rec(stk) %=% 0, sd = 0.6, b = 0)
+  ### replicate residuals from GA paper
   set.seed(0)
-  residuals(stk_sr) <- rlnoise(dim(stk)[6], rec(stk) %=% 0, 
-                               sd = 0.6, b = 0)
-  ### replicate residuals from catch rule paper for historical period
+  residuals(stk_sr)[, ac(0:150)] <- rlnoise(dim(stk)[6], 
+                                            rec(stk)[, ac(0:150)] %=% 0, 
+                                            sd = 0.6, b = 0)
   set.seed(0)
   residuals <- rlnoise(dim(stk)[6], (rec(stk) %=% 0)[, ac(1:100)], 
                        sd = 0.6, b = 0)
@@ -143,68 +133,20 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ### project fishing history
   stk_stf <- fwd(stk, ctrl, sr = stk_sr, sr.residuals = residuals(stk_sr),
                  sr.residuals.mult = TRUE, maxF = 5) 
-  #plot(stk_stf, iter = 1:50)
-  #plot(ssb(stk_stf), iter = 1:50)
-  ### run a few times to get closer to target
-  # for (i in 1:5) {
-  #   stk_stf <- fwd(stk_stf, ctrl, sr = stk_sr,
-  #                  sr.residuals.mult = TRUE, maxF = 4)
-  # }
+
   name(stk_stf) <- stock
   path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
   dir.create(path, recursive = TRUE)
   saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, ".rds"))
   
   return(NULL)
-  #return(list(stk = stk_stf, sr = stk_sr))
 }
-# names(stks_hist) <- stocks_subset
-
-### stock status
-res <- lapply(stocks_subset, function(stock) {
-  stk <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, 
-                        "/", stock, ".rds"))$stk
-  ssb(stk)[, ac(100)] / refpts(brps[[stock]])["msy", "ssb"]
-})
-
-
-# plot(stk_stf)
-# plot(stk_stf, iter = 1:100)
-# hist(ssb(stk_stf)[, ac(201)])
-# ssb(stk_stf)[, ac(199:201),,,, 1]
-# ctrl@trgtArray[ac(199:200),,]
-# summary(c(ssb(stk_stf)[, ac(201)]) / ctrl@trgtArray[ac(200),"val",])
-# plot(fbar(stk_stf)[, ac(101:200)])
-
-### plot history for all stocks
-# for (stock in stocks_subset) {
-#   stk1 <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", stock, 
-#                          ".rds"))$stk
-#   stk1 <- window(stk1, start = -100)
-#   stk1[, ac(-100:50)] <- stk1[, ac(0:150)]
-#   plot(window(stk1, end = 0),
-#        probs = c(0.05, 0.25, 0.5, 0.75, 0.95),
-#        iter = 1:10) +
-#     ylim(0, NA) +
-#     labs(x = "year") +
-#     geom_hline(data = data.frame(qname = "SSB",
-#                                  data = c(refpts(brps[[stock]])["msy", "ssb"])),
-#                aes(yintercept = data), linetype = "dashed", alpha = 0.5) +
-#     geom_hline(data = data.frame(qname = "F",
-#                                  data = c(refpts(brps[[stock]])["msy", "harvest"])),
-#                aes(yintercept = data), linetype = "dashed", alpha = 0.5)
-#   ggsave(filename = paste0("input/", n_iter, "_", yrs_proj, "/SSB_hist_",
-#                            stock, ".png"),
-#          width = 30, height = 20, units = "cm", dpi = 300, type = "cairo")
-# }
-# rm(stk1); gc()
 
 ### ------------------------------------------------------------------------ ###
 ### prepare OMs for flr/mse MP ####
 ### ------------------------------------------------------------------------ ###
 
-stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass", 
-                   .packages = c("FLCore", "mse")) %do% {
+stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
   ### load stock
   tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
                         "/", stock, ".rds"))
@@ -238,13 +180,21 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   set.seed(2)
   PA_status_dev["negative"] <- rbinom(n = PA_status_dev["negative"], 
                                       size = 1, prob = 1 - 0.4216946)
-  set.seed(696)
+  set.seed(695)
   idx_dev <- FLQuants(sel = stk_fwd@mat %=% 1,
                       idxB = rlnoise(n = dims(idx$idxB)$iter, idx$idxB %=% 0, 
                                     sd = 0.2, b = 0),
                       idxL = rlnoise(n = dims(idx$idxL)$iter, idx$idxL %=% 0, 
                                      sd = 0.2, b = 0),
                       PA_status = PA_status_dev)
+  ### replicate previous deviates from GA paper
+  set.seed(696)
+  idx_dev$idxB[, ac(50:150)] <- rlnoise(n = dims(idx$idxB)$iter,
+                                        window(idx$idxB, end = 150) %=% 0,
+                                        sd = 0.2, b = 0)
+  idx_dev$idxL[, ac(50:150)] <- rlnoise(n = dims(idx$idxL)$iter, 
+                                        window(idx$idxB, end = 150) %=% 0,
+                                        sd = 0.2, b = 0)
   ### iem deviation
   set.seed(205)
   iem_dev <- FLQuant(rlnoise(n = dims(stk_fwd)$iter,  catch(stk_fwd) %=% 0,
@@ -256,6 +206,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                               6, min)
   I_loss$idx <- apply(idx$idxB[, ac(50:100)], 6, min)
   I_loss$idx_dev <- apply((idx$idxB * idx_dev$idxB)[, ac(50:100)], 6, min)
+
   ### parameters for components
   pars_est <- list(
     comp_r = TRUE, comp_f = TRUE, comp_b = TRUE,
@@ -267,7 +218,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
     exp_r = 1, exp_f = 1, exp_b = 1,
     Lref = rep((lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5), n_iter),
     B_lim = rep(brps[[stock]]@Blim, n_iter),
-    I_trigger = c(I_loss$idx_dev * 1.4), ### default, can be overwritten later
+    I_trigger = c(I_loss$idx_dev * 1.4),
     pa_buffer = FALSE, pa_size = 0.8, pa_duration = 3,
     upper_constraint = Inf,
     lower_constraint = 0
@@ -284,7 +235,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   oem <- FLoem(method = obs_generic,
                observations = list(stk = stk_fwd, idx = idx), 
                deviances = list(stk = FLQuant(), idx = idx_dev),
-               args = list(idx_dev = TRUE, ssb = FALSE,
+               args = list(idx_dev = TRUE,
                            lngth = TRUE, lngth_dev = TRUE,
                            lngth_par = pars_l,
                            PA_status = FALSE, PA_status_dev = FALSE,
@@ -318,7 +269,7 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   ### list with input to mpDL()
   input <- list(om = om, oem = oem, iem = iem, ctrl = ctrl, 
                 args = args,
-                scenario = "GA", tracking = tracking, 
+                scenario = "risk", tracking = tracking, 
                 verbose = TRUE,
                 refpts = refpts, Blim = Blim, I_loss = I_loss)
   
@@ -329,15 +280,19 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   return(NULL)
 }
 
-# debugonce(wklife_3.2.1_est)
-# debugonce(wklife_3.2.1_obs)
-# debugonce(input$ctrl$hcr@method)
-# debugonce(mpDL)
-# debugonce(goFishDL)
-# input$args$nblocks = 250
-# res <- do.call(mpDL, input)
+# input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist, "/", stock, ".rds"))
 # 
-# ### timing
-# system.time({res1 <- do.call(mpDL, input)})
-
+# library(doParallel)
+# cl <- makeCluster(10)
+# cl_length <- length(cl)
+# registerDoParallel(cl)
+# . <- foreach(i = seq(cl_length)) %dopar% {
+#   for (i in req_pckgs) library(package = i, character.only = TRUE,
+#                                warn.conflicts = FALSE, verbose = FALSE,
+#                                quietly = TRUE)
+#   source("funs.R", echo = FALSE)
+# }
+# 
+# input$args$nblocks <- 10
+# input$cut_hist <- FALSE
 
