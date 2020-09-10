@@ -281,7 +281,7 @@ dir.create(path_out, recursive = TRUE)
       I_loss_dev <- apply((x$oem@observations$idx$idxB *
                              dev_idxB)[, ac(50:100)], 6, min)
       I_trigger_dev <- I_loss_dev * 1.4
-      x$ctrl.mp$ctrl.est@args$I_trigger <- c(I_trigger_dev)
+      x$ctrl$est@args$I_trigger <- c(I_trigger_dev)
       x$I_loss$idx_dev <- I_loss_dev
       
       return(x)
