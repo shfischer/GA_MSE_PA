@@ -44,6 +44,7 @@ if (length(args) > 0) {
     if (!exists("obj_ICV")) obj_ICV <- TRUE
     if (!exists("obj_ICES_PA")) obj_ICES_PA <- FALSE
     if (!exists("obj_ICES_PA2")) obj_ICES_PA2 <- FALSE
+    if (!exists("obj_ICES_MSYPA")) obj_ICES_PA2 <- FALSE
   }
 
 } else {
@@ -314,7 +315,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
     res <- ga(type = "real-valued", fitness = mp_fitness, inp_file = inp_file,
               obj_SSB = obj_SSB, obj_F = obj_F, obj_C = obj_C, 
               obj_risk = obj_risk, obj_ICV = obj_ICV, obj_ICES_PA = obj_ICES_PA,
-              obj_ICES_PA2 = obj_ICES_PA2,
+              obj_ICES_PA2 = obj_ICES_PA2, obj_ICES_MSYPA = obj_ICES_MSYPA,
               path = path_out, check_file = TRUE,
               scenario = scenario,
               suggestions = ga_suggestions, lower = ga_lower, upper = ga_upper,

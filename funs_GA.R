@@ -130,7 +130,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                    collapse_correction = TRUE,
                    obj_SSB = TRUE, obj_C = TRUE, obj_F = FALSE,
                    obj_risk = TRUE, obj_ICV = TRUE, obj_ICES_PA = FALSE,
-                   obj_ICES_PA2 = FALSE,
+                   obj_ICES_PA2 = FALSE, obj_ICES_MSYPA = FALSE,
                    ...) {
   
   ### housekeeping
@@ -235,6 +235,15 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     obj <- obj + sum(unlist(stats["Catch_rel", ]))
     ### penalise risk above 5% - gradual
     obj <- obj - sum(penalty(x = unlist(stats["risk_Blim", ]), 
+                             negative = FALSE, max = 1, inflection = 0.06, 
+                             steepness = 0.5e+3))
+  }
+  ### MSY target but replace risk with PA objective
+    if (isTRUE(obj_ICES_MSYPA)) {
+    obj <- obj - sum(abs(unlist(stats["SSB_rel", ]) - 1)) -
+      sum(abs(unlist(stats["Catch_rel", ]) - 1)) -
+      sum(unlist(stats["ICV", ])) -
+      sum(penalty(x = unlist(stats["risk_Blim", ]), 
                              negative = FALSE, max = 1, inflection = 0.06, 
                              steepness = 0.5e+3))
   }
