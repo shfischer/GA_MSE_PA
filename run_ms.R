@@ -256,7 +256,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
                           c(1, 2, 3, 1, 1, 1, 1, 2, 1, 1.2, 0.8))
   ga_default <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
   ga_lower <- c(0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0)
-  ga_upper <- c(1, 5, 5, 1, 2, 2, 2, 5, 2, 2, 1)
+  ga_upper <- c(1, 5, 5, 1, 2, 2, 2, 5, 2, 5, 1)
   ### turn of parameters not requested, i.e. limit to default value
   pos_default <- which(!unlist(mget(ga_names, ifnotfound = FALSE)))
   ga_lower[pos_default] <- ga_default[pos_default]
