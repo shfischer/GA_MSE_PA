@@ -44,7 +44,7 @@ if (length(args) > 0) {
     if (!exists("obj_ICV")) obj_ICV <- TRUE
     if (!exists("obj_ICES_PA")) obj_ICES_PA <- FALSE
     if (!exists("obj_ICES_PA2")) obj_ICES_PA2 <- FALSE
-    if (!exists("obj_ICES_MSYPA")) obj_ICES_PA2 <- FALSE
+    if (!exists("obj_ICES_MSYPA")) obj_ICES_MSYPA <- FALSE
   }
 
 } else {
@@ -293,7 +293,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ### objective function elements
   obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA", "ICES_PA2")
   obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV,
-                                 obj_ICES_PA, obj_ICES_PA2)]
+                                 obj_ICES_PA, obj_ICES_PA2, obj_ICES_MSYPA)]
   obj_desc <- paste0("obj_", paste0(obj_desc, collapse = "_"), collapse = "")
   
   ### store input data in temp file

@@ -244,7 +244,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       sum(abs(unlist(stats["Catch_rel", ]) - 1)) -
       sum(unlist(stats["ICV", ])) -
       sum(penalty(x = unlist(stats["risk_Blim", ]), 
-                             negative = FALSE, max = 1, inflection = 0.06, 
+                             negative = FALSE, max = 2, inflection = 0.06, 
                              steepness = 0.5e+3))
   }
   
