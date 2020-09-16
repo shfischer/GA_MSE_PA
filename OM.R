@@ -232,7 +232,7 @@ if (exists("MP")) {
         comp_c = FALSE, comp_m = hr_rates,
         idxB_lag = 1, idxB_range_1 = 2, idxB_range_2 = 3, idxB_range_3 = 1,
         catch_lag = 1, catch_range = 1,
-        interval = 2,
+        interval = 1,
         idxL_lag = 1, idxL_range = 1,
         exp_r = 1, exp_f = 1, exp_b = 1,
         Lref = rep((lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5), n_iter),
@@ -250,7 +250,7 @@ if (exists("MP")) {
                  projection = mseCtrl(method = fwd_attr,
                                       args = list(dupl_trgt = TRUE)))
       tracking = c("comp_c", "comp_i", "comp_r", "comp_f", "comp_b",
-                   "multiplier", "exp_r", "exp_f", "exp_b")
+                   "multiplier", "comp_hr", "exp_r", "exp_f", "exp_b")
       oem <- FLoem(method = obs_generic,
                    observations = list(stk = stk_fwd, idx = idx), 
                    deviances = list(stk = FLQuant(), idx = idx_dev),
