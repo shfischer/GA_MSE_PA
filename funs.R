@@ -281,25 +281,6 @@ est_c <- function(catch, ay,
   
 }
 
-
-
-### harvest rate index
-est_hr <- function(stk, idx, tracking, args,
-                   idxB_lag = 1, idxB_range = 1,
-                   ...) {
-  
-  ay <- args$ay
-  
-  ### current index value
-  idx_yrs <- seq(to = ay - idxB_lag, 
-                 length.out = idxB_range)
-  idx_current <- yearMeans(idx$idxB[, ac(idx_yrs)])
-  tracking["I_current", ac(ay)] <- idx_current
-  
-  return(list(stk = stk, tracking = tracking))
-  
-}
-
 ### ------------------------------------------------------------------------ ###
 ### phcr ####
 ### ------------------------------------------------------------------------ ###
@@ -326,21 +307,6 @@ phcr_comps <- function(tracking, args,
   return(list(tracking = tracking, hcrpars = hcrpars))
   
 }
-
-### harvest rate: select
-phcr_hr <- function(tracking, args, rate = 0.5,
-                   ...){
-  
-  ay <- args$ay
-  
-  hcrpars <- tracking[c("I_current", "multiplier"), ac(ay)]
-  hcrpars["multiplier", ] <- rate
-  
-  ### return results
-  return(list(tracking = tracking, hcrpars = hcrpars))
-  
-}
-
 
 ### ------------------------------------------------------------------------ ###
 ### hcr ####
@@ -378,21 +344,6 @@ hcr_comps <- function(hcrpars, args, tracking, interval = 2,
   
   return(list(ctrl = ctrl, tracking = tracking))
   
-}
-
-### harvest rate
-hcr_hr <- function(hcrpars, args, tracking, interval = 1, 
-                  ...) {
-  ay <- args$ay
-  iy <- args$iy
-  if ((ay - iy) %% interval == 0) {
-    advice <- hcrpars["I_current", ] * hcrpars["multiplier", ] 
-  } else {
-    advice <- tracking["metric.hcr", ac(ay - 1)]
-  }
-  ctrl <- getCtrl(values = c(advice), quantity = "catch", years = ay + 1, 
-                  it = dim(advice)[6])
-  return(list(ctrl = ctrl, tracking = tracking))
 }
 
 ### ------------------------------------------------------------------------ ###
