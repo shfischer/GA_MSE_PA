@@ -312,4 +312,163 @@ if (exists("MP")) {
 # ### timing
 # system.time({res1 <- do.call(mp, input)})
 
+### ------------------------------------------------------------------------ ###
+### plot ROC curves for Lmean ####
+### ------------------------------------------------------------------------ ###
+
+if (exists("ROC")) { 
+  if (isTRUE(ROC)) {
+  
+    roc <- foreach(stock = stocks_subset) %dopar%  {
+      
+      input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
+                              "/", stock, ".rds"))
+      ### calculate Lmean
+      lhist <- stocks[stocks$stock == stock, ]
+      pars_l <- FLPar(a = lhist$a,
+                      b = lhist$b,
+                      Lc = calc_lc(stk = input$stk[, ac(1:100)], 
+                                   a = lhist$a, b = lhist$b))
+      Lmean <- lmean(stk = input$stk[, ac(2:100)], params = pars_l)
+      ### Lref
+      Lref <- rep((lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5), n_iter)
+      
+      refpts <- refpts(brps[[stock]])
+      
+      ### get stock status
+      quants <- FLQuants("OM" = (fbar(input$stk[, ac(2:100)])/c(refpts["msy", "harvest"])),
+                       "ind" = (Lmean/Lref[1]))
+      quants_df <- as.data.frame(quants)
+      quants_df$qname <- as.character(quants_df$qname)
+      df_roc <- quants_df %>% pivot_wider(names_from = qname, values_from = data) %>%
+        filter(!is.na(ind)) %>%
+        arrange(desc(ind)) %>%
+        mutate(TPR = ifelse(ind >= 1 & OM <= 1, 1, 0), # true positive rate
+               TNR = ifelse(ind < 1 & OM > 1, 1, 0), # true negative rate
+               FPR = ifelse(ind >= 1 & OM > 1, 1, 0), # false positive rate
+               FNR = ifelse(ind < 1 & OM <= 1, 1, 0), # false negative rate
+               TPR_cum = cumsum(TPR)/sum(TPR),
+               TNR_cum = cumsum(TNR)/sum(TNR),
+               FPR_cum = cumsum(FPR)/sum(FPR),
+               FNR_cum = cumsum(FNR)/sum(FNR),
+               )
+      df_roc$stock <- stock
+      df_roc$k <- lhist$k
+      return(df_roc)
+    }
+    roc <- do.call(rbind, roc)
+    roc$age <- roc$unit <- roc$season <- roc$area <- NULL
+    roc <- roc %>%
+      mutate(label = factor(stock, levels = stocks$stock,
+                            labels = paste0("italic(k)==", stocks$k, "~", 
+                                            stocks$stock)))
+    
+    roc %>%
+      #filter(stock == "bll") %>%
+      ggplot(aes(x = FPR_cum, y = TPR_cum)) +
+      geom_line(size = 0.5) +
+      facet_wrap(~ label, labeller = label_parsed) +
+      geom_abline(slope = 1, size = 0.25) +
+      labs(x = "P(False Positive Rate)", y = "P(True Positive Rate)") +
+      theme_bw(base_size = 8) +
+      scale_x_continuous(breaks = c(0, 0.5, 1)) + 
+      scale_y_continuous(breaks = c(0, 0.5, 1))
+    ggsave(filename = "input/ROC_LFeM.pdf",
+          width = 17, height = 13, units = "cm", dpi = 600)
+
+  }
+}
+
+### ------------------------------------------------------------------------ ###
+### fish for LF=M ####
+### ------------------------------------------------------------------------ ###
+### try various constant Fs and check mean catch length
+
+if (exists("CI")) { 
+  if (isTRUE(CI)) {
+  
+    cis <- foreach(stock = stocks_subset, .errorhandling = "pass", 
+                         .packages = c("FLCore", "mse")) %dopar% {
+        ### load stock
+        input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
+                              "/", stock, ".rds"))
+        stk <- iter(input$stk, 1)
+        sr <- iter(input$sr, 1)
+        residuals(sr) <- residuals(sr) %=% 1
+        rm(input)
+        
+        ### parameters
+        lhist <- stocks[stocks$stock == stock, ]
+        pars_l <- FLPar(a = lhist$a,
+                        b = lhist$b,
+                        Lc = calc_lc(stk = stk[, ac(1:100)], 
+                                     a = lhist$a, b = lhist$b))
+        LFeM <- (lhist$linf + 2*1.5*c(pars_l["Lc"])) / (1 + 2*1.5)
+        refpts <- refpts(brps[[stock]])
+        
+        ### find F where Lmean corresponds to LFeM
+        res <- nlminb(start = c(refpts["msy", "harvest"]),
+                      objective = function(x) {
+          ctrl <- fwdControl(data.frame(year = 2:200,
+                                        quantity = "f",
+                                        val = x))
+          stk_fwd <- fwd(stk, ctrl, sr = sr, sr.residuals = residuals(sr),
+                         sr.residuals.mult = TRUE, maxF = 5)
+          Lmean <- lmean(stk = stk_fwd[, ac(191:200)], params = pars_l)
+          return(sum((median(Lmean) - LFeM)^2))
+        }, lower = 0.01, upper = c(refpts["crash", "harvest"]),
+        control = list(iter.max = 10))
+        
+        ### fish at optimised F
+        ctrl <- fwdControl(data.frame(year = 2:200,
+                                  quantity = "f",
+                                  val = res$par))
+        stk_fwd <- fwd(stk, ctrl, sr = sr, sr.residuals = residuals(sr),
+                       sr.residuals.mult = TRUE, maxF = 5)
+        
+        ### calculate C/I for tsb index
+        ci_tsb <- catch(stk_fwd)/tsb(stk_fwd)
+        ci_tsb <- median(ci_tsb[, ac(191:200)])
+        ### ssb index
+        ci_ssb <- catch(stk_fwd)/ssb(stk_fwd)
+        ci_ssb <- median(ci_ssb[, ac(191:200)])
+        ### normal index
+        input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist,
+                              "/", stock, ".rds"))
+        idx <- quantSums(stk_fwd@stock.n * stk_fwd@stock.wt * 
+                           (stk_fwd@mat %=% c(input$oem@observations$idx$sel[, 1,,,, 1])))
+        ci <- catch(stk_fwd)/idx
+        ci <- median(ci[, ac(191:200)])
+        
+        ### fish at Fmsy and get C/I
+        ctrl <- fwdControl(data.frame(year = 2:200,
+                                  quantity = "f",
+                                  val = c(refpts["msy", "harvest"])))
+        stk_fwd <- fwd(stk, ctrl, sr = sr, sr.residuals = residuals(sr),
+                       sr.residuals.mult = TRUE, maxF = 5)
+        ci_tsb_fmsy <- catch(stk_fwd)/tsb(stk_fwd)
+        ci_tsb_fmsy <- median(ci_tsb_fmsy[, ac(191:200)])
+        ci_ssb_fmsy <- catch(stk_fwd)/ssb(stk_fwd)
+        ci_ssb_fmsy <- median(ci_ssb_fmsy[, ac(191:200)])
+        idx <- quantSums(stk_fwd@stock.n * stk_fwd@stock.wt * 
+                           (stk_fwd@mat %=% c(input$oem@observations$idx$sel[, 1,,,, 1])))
+        ci_fmsy <- catch(stk_fwd)/idx
+        ci_fmsy <- median(ci_fmsy[, ac(191:200)])
+        
+        list(Fmsy = list(idx = ci_fmsy, ssb = ci_ssb_fmsy, tsb = ci_tsb_fmsy),
+             LFeM = list(idx = ci, ssb = ci_ssb, tsb = ci_tsb))
+        
+    }
+    names(cis) <- stocks_subset
+    saveRDS(cis, file = "input/catch_rates.rds")
+
+  }
+}
+  
+### ------------------------------------------------------------------------ ###
+### gc() ####
+### ------------------------------------------------------------------------ ###
+
+gc()
+clusterEvalQ(cl, {gc()})
 
