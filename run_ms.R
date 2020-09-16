@@ -47,10 +47,35 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 stock <- stocks$stock[stock_id]
 
 ### path to input files
-path_in <- paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist, "/")
+path_in <- paste0("input/", n_iter, "_", n_yrs, "/OM_2_mp_input/", fhist, "/")
 input <- readRDS(paste0(path_in, stock, ".rds"))
 
 input$args$nblocks <- n_blocks
+
+### ------------------------------------------------------------------------ ###
+### MP parameters ####
+### ------------------------------------------------------------------------ ###
+
+### default values
+if (!exists("hr")) hr <- "uniform"
+if (!exists("multiplier")) multiplier <- 1
+if (!exists("comp_b")) comp_b <- FALSE
+if (!exists("interval")) interval <- 1
+if (!exists("idxB_lag")) idxB_lag <- 1
+if (!exists("idxB_range_3")) idxB_range_3 <- 1
+if (!exists("upper_constraint")) upper_constraint <- Inf
+if (!exists("lower_constraint")) lower_constraint <- 0
+
+### load reference harvest rates
+hr_ref <- readRDS("input/catch_rates.rds")[[stock]]
+
+
+input <- hr_par(input = input, hr = hr, hr_ref = hr_ref, multiplier = multiplier,
+                comp_b = comp_b, idxB_lag = idxB_lag, 
+                idxB_range_3 = idxB_range_3,
+                interval = interval, upper_constraint = upper_constraint,
+                lower_constraint = lower_constraint)
+
 
 ### ------------------------------------------------------------------------ ###
 ### run  ####
@@ -62,9 +87,13 @@ res <- do.call(mp, input)
 ### save ####
 ### ------------------------------------------------------------------------ ###
 
-path_out <- paste0("output/", n_iter, "_", yrs_proj, "/", fhist, "/")
+### generate file name
+file_out <- paste0(c(hr, multiplier, comp_b, idxB_lag, idxB_range_3, interval, 
+                     upper_constraint, lower_constraint), collapse = "_")
+path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
+                   fhist, "/", paste0(stock, collapse = "_"), "/")
 dir.create(path_out, recursive = TRUE)
-saveRDS(object = res, file = paste0(path_out, stock, ".rds"))
+saveRDS(object = res, file = paste0(path_out, file_out, ".rds"))
 
 
 ### ------------------------------------------------------------------------ ###
