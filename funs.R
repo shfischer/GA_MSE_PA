@@ -696,3 +696,59 @@ collapse_correction <- function(stk, quants = c("catch", "ssb", "fbar"),
   return(qnt_list)
 }
 
+### ------------------------------------------------------------------------ ###
+### harvest rate parameter ####
+### ------------------------------------------------------------------------ ###
+hr_par <- function(input, hr, hr_ref, multiplier, comp_b, interval, 
+                   idxB_lag, idxB_range_3,
+                   upper_constraint, lower_constraint) {
+  
+  ### harvest rate (catch/index)
+  if (identical(hr, "uniform")) {
+    set.seed(33)
+    hr_val <- runif(n = dims(input$om@stock)$iter, min = 0, max = 1)
+  } else if (identical(hr, "Fmsy")) {
+    hr_val <- hr_ref$Fmsy$tsb
+  } else if (identical(hr, "LFeM")) {
+    hr_val <- hr_ref$LFeM$tsb
+  } else if (is.numeric(hr)) {
+    hr_val <- hr
+  }
+  ### set hr
+  input$ctrl$est@args$comp_hr <- hr_val
+  
+  ### biomass index 
+  input$ctrl$est@args$comp_i <- TRUE
+  input$ctrl$est@args$idxB_lag <- idxB_lag
+  input$ctrl$est@args$idxB_range_3 <- idxB_range_3
+  
+  ### multiplier
+  input$ctrl$est@args$comp_m <- multiplier
+  
+  ### biomass safeguard
+  if (isTRUE(comp_b)) {
+    input$ctrl$est@args$comp_b <- TRUE
+  } else {
+    input$ctrl$est@args$comp_b <- FALSE
+  }
+  
+  ### catch interval (default: 1)
+  if (is.numeric(interval)) {
+    input$ctrl$hcr@args$interval <- interval
+    input$ctrl$isys@args$interval <- interval
+  }
+  
+  ### catch constraint
+  input$ctrl$isys@args$upper_constraint <- upper_constraint
+  input$ctrl$isys@args$lower_constraint <- lower_constraint
+  
+  ### turn off some components
+  input$ctrl$est@args$comp_r <- FALSE
+  input$ctrl$est@args$comp_f <- FALSE
+  input$ctrl$est@args$comp_c <- FALSE
+  
+  return(input)
+}
+
+
+
