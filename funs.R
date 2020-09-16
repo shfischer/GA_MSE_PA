@@ -75,6 +75,7 @@ obs_generic <- function(stk, observations, deviances, args, tracking,
 est_comps <- function(stk, idx, tracking, args,
                       comp_r = FALSE, comp_f = FALSE, comp_b = FALSE,
                       comp_i = FALSE, comp_c = TRUE, comp_m = FALSE,
+                      comp_hr = FALSE,
                       idxB_lag = 1, idxB_range_1 = 2, idxB_range_2 = 3,
                       idxB_range_3 = 1,
                       catch_lag = 1, catch_range = 1,
@@ -151,6 +152,18 @@ est_comps <- function(stk, idx, tracking, args,
     m_res <- 1
   }
   tracking["multiplier", ac(ay)] <- m_res
+  
+  ### component hr: harvest rate (catch/idx)
+  if (!isFALSE(comp_hr)) {
+    hr_res <- comp_hr
+    ### subset to iteration when simultion is split into blocks
+    if (isTRUE(length(comp_hr) > dims(stk)$iter)) {
+      hr_res <- comp_hr[as.numeric(dimnames(stk)$iter)]
+    }
+  } else {
+    hr_res <- 1
+  }
+  tracking["comp_hr", ac(ay)] <- hr_res
   
   return(list(stk = stk, tracking = tracking))
   
@@ -299,7 +312,7 @@ phcr_comps <- function(tracking, args,
   ay <- args$ay
   
   hcrpars <- tracking[c("comp_r", "comp_f", "comp_b", "comp_i", 
-                        "comp_c", "multiplier",
+                        "comp_hr", "comp_c", "multiplier",
                         "exp_r", "exp_f", "exp_b"), ac(ay)]
   hcrpars["exp_r", ] <- exp_r
   hcrpars["exp_f", ] <- exp_f
@@ -349,7 +362,8 @@ hcr_comps <- function(hcrpars, args, tracking, interval = 2,
                 (hcrpars["comp_f", ]^hcrpars["exp_f", ]) *
                 (hcrpars["comp_b", ]^hcrpars["exp_b", ]) *
                  hcrpars["comp_i"] *
-                hcrpars["multiplier", ] 
+                 hcrpars["comp_hr"] *
+                 hcrpars["multiplier", ] 
     #advice <- apply(X = hcrpars, MARGIN = 6, prod, na.rm = TRUE)
     
   } else {
