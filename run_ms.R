@@ -291,7 +291,8 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   dir.create(path_out, recursive = TRUE)
   
   ### objective function elements
-  obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA", "ICES_PA2")
+  obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA", "ICES_PA2",
+                        "obj_ICES_MSYPA")
   obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV,
                                  obj_ICES_PA, obj_ICES_PA2, obj_ICES_MSYPA)]
   obj_desc <- paste0("obj_", paste0(obj_desc, collapse = "_"), collapse = "")
