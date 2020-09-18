@@ -295,7 +295,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   ### objective function elements
   obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA", "ICES_PA2",
-                        "obj_ICES_MSYPA")
+                        "ICES_MSYPA")
   obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV,
                                  obj_ICES_PA, obj_ICES_PA2, obj_ICES_MSYPA)]
   obj_desc <- paste0("obj_", paste0(obj_desc, collapse = "_"), collapse = "")
@@ -332,10 +332,14 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
         return(tmp)
       })
       res_add <- do.call(rbind, res_add)
+      if (isTRUE(nrow(res_add) > 1)) {
+        res_add <- data.frame(res_add, stringsAsFactors = FALSE)
+      } else {
+        res_add <- data.frame(t(res_add), stringsAsFactors = FALSE)
+      }
       cat("adding GA suggestions:\n")
       print(res_add)
       ### add to GA suggestions
-      colnames(res_add) <- NULL
       ga_suggestions <- rbind(ga_suggestions, res_add)
       ga_suggestions <- unique(ga_suggestions)
     }
