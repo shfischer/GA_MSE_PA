@@ -45,6 +45,8 @@ if (length(args) > 0) {
     if (!exists("obj_ICES_PA")) obj_ICES_PA <- FALSE
     if (!exists("obj_ICES_PA2")) obj_ICES_PA2 <- FALSE
     if (!exists("obj_ICES_MSYPA")) obj_ICES_MSYPA <- FALSE
+    
+    if (!exists("add_suggestions")) add_suggestions <- TRUE
   }
 
 } else {
@@ -273,6 +275,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ga_suggestions[, pos_fixed] <- rep(val_fixed, 
                                        each = nrow(ga_suggestions))
   ga_suggestions <- unique(ga_suggestions)
+  names(ga_suggestions) <- ga_names
   
   ### ---------------------------------------------------------------------- ###
   ### paths ####
@@ -283,7 +286,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   scn_pars <- ga_names[setdiff(seq_along(ga_names), pos_default)]
   scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
     scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
-  scn_pars <- paste0(scn_pars, collapse = "-")
+  scn_pars_c <- paste0(scn_pars, collapse = "-")
   #scenario <- "trial"
   path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
                      fhist, "/",
@@ -302,6 +305,41 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   saveRDS(object = input, file = inp_file, compress = FALSE)
   rm(input)
   gc()
+  
+  ### ------------------------------------------------------------------------ ###
+  ### check if previous solutions can be used as suggestions ####
+  ### ------------------------------------------------------------------------ ###
+  
+  if (isTRUE(add_suggestions)) {
+    ### find files
+    avail <- list.files(path_out, pattern = paste0("--", obj_desc, "_res.rds"))
+    avail <- gsub(x = avail, pattern = paste0("--", obj_desc, "_res.rds"),
+                      replacement = "")
+    avail <- strsplit(x = avail, split = "-")
+    ### need to have fewer parameters
+    avail <- avail[which(sapply(avail, length) < length(scn_pars))]
+    ### skip parameters not used
+    avail <- avail[which(sapply(avail, function(x) all(x %in% scn_pars)))]
+    if (isTRUE(length(avail) > 0)) {
+      ### load results
+      res_add <- lapply(avail, function(x) {
+        tmp <- readRDS(file = paste0(path_out, paste0(x, collapse = "-"), "--",
+                                     obj_desc, "_res.rds"))
+        tmp <- tmp@solution[1, ]
+        if (is.na(tmp[which("upper_constraint" == names(tmp))])) {
+          tmp[which("upper_constraint" == names(tmp))] <- Inf
+        }
+        return(tmp)
+      })
+      res_add <- do.call(rbind, res_add)
+      cat("adding GA suggestions:\n")
+      print(res_add)
+      ### add to GA suggestions
+      colnames(res_add) <- NULL
+      ga_suggestions <- rbind(ga_suggestions, res_add)
+      ga_suggestions <- unique(ga_suggestions)
+    }
+  }
   
   ### ---------------------------------------------------------------------- ###
   ### run MSE with GA ####
@@ -331,7 +369,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   
   ### save result
-  saveRDS(object = res, file = paste0(path_out, scn_pars, 
+  saveRDS(object = res, file = paste0(path_out, scn_pars_c, 
                                       "--", obj_desc, "_res.rds"))
   
   ### ---------------------------------------------------------------------- ###
@@ -355,7 +393,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
     })
     scns[sapply(scns, is.null)] <- NULL
     #scns <- scns[order(sapply(scns, "[[", "obj"), decreasing = TRUE)]
-    saveRDS(scns, file = paste0(path_out, scn_pars, "--", obj_desc, "_runs.rds"))
+    saveRDS(scns, file = paste0(path_out, scn_pars_c, "--", obj_desc, "_runs.rds"))
   }
 
 ### other catch rules
