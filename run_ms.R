@@ -319,29 +319,31 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
     ### need to have fewer parameters
     avail <- avail[which(sapply(avail, length) < length(scn_pars))]
     ### skip parameters not used
-    avail <- avail[which(sapply(avail, function(x) all(x %in% scn_pars)))]
     if (isTRUE(length(avail) > 0)) {
-      ### load results
-      res_add <- lapply(avail, function(x) {
-        tmp <- readRDS(file = paste0(path_out, paste0(x, collapse = "-"), "--",
-                                     obj_desc, "_res.rds"))
-        tmp <- tmp@solution[1, ]
-        if (is.na(tmp[which("upper_constraint" == names(tmp))])) {
-          tmp[which("upper_constraint" == names(tmp))] <- Inf
+      avail <- avail[which(sapply(avail, function(x) all(x %in% scn_pars)))]
+      if (isTRUE(length(avail) > 0)) {
+        ### load results
+        res_add <- lapply(avail, function(x) {
+          tmp <- readRDS(file = paste0(path_out, paste0(x, collapse = "-"), "--",
+                                       obj_desc, "_res.rds"))
+          tmp <- tmp@solution[1, ]
+          if (is.na(tmp[which("upper_constraint" == names(tmp))])) {
+            tmp[which("upper_constraint" == names(tmp))] <- Inf
+          }
+          return(tmp)
+        })
+        res_add <- do.call(rbind, res_add)
+        if (isTRUE(nrow(res_add) > 1)) {
+          res_add <- data.frame(res_add, stringsAsFactors = FALSE)
+        } else {
+          res_add <- data.frame(t(res_add), stringsAsFactors = FALSE)
         }
-        return(tmp)
-      })
-      res_add <- do.call(rbind, res_add)
-      if (isTRUE(nrow(res_add) > 1)) {
-        res_add <- data.frame(res_add, stringsAsFactors = FALSE)
-      } else {
-        res_add <- data.frame(t(res_add), stringsAsFactors = FALSE)
+        cat("adding GA suggestions:\n")
+        print(res_add)
+        ### add to GA suggestions
+        ga_suggestions <- rbind(ga_suggestions, res_add)
+        ga_suggestions <- unique(ga_suggestions)
       }
-      cat("adding GA suggestions:\n")
-      print(res_add)
-      ### add to GA suggestions
-      ga_suggestions <- rbind(ga_suggestions, res_add)
-      ga_suggestions <- unique(ga_suggestions)
     }
   }
   
