@@ -336,7 +336,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
         if (isTRUE(nrow(res_add) > 1)) {
           res_add <- data.frame(res_add, stringsAsFactors = FALSE)
         } else {
-          res_add <- data.frame(t(res_add), stringsAsFactors = FALSE)
+          res_add <- data.frame(res_add, stringsAsFactors = FALSE)
         }
         cat("adding GA suggestions:\n")
         print(res_add)
