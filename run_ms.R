@@ -45,8 +45,9 @@ if (length(args) > 0) {
     if (!exists("obj_ICES_PA")) obj_ICES_PA <- FALSE
     if (!exists("obj_ICES_PA2")) obj_ICES_PA2 <- FALSE
     if (!exists("obj_ICES_MSYPA")) obj_ICES_MSYPA <- FALSE
-    
+    ### GA
     if (!exists("add_suggestions")) add_suggestions <- TRUE
+    if (!exists("stat_yrs")) stat_yrs <- "all"
   }
 
 } else {
@@ -361,6 +362,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
               obj_SSB = obj_SSB, obj_F = obj_F, obj_C = obj_C, 
               obj_risk = obj_risk, obj_ICV = obj_ICV, obj_ICES_PA = obj_ICES_PA,
               obj_ICES_PA2 = obj_ICES_PA2, obj_ICES_MSYPA = obj_ICES_MSYPA,
+              stat_yrs = stat_yrs,
               path = path_out, check_file = TRUE,
               scenario = scenario,
               suggestions = ga_suggestions, lower = ga_lower, upper = ga_upper,

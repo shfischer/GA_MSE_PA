@@ -8,6 +8,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                    obj_SSB = TRUE, obj_C = TRUE, obj_F = FALSE,
                    obj_risk = TRUE, obj_ICV = TRUE, obj_ICES_PA = FALSE,
                    obj_ICES_PA2 = FALSE, obj_ICES_MSYPA = FALSE,
+                   stat_yrs = "all",
                    ...) {
   
   ### housekeeping
@@ -40,6 +41,10 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       stats <- readRDS(paste0(path, run_i, ".rds"))
       ### set flag for running MP
       run_mp <- FALSE
+      ### use different period to calculate stats?
+      if (!identical(stat_yrs, "all")) {
+        if (any(grepl(x = rownames(stats), pattern = stat_yrs))) run_mp <- TRUE
+      }
     } else {
       run_mp <- TRUE
     }
@@ -82,7 +87,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     }
     
     ### calculate stats
-    stats <- mp_stats(input = input, res_mp = res_mp, 
+    stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs,
                       collapse_correction = collapse_correction)
     ### save result in file
     if (isTRUE(check_file)) {
@@ -91,36 +96,50 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     
   }
   
+  ### prepare stats for objective function
+  if (identical(stat_yrs, "all")) {
+    SSB_rel <- stats["SSB_rel", ]
+    Catch_rel <- stats["Catch_rel", ]
+    Fbar_rel <- stats["Fbar_rel", ]
+    risk_Blim <- stats["risk_Blim", ]
+    ICV <- stats["ICV", ]
+  } else if (identical(stat_yrs, "last10")) {
+    SSB_rel <- stats["SSB_rel_last10", ]
+    Catch_rel <- stats["Catch_rel_last10", ]
+    Fbar_rel <- stats["Fbar_rel_last10", ]
+    risk_Blim <- stats["risk_Blim_last10", ]
+    ICV <- stats["ICV_last10", ]
+  }
   ### objective function
   obj <- 0
   ### MSY objectives: target MSY reference values
-  if (isTRUE(obj_SSB)) obj <- obj - sum(abs(unlist(stats["SSB_rel", ]) - 1))
-  if (isTRUE(obj_C)) obj <- obj - sum(abs(unlist(stats["Catch_rel", ]) - 1))
-  if (isTRUE(obj_F)) obj <- obj - sum(abs(unlist(stats["Fbar_rel", ]) - 1))
+  if (isTRUE(obj_SSB)) obj <- obj - sum(abs(unlist(SSB_rel) - 1))
+  if (isTRUE(obj_C)) obj <- obj - sum(abs(unlist(Catch_rel) - 1))
+  if (isTRUE(obj_F)) obj <- obj - sum(abs(unlist(Fbar_rel) - 1))
   ### reduce risk & ICV
-  if (isTRUE(obj_risk)) obj <- obj - sum(unlist(stats["risk_Blim", ]))
-  if (isTRUE(obj_ICV)) obj <- obj - sum(unlist(stats["ICV", ]))
+  if (isTRUE(obj_risk)) obj <- obj - sum(unlist(risk_Blim))
+  if (isTRUE(obj_ICV)) obj <- obj - sum(unlist(ICV))
   ### ICES approach: maximise catch while keeping risk <5%
   if (isTRUE(obj_ICES_PA)) {
-    obj <- obj + sum(unlist(stats["Catch_rel", ]))
+    obj <- obj + sum(unlist(Catch_rel))
     ### penalise risk above 5%
-    obj <- obj - sum(ifelse(test = unlist(stats["risk_Blim", ]) <= 0.05,
+    obj <- obj - sum(ifelse(test = unlist(risk_Blim) <= 0.05,
                             yes = 0,
                             no = 10)) 
   }
   if (isTRUE(obj_ICES_PA2)) {
-    obj <- obj + sum(unlist(stats["Catch_rel", ]))
+    obj <- obj + sum(unlist(Catch_rel))
     ### penalise risk above 5% - gradual
-    obj <- obj - sum(penalty(x = unlist(stats["risk_Blim", ]), 
+    obj <- obj - sum(penalty(x = unlist(risk_Blim), 
                              negative = FALSE, max = 1, inflection = 0.06, 
                              steepness = 0.5e+3))
   }
   ### MSY target but replace risk with PA objective
     if (isTRUE(obj_ICES_MSYPA)) {
-    obj <- obj - sum(abs(unlist(stats["SSB_rel", ]) - 1)) -
-      sum(abs(unlist(stats["Catch_rel", ]) - 1)) -
-      sum(unlist(stats["ICV", ])) -
-      sum(penalty(x = unlist(stats["risk_Blim", ]), 
+    obj <- obj - sum(abs(unlist(SSB_rel) - 1)) -
+      sum(abs(unlist(Catch_rel) - 1)) -
+      sum(unlist(ICV)) -
+      sum(penalty(x = unlist(risk_Blim), 
                              negative = FALSE, max = 5, inflection = 0.06, 
                              steepness = 0.5e+3))
       ### max penalty: 5
@@ -143,7 +162,8 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
 ### ------------------------------------------------------------------------ ###
 
 ### function for calculating stats
-mp_stats <- function(input, res_mp, collapse_correction = TRUE) {
+mp_stats <- function(input, res_mp, stat_yrs = "all", 
+                     collapse_correction = TRUE) {
   
   mapply(function(input_i, res_mp_i) {
     
@@ -181,19 +201,38 @@ mp_stats <- function(input, res_mp, collapse_correction = TRUE) {
     TAC_intvl <- input_i$ctrl.mp$ctrl.hcr@args$interval
     
     ### some stats
-    stats_i <- list(
-      risk_Blim = mean(c(SSBs < Blim), na.rm = TRUE),
-      risk_Bmsy = mean(c(SSBs < Bmsy), na.rm = TRUE),
-      risk_halfBmsy = mean(c(SSBs < Bmsy/2), na.rm = TRUE),
-      risk_collapse = mean(c(SSBs < 1), na.rm = TRUE),
-      SSB = median(c(SSBs), na.rm = TRUE), Fbar = median(c(Fs), na.rm = TRUE),
-      Catch = median(c(Cs), na.rm = TRUE),
-      SSB_rel = median(c(SSBs/Bmsy), na.rm = TRUE),
-      Fbar_rel = median(c(Fs/Fmsy), na.rm = TRUE),
-      Catch_rel = median(c(Cs/Cmsy), na.rm = TRUE),
-      ICV = iav(catch(res_mp_i@stock), from = 100, period = TAC_intvl,
-                summary_all = median)
-    )
+    stats_list <- function(SSBs, Cs, Fs, Cs_long, Blim, Bmsy, Fmsy, Cmsy,
+                           TAC_intvl) {
+      list(
+        risk_Blim = mean(c(SSBs < Blim), na.rm = TRUE),
+        risk_Bmsy = mean(c(SSBs < Bmsy), na.rm = TRUE),
+        risk_halfBmsy = mean(c(SSBs < Bmsy/2), na.rm = TRUE),
+        risk_collapse = mean(c(SSBs < 1), na.rm = TRUE),
+        SSB = median(c(SSBs), na.rm = TRUE), Fbar = median(c(Fs), na.rm = TRUE),
+        Catch = median(c(Cs), na.rm = TRUE),
+        SSB_rel = median(c(SSBs/Bmsy), na.rm = TRUE),
+        Fbar_rel = median(c(Fs/Fmsy), na.rm = TRUE),
+        Catch_rel = median(c(Cs/Cmsy), na.rm = TRUE),
+        ICV = iav(Cs_long, from = 100, period = TAC_intvl,
+                  summary_all = median)
+      )
+    }
+    stats_i <- stats_list(SSBs = SSBs, Cs = Cs, Fs = Fs, 
+                          Cs_long = catch(res_mp_i@stock), 
+                          Blim = Blim, Bmsy = Bmsy, Fmsy = Fmsy, Cmsy = Cmsy,
+                          TAC_intvl = TAC_intvl)
+    ### additional time period?
+    if (identical(stat_yrs, "last10")) {
+      yrs10 <- tail(dimnames(SSBs)$year, 10)
+      yrs10p1 <- tail(dimnames(SSBs)$year, 11)
+      stats_i_last10 <- c(stats_list(SSBs = SSBs[, yrs10], Cs = Cs[, yrs10],
+                                     Fs = Fs[, yrs10], Cs_long = Cs[, yrs10p1], 
+                                     Blim = Blim, Bmsy = Bmsy, Fmsy = Fmsy, 
+                                     Cmsy = Cmsy, TAC_intvl = TAC_intvl))
+      names(stats_i_last10) <- paste0(names(stats_i_last10), "_last10")
+      stats_i <- c(stats_i, stats_i_last10)
+    }
+    
     return(stats_i)
   }, input, res_mp)
   
