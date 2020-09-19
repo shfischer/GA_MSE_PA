@@ -313,8 +313,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   if (isTRUE(add_suggestions)) {
     ### find files
-    avail <- list.files(path_out, pattern = paste0("--", obj_desc, "_res.rds"))
-    avail <- gsub(x = avail, pattern = paste0("--", obj_desc, "_res.rds"),
+    file_ext <- ifelse(stat_yrs == "last10", "_res_last10.rds", "_res.rds")
+    avail <- list.files(path_out, pattern = paste0("--", obj_desc, file_ext))
+    avail <- gsub(x = avail, pattern = paste0("--", obj_desc, file_ext),
                       replacement = "")
     avail <- strsplit(x = avail, split = "-")
     ### need to have fewer parameters
@@ -378,7 +379,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   ### save result
   saveRDS(object = res, file = paste0(path_out, scn_pars_c, 
-                                      "--", obj_desc, "_res.rds"))
+                                      "--", obj_desc, file_ext))
   
   ### ---------------------------------------------------------------------- ###
   ### collate runs ####
@@ -391,7 +392,8 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
       sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE)
     })
     scns <- lapply(files, function(x) {
-      pars <- an(strsplit(sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE), split = "_")[[1]])
+      pars <- an(strsplit(sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE), 
+                          split = "_")[[1]])
       names(pars) <- ga_names
       ### only keep scenarios where requested parameters are changed
       if (!all(ga_default[pos_default] == pars[pos_default])) return(NULL)
@@ -427,8 +429,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   saveRDS(res_mp, paste0(path_out, file_name, "_mp.rds"))
   
   ### stats
-  stats <- mp_stats(input = input, res_mp = res_mp)
-  saveRDS(stats, paste0(path_out, file_name, "_stats.rds"))
+  stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs)
+  saveRDS(stats, paste0(path_out, file_name, "_stats", 
+                        ifelse(stat_yrs == "last10", "_last10", ""), ".rds"))
   
 }
 
