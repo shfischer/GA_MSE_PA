@@ -388,6 +388,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   if (isTRUE(collate)) {
     files <- list.files(path = path_out, pattern = "[0-9]*[0-9].rds",
                         full.names = FALSE)
+    files <- files[grep(x = files, pattern = "--", invert = TRUE)]
     names(files) <- sapply(files, function(x) {
       sub(x = x, pattern = ".rds", replacement = "", fixed = TRUE)
     })
