@@ -43,7 +43,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       run_mp <- FALSE
       ### use different period to calculate stats?
       if (!identical(stat_yrs, "all")) {
-        if (any(grepl(x = rownames(stats), pattern = stat_yrs))) run_mp <- TRUE
+        if (!any(grepl(x = rownames(stats), pattern = stat_yrs))) run_mp <- TRUE
       }
     } else {
       run_mp <- TRUE
