@@ -404,7 +404,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
     })
     scns[sapply(scns, is.null)] <- NULL
     #scns <- scns[order(sapply(scns, "[[", "obj"), decreasing = TRUE)]
-    saveRDS(scns, file = paste0(path_out, scn_pars_c, "--", obj_desc, "_runs.rds"))
+    saveRDS(scns, file = paste0(path_out, scn_pars_c, "--", obj_desc, "_runs",
+                              ifelse(identical(stat_yrs, "last10"), "_last10", ""), 
+                              ".rds"))
   }
 
 ### other catch rules
