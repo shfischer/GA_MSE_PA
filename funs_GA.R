@@ -68,7 +68,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       x$ctrl.mp$ctrl.phcr@args$exp_f <- params[6]
       x$ctrl.mp$ctrl.phcr@args$exp_b <- params[7]
       x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
-      x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
+      x$ctrl.mp$ctrl.is@args$interval <- params[8]
       x$ctrl.mp$ctrl.is@args$upper_constraint <- params[10]
       x$ctrl.mp$ctrl.is@args$lower_constraint <- params[11]
       
