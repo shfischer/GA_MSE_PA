@@ -343,8 +343,10 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
       if (isTRUE(length(avail) > 0)) {
         ### load results
         res_add <- lapply(avail, function(x) {
-          tmp <- readRDS(file = paste0(path_out, paste0(x, collapse = "-"), "--",
-                                       obj_desc, "_res.rds"))
+          tmp <- readRDS(file = 
+            paste0(path_out, paste0(x, collapse = "-"), "--", obj_desc, "_res",
+                   ifelse(identical(stat_yrs, "all"), "", paste0("_", stat_yrs)), 
+                   ".rds"))
           tmp <- tmp@solution[1, ]
           if (is.na(tmp[which("upper_constraint" == names(tmp))])) {
             tmp[which("upper_constraint" == names(tmp))] <- Inf
