@@ -27,7 +27,7 @@ if (length(args) > 0) {
   if (!exists("n_yrs")) n_yrs <- 50
   if (!exists("fhist")) fhist <- "one-way"
   if (!exists("catch_rule")) catch_rule <- "catch_rule"
-  if (!exists("scenario")) scenario <- "test"
+  if (!exists("scenario")) scenario <- "uncertainty_cap"
   ### GA search
   if (!exists("ga_search")) ga_search <- TRUE
   if (isTRUE(ga_search)) {
@@ -278,6 +278,19 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ga_suggestions <- unique(ga_suggestions)
   names(ga_suggestions) <- ga_names
   
+  ### multiplier only: run all possible values
+  if (exists("multiplier")) {
+    if (isTRUE(multiplier) & all(pos_default %in% c(1:8, 10:11))) {
+      m_vals <- seq(from = ga_lower[9], to = ga_upper[9], by = 0.01)
+      ga_suggestions[1, ] <- ga_default
+      ga_suggestions <- ga_suggestions[rep(1, length(m_vals)), ]
+      ga_suggestions$multiplier <- m_vals
+      ### adapt GA dimensions
+      maxiter <- run <- 1
+      popSize <- length(m_vals)
+    }
+  }
+  
   ### ---------------------------------------------------------------------- ###
   ### paths ####
   ### ---------------------------------------------------------------------- ###
@@ -295,10 +308,14 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   dir.create(path_out, recursive = TRUE)
   
   ### objective function elements
-  obj_fun_elements <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA", "ICES_PA2",
+  obj_fun <- c("SSB", "F", "C", "risk", "ICV", "ICES_PA", "ICES_PA2",
                         "ICES_MSYPA")
-  obj_desc <- obj_fun_elements[c(obj_SSB, obj_F, obj_C, obj_risk, obj_ICV,
-                                 obj_ICES_PA, obj_ICES_PA2, obj_ICES_MSYPA)]
+  obj_fun_use <- mget(x = paste0("obj_", obj_fun), 
+                           ifnotfound = FALSE)
+  for (i in seq_along(obj_fun)) {
+    assign(x = paste0("obj_", obj_fun[i]), obj_fun_use[[i]])
+  }
+  obj_desc <- obj_fun[unlist(obj_fun_use)]
   obj_desc <- paste0("obj_", paste0(obj_desc, collapse = "_"), collapse = "")
   
   ### store input data in temp file
@@ -311,9 +328,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ### check if previous solutions can be used as suggestions ####
   ### ------------------------------------------------------------------------ ###
   
+  file_ext <- ifelse(stat_yrs == "last10", "_res_last10.rds", "_res.rds")
   if (isTRUE(add_suggestions)) {
     ### find files
-    file_ext <- ifelse(stat_yrs == "last10", "_res_last10.rds", "_res.rds")
     avail <- list.files(path_out, pattern = paste0("--", obj_desc, file_ext))
     avail <- gsub(x = avail, pattern = paste0("--", obj_desc, file_ext),
                       replacement = "")
