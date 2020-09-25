@@ -280,7 +280,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   ### multiplier only: run all possible values
   if (exists("multiplier")) {
-    if (isTRUE(multiplier) & all(pos_default %in% c(1:8, 10:11))) {
+    if (isTRUE(multiplier) & all(c(1:8, 10:11) %in% pos_default)) {
       m_vals <- seq(from = ga_lower[9], to = ga_upper[9], by = 0.01)
       ga_suggestions[1, ] <- ga_default
       ga_suggestions <- ga_suggestions[rep(1, length(m_vals)), ]
