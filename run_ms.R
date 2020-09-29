@@ -66,11 +66,14 @@ if (!exists("idxB_range_3")) idxB_range_3 <- 1
 if (!exists("upper_constraint")) upper_constraint <- Inf
 if (!exists("lower_constraint")) lower_constraint <- 0
 
-### load reference harvest rates
+### load reference values
 hr_ref <- readRDS("input/catch_rates.rds")[[stock]]
+brp <- readRDS("input/brps.rds")[[stock]]
+lhist <- stocks[stocks$stock == stock, ]
 
 
-input <- hr_par(input = input, hr = hr, hr_ref = hr_ref, multiplier = multiplier,
+input <- hr_par(input = input, brp = brp, lhist = lhist,
+                hr = hr, hr_ref = hr_ref, multiplier = multiplier,
                 comp_b = comp_b, idxB_lag = idxB_lag, 
                 idxB_range_3 = idxB_range_3,
                 interval = interval, upper_constraint = upper_constraint,

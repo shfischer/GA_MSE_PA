@@ -699,7 +699,8 @@ collapse_correction <- function(stk, quants = c("catch", "ssb", "fbar"),
 ### ------------------------------------------------------------------------ ###
 ### harvest rate parameter ####
 ### ------------------------------------------------------------------------ ###
-hr_par <- function(input, hr, hr_ref, multiplier, comp_b, interval, 
+hr_par <- function(input, brp, lhist,
+                   hr, hr_ref, multiplier, comp_b, interval, 
                    idxB_lag, idxB_range_3,
                    upper_constraint, lower_constraint) {
   
@@ -713,6 +714,33 @@ hr_par <- function(input, hr, hr_ref, multiplier, comp_b, interval,
     hr_val <- hr_ref$LFeM$tsb
   } else if (is.numeric(hr)) {
     hr_val <- hr
+  } else if (identical(hr, "length")) {
+    ### determine harvest rate based on historical mean catch length
+    stk <- FLCore::window(input$om@stock, end = 100)
+    Lc <- calc_lc(stk = stk, a = lhist$a, b = lhist$b)
+    ### reference length
+    LFeM <- (lhist$linf + 2*1.5*c(Lc)) / (1 + 2*1.5)
+    ### mean catch length index (including noise)
+    idxL <- input$oem@observations$idx$idxL * input$oem@deviances$idx$idxL
+    idxL <- window(idxL, end = 100)
+    ### relative to reference length
+    idxL <- idxL / LFeM
+    ### biomass index
+    idxB <- input$oem@observations$idx$idxB * input$oem@deviances$idx$idxB
+    idxB <- window(idxB, end = 100)
+    ### historical harvest rate
+    CI <- catch(stk)/idxB
+    ### average of harvest rates where catch length is above reference
+    hr_val <- sapply(dimnames(stk)$iter, function(i){
+      # i = 2
+      # idxLi <- idxL[,,,,, i]
+      # CIi <- CI[,,,,, i]
+      # pos <- which(idxLi < 1)
+      # idxLi[, pos] <- NA
+      # CIi[, pos] <- NA
+      # plot(FLQuants(idxL = idxLi, CI = CIi))
+      mean(CI[, which(idxL[,,,,, i] >= 1),,,, i])
+    })
   }
   ### set hr
   input$ctrl$est@args$comp_hr <- hr_val
