@@ -78,9 +78,9 @@ lhist <- stocks[stocks$stock == stock, ]
 ### HR rule parameters
 hr_params <- data.frame(multiplier = multiplier,
                         comp_b = comp_b,
-                        interval = interval,
                         idxB_lag = idxB_lag,
                         idxB_range_3 = idxB_range_3,
+                        interval = interval,
                         upper_constraint = upper_constraint,
                         lower_constraint = lower_constraint)
 
