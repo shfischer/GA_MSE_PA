@@ -1,8 +1,8 @@
 #!/bin/sh
 ## job name
-#PBS -N HR_uniform
+#PBS -N HR_length_mult
 ## maximum runtime
-#PBS -l walltime=10:00:00
+#PBS -l walltime=12:00:00
 ## select number of nodes, cpus (per node) and memory (per node)
 #PBS -l select=1:ncpus=24:mem=124gb
 ## standard output standard error
@@ -11,7 +11,7 @@
 ## request disk space for temporary directory
 ###PBS -l tmpspace=10gb
 ## array job
-#PBS -J 21-23
+#PBS -J 21-29
 ## start job after another job finished?
 ###PBS -W depend=afterany:1624711.pbs
 
@@ -36,7 +36,7 @@ source activate R_2020
 echo "starting the simulations..."
 ### run job
 ### when running with MPI, worker count is one less than selected cores
-R CMD BATCH --vanilla --quiet "--args n_workers=4 n_blocks=4 stock_id=$PBS_ARRAY_INDEX n_iter=10000 n_yrs=100 fhist='random' hr='uniform' multiplier=1 comp_b=FALSE interval=1 idxB_lag=1 idxB_range_3=1 upper_constraint=Inf lower_constraint=0 scenario='test'" $HOME/git/wklife9_GA-harvest_rate/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+R CMD BATCH --vanilla --quiet "--args n_workers=20 n_blocks=1 stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='random' hr='length' multiplier=seq(from=0,to=1,length.out=101) comp_b=TRUE interval=1 idxB_lag=1 idxB_range_3=1 upper_constraint=Inf lower_constraint=0 scenario='length' saveMP=FALSE stats=TRUE collate=TRUE" $HOME/git/wklife9_GA-harvest_rate/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
 ## $PBS_ARRAY_INDEX
 
 echo ""

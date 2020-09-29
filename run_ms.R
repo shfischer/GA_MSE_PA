@@ -9,6 +9,10 @@ print(args)
 ### evaluate arguments passed to R
 for (i in seq_along(args)) eval(parse(text = args[[i]]))
 
+if (!exists("saveMP")) saveMP <- TRUE
+if (!exists("stats")) stats <- TRUE
+if (!exists("collate")) collate <- FALSE
+
 ### ------------------------------------------------------------------------ ###
 ### set up environment ####
 ### ------------------------------------------------------------------------ ###
@@ -71,33 +75,94 @@ hr_ref <- readRDS("input/catch_rates.rds")[[stock]]
 brp <- readRDS("input/brps.rds")[[stock]]
 lhist <- stocks[stocks$stock == stock, ]
 
+### HR rule parameters
+hr_params <- data.frame(multiplier = multiplier,
+                        comp_b = comp_b,
+                        interval = interval,
+                        idxB_lag = idxB_lag,
+                        idxB_range_3 = idxB_range_3,
+                        upper_constraint = upper_constraint,
+                        lower_constraint = lower_constraint)
 
-input <- hr_par(input = input, brp = brp, lhist = lhist,
-                hr = hr, hr_ref = hr_ref, multiplier = multiplier,
-                comp_b = comp_b, idxB_lag = idxB_lag, 
-                idxB_range_3 = idxB_range_3,
-                interval = interval, upper_constraint = upper_constraint,
-                lower_constraint = lower_constraint)
 
+if (isTRUE(n_workers > 1 & n_blocks == 1)) {
+  `%do_tmp%` <- `%dopar%`
+} else {
+  `%do_tmp%` <- `%do%`
+}
+
+. <- foreach(hr_i = seq(nrow(hr_params))) %do_tmp% {
+  
+  par_i <- hr_params[hr_i, ]
+  
+  input <- hr_par(input = input, brp = brp, lhist = lhist,
+                  hr = hr, hr_ref = hr_ref, 
+                  multiplier = par_i$multiplier,
+                  comp_b = par_i$comp_b, idxB_lag = par_i$idxB_lag, 
+                  idxB_range_3 = par_i$idxB_range_3,
+                  interval = par_i$interval, 
+                  upper_constraint = par_i$upper_constraint,
+                  lower_constraint = par_i$lower_constraint)
+  
+  ### ------------------------------------------------------------------------ ###
+  ### run  ####
+  ### ------------------------------------------------------------------------ ###
+  
+  res <- do.call(mp, input)
+  
+  ### ------------------------------------------------------------------------ ###
+  ### save ####
+  ### ------------------------------------------------------------------------ ###
+  
+  ### generate file name
+  file_out <- paste0(c(hr, par_i$multiplier, par_i$comp_b, par_i$idxB_lag, 
+                       par_i$idxB_range_3, par_i$interval, 
+                       par_i$upper_constraint, par_i$lower_constraint), 
+                     collapse = "_")
+  path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
+                     fhist, "/", paste0(stock, collapse = "_"), "/")
+  dir.create(path_out, recursive = TRUE)
+  if (isTRUE(saveMP))
+    saveRDS(object = res, file = paste0(path_out, "mp_", file_out, ".rds"))
+  
+  ### ---------------------------------------------------------------------- ###
+  ### stats ####
+  ### ---------------------------------------------------------------------- ###
+  
+  if (isTRUE(stats)) {
+    res_stats <- mp_stats(input = list(input), res_mp = list(res), 
+                          collapse_correction = TRUE)
+    res_stats <- cbind(stock = stock, par_i, t(res_stats))
+    saveRDS(object = res_stats, 
+            file = paste0(path_out, "stats_", file_out, ".rds"))
+  }
+
+}
 
 ### ------------------------------------------------------------------------ ###
-### run  ####
+### collate stats ####
 ### ------------------------------------------------------------------------ ###
 
-res <- do.call(mp, input)
-
-### ------------------------------------------------------------------------ ###
-### save ####
-### ------------------------------------------------------------------------ ###
-
-### generate file name
-file_out <- paste0(c(hr, multiplier, comp_b, idxB_lag, idxB_range_3, interval, 
-                     upper_constraint, lower_constraint), collapse = "_")
-path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
-                   fhist, "/", paste0(stock, collapse = "_"), "/")
-dir.create(path_out, recursive = TRUE)
-saveRDS(object = res, file = paste0(path_out, file_out, ".rds"))
-
+if (isTRUE(stats) & isTRUE(collate) & isTRUE(nrow(hr_params) > 1)) {
+  files <- paste0("stats_", hr, "_", 
+                  sapply(seq(nrow(hr_params)), 
+                         function(x) paste0(hr_params[x,], collapse = "_")),
+                  ".rds")
+  files <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
+                  fhist, "/", paste0(stock, collapse = "_"), "/",
+                  files)
+  stats_all <- lapply(files, readRDS)
+  stats_all <- do.call(rbind, stats_all)
+  
+  saveRDS(stats_all, file = paste0(
+    "output/", n_iter, "_", n_yrs, "/", scenario, "/", fhist, "/", 
+    paste0(stock, collapse = "_"), "/",
+    "collated_stats_", hr, "_", 
+    paste0(apply(hr_params, 2, function(x) {
+      ifelse(isTRUE(length(unique(x)) > 1), paste0(range(x), collapse = "-"), x[1])
+    }), collapse = "_"), ".rds"))
+  
+}
 
 ### ------------------------------------------------------------------------ ###
 ### quit ####

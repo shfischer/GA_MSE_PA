@@ -779,4 +779,63 @@ hr_par <- function(input, brp, lhist,
 }
 
 
+### ------------------------------------------------------------------------ ###
+### stats from MSE run(s) ####
+### ------------------------------------------------------------------------ ###
 
+### function for calculating stats
+mp_stats <- function(input, res_mp, collapse_correction = TRUE) {
+  
+  mapply(function(input_i, res_mp_i) {
+    
+    ### stock metrics
+    SSBs <- FLCore::window(ssb(res_mp_i@stock), start = 101)
+    Fs <- FLCore::window(fbar(res_mp_i@stock), start = 101)
+    Cs <- FLCore::window(catch(res_mp_i@stock), start = 101)
+    yrs <- dim(SSBs)[2]
+    its <- dim(SSBs)[6]
+    ### collapse correction
+    if (isTRUE(collapse_correction)) {
+      ### find collapses
+      cd <- sapply(seq(its), function(x) {
+        min_yr <- min(which(SSBs[,,,,, x] < 1))
+        if (is.finite(min_yr)) {
+          all_yrs <- min_yr:yrs
+        } else {
+          all_yrs <- NA
+        }
+        all_yrs + (x - 1)*yrs
+      })
+      cd <- unlist(cd)
+      cd <- cd[which(!is.na(cd))]
+      ### remove values
+      SSBs@.Data[cd] <- 0
+      Cs@.Data[cd] <- 0
+      Fs@.Data[cd] <- 0
+    }
+    
+    Bmsy <- c(input_i$refpts["msy", "ssb"])
+    Fmsy <- c(input_i$refpts["msy", "harvest"])
+    Cmsy <- c(input_i$refpts["msy", "yield"])
+    Blim <- input_i$Blim
+    ### TAC interval
+    TAC_intvl <- input_i$ctrl$hcr@args$interval
+    
+    ### some stats
+    stats_i <- list(
+      risk_Blim = mean(c(SSBs < Blim), na.rm = TRUE),
+      risk_Bmsy = mean(c(SSBs < Bmsy), na.rm = TRUE),
+      risk_halfBmsy = mean(c(SSBs < Bmsy/2), na.rm = TRUE),
+      risk_collapse = mean(c(SSBs < 1), na.rm = TRUE),
+      SSB = median(c(SSBs), na.rm = TRUE), Fbar = median(c(Fs), na.rm = TRUE),
+      Catch = median(c(Cs), na.rm = TRUE),
+      SSB_rel = median(c(SSBs/Bmsy), na.rm = TRUE),
+      Fbar_rel = median(c(Fs/Fmsy), na.rm = TRUE),
+      Catch_rel = median(c(Cs/Cmsy), na.rm = TRUE),
+      ICV = iav(catch(res_mp_i@stock), from = 100, period = TAC_intvl,
+                summary_all = median)
+    )
+    return(stats_i)
+  }, input, res_mp)
+  
+}
