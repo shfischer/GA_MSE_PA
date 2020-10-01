@@ -340,7 +340,8 @@ if (exists("ROC")) {
                        "ind" = (Lmean/Lref[1]))
       quants_df <- as.data.frame(quants)
       quants_df$qname <- as.character(quants_df$qname)
-      df_roc <- quants_df %>% pivot_wider(names_from = qname, values_from = data) %>%
+      
+      df_roc <- quants_df %>% spread(qname, data) %>%
         filter(!is.na(ind)) %>%
         arrange(desc(ind)) %>%
         mutate(TPR = ifelse(ind >= 1 & OM <= 1, 1, 0), # true positive rate
@@ -362,12 +363,16 @@ if (exists("ROC")) {
       mutate(label = factor(stock, levels = stocks$stock,
                             labels = paste0("italic(k)==", stocks$k, "~", 
                                             stocks$stock)))
-    
+    saveRDS(roc, file = "input/10000_100/roc.rds")
+    roc <- roc %>%
+      left_join(stocks[, c("stock", "k")]) %>%
+      mutate(stock_k = paste0(stock, "~(italic(k)==", k, ")")) %>%
+      mutate(stock_k = factor(stock_k, levels = unique(stock_k)))
     roc %>%
       #filter(stock == "bll") %>%
       ggplot(aes(x = FPR_cum, y = TPR_cum)) +
       geom_line(size = 0.5) +
-      facet_wrap(~ label, labeller = label_parsed) +
+      facet_wrap(~ stock_k, labeller = label_parsed) +
       geom_abline(slope = 1, size = 0.25) +
       labs(x = "P(False Positive Rate)", y = "P(True Positive Rate)") +
       theme_bw(base_size = 8) +
@@ -375,6 +380,8 @@ if (exists("ROC")) {
       scale_y_continuous(breaks = c(0, 0.5, 1))
     ggsave(filename = "input/ROC_LFeM.pdf",
           width = 17, height = 13, units = "cm", dpi = 600)
+    ggsave(filename = "input/ROC_LFeM.png", type = "cairo", 
+          width = 17, height = 13, units = "cm", dpi = 1920/(17/2.54))
 
   }
 }
