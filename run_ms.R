@@ -27,6 +27,9 @@ if (length(args) > 0) {
   if (!exists("n_yrs")) n_yrs <- 50
   if (!exists("fhist")) fhist <- "one-way"
   if (!exists("catch_rule")) catch_rule <- "catch_rule"
+  if (!exists("comp_r")) comp_r <- TRUE
+  if (!exists("comp_f")) comp_f <- TRUE
+  if (!exists("comp_b")) comp_b <- TRUE
   if (!exists("scenario")) scenario <- "uncertainty_cap"
   ### GA search
   if (!exists("ga_search")) ga_search <- TRUE
@@ -162,9 +165,9 @@ input <- lapply(input, function(x) {
   ### IEM: do not activate uncertainty
   x$iem@args$use_dev <- FALSE
   ### catch rule components
-  x$ctrl.mp$ctrl.est@args$comp_r <- TRUE
-  x$ctrl.mp$ctrl.est@args$comp_f <- TRUE
-  x$ctrl.mp$ctrl.est@args$comp_b <- TRUE
+  x$ctrl.mp$ctrl.est@args$comp_r <- comp_r
+  x$ctrl.mp$ctrl.est@args$comp_f <- comp_f
+  x$ctrl.mp$ctrl.est@args$comp_b <- comp_b
   ### catch lag fixed
   x$ctrl.mp$ctrl.est@args$catch_lag <- 1
   return(x)

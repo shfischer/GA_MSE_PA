@@ -1,6 +1,6 @@
 #!/bin/sh
 ## job name
-#PBS -N GA_mult_MSYPA_ow_defCap
+#PBS -N GA_rb_mult_MSYPA_rnd_defCap
 ## maximum runtime
 #PBS -l walltime=12:00:00
 ## select number of nodes, cpus (per node) and memory (per node)
@@ -36,7 +36,7 @@ source activate R_2020
 echo "starting the simulations..."
 ### run job
 ### when running with MPI, worker count is one less than selected cores
-mpiexec R CMD BATCH --vanilla --quiet "--args use_MPI=TRUE n_workers=0 n_blocks=1 popSize=100 maxiter=100 run=50 stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='one-way' catch_rule='catch_rule' ga_search=TRUE lag_idx=FALSE range_idx_1=FALSE range_idx_2=FALSE range_catch=FALSE exp_r=FALSE exp_f=FALSE exp_b=FALSE interval=FALSE multiplier=TRUE upper_constraint=FALSE lower_constraint=FALSE obj_SSB=FALSE obj_F=FALSE obj_C=FALSE obj_risk=FALSE obj_ICV=FALSE obj_ICES_PA=FALSE obj_ICES_PA2=FALSE obj_ICES_MSYPA=TRUE  collate=TRUE scenario='cap_20_30' add_suggestions=FALSE stat_yrs='last10'" $HOME/git/wklife9_GA-wklife10/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+mpiexec R CMD BATCH --vanilla --quiet "--args use_MPI=TRUE n_workers=0 n_blocks=1 popSize=100 maxiter=100 run=50 stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='random' catch_rule='catch_rule' comp_f=FALSE ga_search=TRUE lag_idx=FALSE range_idx_1=FALSE range_idx_2=FALSE range_catch=FALSE exp_r=FALSE exp_f=FALSE exp_b=FALSE interval=FALSE multiplier=TRUE upper_constraint=FALSE lower_constraint=FALSE obj_SSB=FALSE obj_F=FALSE obj_C=FALSE obj_risk=FALSE obj_ICV=FALSE obj_ICES_PA=FALSE obj_ICES_PA2=FALSE obj_ICES_MSYPA=TRUE  collate=TRUE scenario='cap_20_30_rb' add_suggestions=FALSE stat_yrs='last10'" $HOME/git/wklife9_GA-wklife10/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
 ## $PBS_ARRAY_INDEX
 
 echo ""
