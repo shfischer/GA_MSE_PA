@@ -280,9 +280,11 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   
   ### multiplier only: run all possible values
   if (exists("multiplier")) {
-    if (isTRUE(multiplier) & all(c(1:8, 10:11) %in% pos_default)) {
+    if (isTRUE(multiplier) & 
+        !any(sapply(mget(setdiff(ga_names, "multiplier"), ifnotfound = FALSE),
+                   isTRUE))) {
       m_vals <- seq(from = ga_lower[9], to = ga_upper[9], by = 0.01)
-      ga_suggestions[1, ] <- ga_default
+      ga_suggestions[1, ] <- ga_lower
       ga_suggestions <- ga_suggestions[rep(1, length(m_vals)), ]
       ga_suggestions$multiplier <- m_vals
       ### adapt GA dimensions
