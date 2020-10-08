@@ -20,7 +20,6 @@ for (i in req_pckgs) library(package = i, character.only = TRUE)
 
 ### load additional functions
 source("funs.R")
-source("funs_GA.R")
 
 ### ------------------------------------------------------------------------ ###
 ### setup parallel environment ####
@@ -37,7 +36,6 @@ if (isTRUE(n_workers > 1)) {
                                  warn.conflicts = FALSE, verbose = FALSE,
                                  quietly = TRUE)
     source("funs.R", echo = FALSE)
-    source("funs_GA.R", echo = FALSE)
   }
 }
 
