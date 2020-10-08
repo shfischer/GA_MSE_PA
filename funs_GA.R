@@ -97,7 +97,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
   }
   
   ### prepare stats for objective function
-  if (identical(stat_yrs, "all")) {
+  if (identical(stat_yrs, "all") | identical(stat_yrs, "more")) {
     SSB_rel <- stats["SSB_rel", ]
     Catch_rel <- stats["Catch_rel", ]
     Fbar_rel <- stats["Fbar_rel", ]
@@ -192,7 +192,10 @@ mp_stats <- function(input, res_mp, stat_yrs = "all",
       Cs@.Data[cd] <- 0
       Fs@.Data[cd] <- 0
     }
-    
+    ### extend Catch to include ICV calculation from last historical year
+    Cs_long <- FLCore::window(Cs, start = 100)
+    Cs_long[, ac(100)] <- catch(res_mp_i@stock)[, ac(100)]
+    ### refpts
     Bmsy <- c(input_i$refpts["msy", "ssb"])
     Fmsy <- c(input_i$refpts["msy", "harvest"])
     Cmsy <- c(input_i$refpts["msy", "yield"])
@@ -218,7 +221,7 @@ mp_stats <- function(input, res_mp, stat_yrs = "all",
       )
     }
     stats_i <- stats_list(SSBs = SSBs, Cs = Cs, Fs = Fs, 
-                          Cs_long = catch(res_mp_i@stock), 
+                          Cs_long = Cs_long, 
                           Blim = Blim, Bmsy = Bmsy, Fmsy = Fmsy, Cmsy = Cmsy,
                           TAC_intvl = TAC_intvl)
     ### additional time period?
@@ -231,6 +234,31 @@ mp_stats <- function(input, res_mp, stat_yrs = "all",
                                      Cmsy = Cmsy, TAC_intvl = TAC_intvl))
       names(stats_i_last10) <- paste0(names(stats_i_last10), "_last10")
       stats_i <- c(stats_i, stats_i_last10)
+    } else if (identical(stat_yrs, "more")) {
+      yrs_for_stats <- c("first10", "41to50", "last10", "firsthalf",
+                         "lastfhalf", "11to50")
+      stats_add <- lapply(yrs_for_stats, function(x) {
+        ### define years for summary statistics
+        yrs_tmp <- switch(x,
+                         "first10" = head(dimnames(SSBs)$year, 10), 
+                          "41to50" = ac(141:150), 
+                          "last10" = tail(dimnames(SSBs)$year, 10), 
+                          "firsthalf" = head(dimnames(SSBs)$year, 
+                                             length(dimnames(SSBs)$year)/2),
+                          "lastfhalf" = tail(dimnames(SSBs)$year, 
+                                             length(dimnames(SSBs)$year)/2), 
+                          "11to50" = ac(111:150))
+        if (!any(yrs_tmp %in% dimnames(SSBs)$year)) return(NULL)
+        yrs_tmpp1 <- ac(seq(from = min(as.numeric(yrs_tmp)) - 1, 
+                            to = max(as.numeric(yrs_tmp))))
+        stats_tmp <- c(stats_list(SSBs = SSBs[, yrs_tmp], Cs = Cs[, yrs_tmp],
+                                  Fs = Fs[, yrs_tmp], Cs_long = Cs_long[, yrs_tmpp1],
+                                  Blim = Blim, Bmsy = Bmsy, Fmsy = Fmsy, 
+                                  Cmsy = Cmsy, TAC_intvl = TAC_intvl))
+        names(stats_tmp) <- paste0(names(stats_tmp), "_", x)
+        return(stats_tmp)
+      })
+      stats_i <- c(stats_i, unlist(stats_add))
     }
     
     return(stats_i)
