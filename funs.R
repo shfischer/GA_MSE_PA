@@ -388,7 +388,8 @@ hcr_hr <- function(hcrpars, genArgs, tracking, interval = 1,
 ### apply TAC constraint, if required
 
 is_comps <- function(ctrl, genArgs, tracking, interval = 2, 
-                     upper_constraint = Inf, lower_constraint = 0, ...) {
+                     upper_constraint = Inf, lower_constraint = 0, 
+                     cap_below_b = TRUE, ...) {
   
   ay <- genArgs$ay ### current year
   iy <- genArgs$iy ### first simulation year
@@ -415,6 +416,11 @@ is_comps <- function(ctrl, genArgs, tracking, interval = 2,
       if (!is.infinite(upper_constraint)) {
         ### find positions
         pos_upper <- which(adv_ratio > upper_constraint)
+        ### turn of constraint when index below Itrigger?
+        if (isFALSE(cap_below_b)) {
+          pos_upper <- setdiff(pos_upper, 
+                               which(c(tracking[, ac(ay)]["comp_b", ]) < 1))
+        }
         ### limit advice
         if (length(pos_upper) > 0) {
           advice[pos_upper] <- adv_last[,,,,, pos_upper] * upper_constraint
@@ -424,6 +430,11 @@ is_comps <- function(ctrl, genArgs, tracking, interval = 2,
       if (lower_constraint != 0) {
         ### find positions
         pos_lower <- which(adv_ratio < lower_constraint)
+        ### turn of constraint when index below Itrigger?
+        if (isFALSE(cap_below_b)) {
+          pos_lower <- setdiff(pos_lower, 
+                               which(c(tracking[, ac(ay)]["comp_b", ]) < 1))
+        }
         ### limit advice
         if (length(pos_lower) > 0) {
           advice[pos_lower] <- adv_last[,,,,, pos_lower] * lower_constraint

@@ -31,6 +31,7 @@ if (length(args) > 0) {
   if (!exists("comp_f")) comp_f <- TRUE
   if (!exists("comp_b")) comp_b <- TRUE
   if (!exists("scenario")) scenario <- "uncertainty_cap"
+  if (!exists("cap_below_b")) cap_below_b <- TRUE
   ### GA search
   if (!exists("ga_search")) ga_search <- TRUE
   if (isTRUE(ga_search)) {
@@ -170,6 +171,12 @@ input <- lapply(input, function(x) {
   x$ctrl.mp$ctrl.est@args$comp_b <- comp_b
   ### catch lag fixed
   x$ctrl.mp$ctrl.est@args$catch_lag <- 1
+  ### turn of uncertainty cap when index below Itrigger?
+  if (isFALSE(cap_below_b)) {
+    x$ctrl.mp$ctrl.is@args$cap_below_b <- cap_below_b
+    #x$ctrl.mp$ctrl.is@method <- is_comps
+  }
+  
   return(x)
 })
 
@@ -333,7 +340,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ### check if previous solutions can be used as suggestions ####
   ### ------------------------------------------------------------------------ ###
   
-  file_ext <- ifelse(stat_yrs == "last10", "_res_last10.rds", "_res.rds")
+  file_ext <- ifelse(stat_yrs == "all", "_res.rds", paste0("_res_", stat_yrs, ".rds"))
   if (isTRUE(add_suggestions)) {
     ### find files
     avail <- list.files(path_out, pattern = paste0("--", obj_desc, file_ext))
