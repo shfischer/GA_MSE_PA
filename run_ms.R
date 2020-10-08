@@ -107,6 +107,20 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
                   lower_constraint = par_i$lower_constraint,
                   cap_below_b = cap_below_b)
   
+  ### ---------------------------------------------------------------------- ###
+  ### paths ####
+  ### ---------------------------------------------------------------------- ###
+  ### generate file name
+  file_out <- paste0(c(hr, par_i$multiplier, par_i$comp_b, par_i$idxB_lag, 
+                       par_i$idxB_range_3, par_i$interval, 
+                       par_i$upper_constraint, par_i$lower_constraint), 
+                     collapse = "_")
+  path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
+                     fhist, "/", paste0(stock, collapse = "_"), "/")
+  dir.create(path_out, recursive = TRUE)
+  ### skip if run already exists
+  if (file.exists(paste0(path_out, "stats_", file_out, ".rds"))) return(NULL)
+  
   ### ------------------------------------------------------------------------ ###
   ### run  ####
   ### ------------------------------------------------------------------------ ###
@@ -117,14 +131,6 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   ### save ####
   ### ------------------------------------------------------------------------ ###
   
-  ### generate file name
-  file_out <- paste0(c(hr, par_i$multiplier, par_i$comp_b, par_i$idxB_lag, 
-                       par_i$idxB_range_3, par_i$interval, 
-                       par_i$upper_constraint, par_i$lower_constraint), 
-                     collapse = "_")
-  path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
-                     fhist, "/", paste0(stock, collapse = "_"), "/")
-  dir.create(path_out, recursive = TRUE)
   if (isTRUE(saveMP))
     saveRDS(object = res, file = paste0(path_out, "mp_", file_out, ".rds"))
   
