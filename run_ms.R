@@ -69,6 +69,8 @@ if (!exists("idxB_lag")) idxB_lag <- 1
 if (!exists("idxB_range_3")) idxB_range_3 <- 1
 if (!exists("upper_constraint")) upper_constraint <- Inf
 if (!exists("lower_constraint")) lower_constraint <- 0
+if (!exists("cap_below_b")) cap_below_b <- TRUE
+if (!exists("stat_yrs")) stat_yrs <- "all"
 
 ### load reference values
 hr_ref <- readRDS("input/catch_rates.rds")[[stock]]
@@ -102,7 +104,8 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
                   idxB_range_3 = par_i$idxB_range_3,
                   interval = par_i$interval, 
                   upper_constraint = par_i$upper_constraint,
-                  lower_constraint = par_i$lower_constraint)
+                  lower_constraint = par_i$lower_constraint,
+                  cap_below_b = cap_below_b)
   
   ### ------------------------------------------------------------------------ ###
   ### run  ####
@@ -131,7 +134,8 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   
   if (isTRUE(stats)) {
     res_stats <- mp_stats(input = list(input), res_mp = list(res), 
-                          collapse_correction = TRUE)
+                          collapse_correction = TRUE,
+                          stat_yrs = stat_yrs)
     res_stats <- cbind(stock = stock, par_i, t(res_stats))
     saveRDS(object = res_stats, 
             file = paste0(path_out, "stats_", file_out, ".rds"))
