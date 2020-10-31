@@ -59,18 +59,18 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     
     ### insert arguments into input object for mp
     input <- lapply(input, function(x) {
-      x$ctrl.mp$ctrl.est@args$idxB_lag     <- params[1]
-      x$ctrl.mp$ctrl.est@args$idxB_range_1 <- params[2]
-      x$ctrl.mp$ctrl.est@args$idxB_range_2 <- params[3]
-      x$ctrl.mp$ctrl.est@args$catch_range  <- params[4]
-      x$ctrl.mp$ctrl.est@args$comp_m <- params[9]
-      x$ctrl.mp$ctrl.phcr@args$exp_r <- params[5]
-      x$ctrl.mp$ctrl.phcr@args$exp_f <- params[6]
-      x$ctrl.mp$ctrl.phcr@args$exp_b <- params[7]
-      x$ctrl.mp$ctrl.hcr@args$interval <- params[8]
-      x$ctrl.mp$ctrl.is@args$interval <- params[8]
-      x$ctrl.mp$ctrl.is@args$upper_constraint <- params[10]
-      x$ctrl.mp$ctrl.is@args$lower_constraint <- params[11]
+      x$ctrl$est@args$idxB_lag     <- params[1]
+      x$ctrl$est@args$idxB_range_1 <- params[2]
+      x$ctrl$est@args$idxB_range_2 <- params[3]
+      x$ctrl$est@args$catch_range  <- params[4]
+      x$ctrl$est@args$comp_m <- params[9]
+      x$ctrl$phcr@args$exp_r <- params[5]
+      x$ctrl$phcr@args$exp_f <- params[6]
+      x$ctrl$phcr@args$exp_b <- params[7]
+      x$ctrl$hcr@args$interval <- params[8]
+      x$ctrl$isys@args$interval <- params[8]
+      x$ctrl$isys@args$upper_constraint <- params[10]
+      x$ctrl$isys@args$lower_constraint <- params[11]
       
       return(x)
     })
@@ -79,7 +79,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     res_mp <- lapply(input, function(x) {
       if (getDoParWorkers() > 1)
         . <- foreach(i = 1:getDoParWorkers()) %dopar% {invisible(gc())}
-      do.call(mpDL, x)
+      do.call(mp, x)
     })
     
     if (isTRUE(return_res)) {
@@ -201,7 +201,7 @@ mp_stats <- function(input, res_mp, stat_yrs = "all",
     Cmsy <- c(input_i$refpts["msy", "yield"])
     Blim <- input_i$Blim
     ### TAC interval
-    TAC_intvl <- input_i$ctrl.mp$ctrl.hcr@args$interval
+    TAC_intvl <- input_i$ctrl$hcr@args$interval
     
     ### some stats
     stats_list <- function(SSBs, Cs, Fs, Cs_long, Blim, Bmsy, Fmsy, Cmsy,

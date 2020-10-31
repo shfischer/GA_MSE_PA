@@ -1,7 +1,7 @@
 ### ------------------------------------------------------------------------ ###
 ### observations ####
 ### ------------------------------------------------------------------------ ###
-obs_generic <- function(stk, observations, deviances, genArgs, tracking,
+obs_generic <- function(stk, observations, deviances, args, tracking,
                         ssb_idx = FALSE, tsb_idx = FALSE, ### use SSB idx
                         idx_dev = FALSE,
                         lngth = FALSE, ### catch length data?
@@ -12,7 +12,7 @@ obs_generic <- function(stk, observations, deviances, genArgs, tracking,
                         PA_Bmsy = FALSE, PA_Fmsy = FALSE,
                         ...) {
 
-  #ay <- genArgs$ay
+  #ay <- args$ay
   ### update observations
   observations$stk <- stk
   ### use SSB as index?
@@ -72,7 +72,7 @@ obs_generic <- function(stk, observations, deviances, genArgs, tracking,
 ### estimator ####
 ### ------------------------------------------------------------------------ ###
 
-est_comps <- function(stk, idx, tracking, genArgs,
+est_comps <- function(stk, idx, tracking, args,
                       comp_r = FALSE, comp_f = FALSE, comp_b = FALSE,
                       comp_i = FALSE, comp_c = TRUE, comp_m = FALSE,
                       idxB_lag = 1, idxB_range_1 = 2, idxB_range_2 = 3,
@@ -84,7 +84,7 @@ est_comps <- function(stk, idx, tracking, genArgs,
                       Bmsy = NA,
                       ...) {
   
-  ay <- genArgs$ay
+  ay <- args$ay
   
   ### component r: index trend
   if (isTRUE(comp_r)) {
@@ -271,11 +271,11 @@ est_c <- function(catch, ay,
 
 
 ### harvest rate index
-est_hr <- function(stk, idx, tracking, genArgs,
+est_hr <- function(stk, idx, tracking, args,
                    idxB_lag = 1, idxB_range = 1,
                    ...) {
   
-  ay <- genArgs$ay
+  ay <- args$ay
   
   ### current index value
   idx_yrs <- seq(to = ay - idxB_lag, 
@@ -292,11 +292,11 @@ est_hr <- function(stk, idx, tracking, genArgs,
 ### ------------------------------------------------------------------------ ###
 ### parametrization of HCR
 
-phcr_comps <- function(tracking, genArgs, 
+phcr_comps <- function(tracking, args, 
                        exp_r = 1, exp_f = 1, exp_b = 1,
                        ...){
   
-  ay <- genArgs$ay
+  ay <- args$ay
   
   hcrpars <- tracking[c("comp_r", "comp_f", "comp_b", "comp_i", 
                         "comp_c", "multiplier",
@@ -315,10 +315,10 @@ phcr_comps <- function(tracking, genArgs,
 }
 
 ### harvest rate: select
-phcr_hr <- function(tracking, genArgs, rate = 0.5,
+phcr_hr <- function(tracking, args, rate = 0.5,
                    ...){
   
-  ay <- genArgs$ay
+  ay <- args$ay
   
   hcrpars <- tracking[c("I_current", "multiplier"), ac(ay)]
   hcrpars["multiplier", ] <- rate
@@ -334,11 +334,11 @@ phcr_hr <- function(tracking, genArgs, rate = 0.5,
 ### ------------------------------------------------------------------------ ###
 ### apply catch rule
 
-hcr_comps <- function(hcrpars, genArgs, tracking, interval = 2, 
+hcr_comps <- function(hcrpars, args, tracking, interval = 2, 
                   ...) {
   
-  ay <- genArgs$ay ### current year
-  iy <- genArgs$iy ### first simulation year
+  ay <- args$ay ### current year
+  iy <- args$iy ### first simulation year
   
   ### check if new advice requested
   if ((ay - iy) %% interval == 0) {
@@ -367,10 +367,10 @@ hcr_comps <- function(hcrpars, genArgs, tracking, interval = 2,
 }
 
 ### harvest rate
-hcr_hr <- function(hcrpars, genArgs, tracking, interval = 1, 
+hcr_hr <- function(hcrpars, args, tracking, interval = 1, 
                   ...) {
-  ay <- genArgs$ay
-  iy <- genArgs$iy
+  ay <- args$ay
+  iy <- args$iy
   if ((ay - iy) %% interval == 0) {
     advice <- hcrpars["I_current", ] * hcrpars["multiplier", ] 
   } else {
@@ -387,14 +387,14 @@ hcr_hr <- function(hcrpars, genArgs, tracking, interval = 1,
 ### no need to convert, already catch in tonnes
 ### apply TAC constraint, if required
 
-is_comps <- function(ctrl, genArgs, tracking, interval = 2, 
+is_comps <- function(ctrl, args, tracking, interval = 2, 
                      upper_constraint = Inf, lower_constraint = 0, 
                      cap_below_b = TRUE, ...) {
+
+  ay <- args$ay ### current year
+  iy <- args$iy ### first simulation year
   
-  ay <- genArgs$ay ### current year
-  iy <- genArgs$iy ### first simulation year
-  
-  advice <- ctrl@trgtArray[ac(ay + genArgs$management_lag), "val", ]
+  advice <- ctrl@trgtArray[ac(ay + args$management_lag), "val", ]
   
   ### check if new advice requested
   if ((ay - iy) %% interval == 0) {
@@ -448,7 +448,7 @@ is_comps <- function(ctrl, genArgs, tracking, interval = 2,
     advice <- tracking["metric.is", ac(ay - 1)]
     
   }
-  ctrl@trgtArray[ac(ay + genArgs$management_lag),"val",] <- advice
+  ctrl@trgtArray[ac(ay + args$management_lag),"val",] <- advice
   
   return(list(ctrl = ctrl, tracking = tracking))
   
@@ -458,22 +458,22 @@ is_comps <- function(ctrl, genArgs, tracking, interval = 2,
 ### implementation error ####
 ### ------------------------------------------------------------------------ ###
 
-iem_comps <- function(ctrl, genArgs, tracking, 
+iem_comps <- function(ctrl, args, tracking, 
                       iem_dev = FALSE, use_dev, ...) {
   
-  ay <- genArgs$ay
+  ay <- args$ay
   
   ### only do something if requested
   if (isTRUE(use_dev)) {
     
     ### get advice
-    advice <- ctrl@trgtArray[ac(ay + genArgs$management_lag), "val", ]
+    advice <- ctrl@trgtArray[ac(ay + args$management_lag), "val", ]
     ### get deviation
     dev <- c(iem_dev[, ac(ay)])
     ### implement deviation
     advice <- advice * dev
     ### insert into ctrl object
-    ctrl@trgtArray[ac(ay + genArgs$management_lag),"val",] <- advice
+    ctrl@trgtArray[ac(ay + args$management_lag),"val",] <- advice
     
   }
   

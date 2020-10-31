@@ -4,7 +4,9 @@ library(ggplot2)
 library(cowplot)
 library(FLife) ### GitHub SHA 25f481f1 2020-03-02
 library(FLash)
-library(mseDL)
+### use mse fork from shfischer/mse, branch mseDL2.0 
+### remotes::install_github("shfischer/mse", ref = "mseDL2.0)
+library(mse)
 source("funs.R")
 source("funs_GA.R")
 
@@ -202,7 +204,7 @@ res <- lapply(stocks_subset, function(stock) {
 ### ------------------------------------------------------------------------ ###
 
 stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass", 
-                   .packages = c("FLCore", "mseDL")) %do% {
+                   .packages = c("FLCore", "mse")) %do% {
   ### load stock
   tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
                         "/", stock, ".rds"))
@@ -288,20 +290,20 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
                            PA_status = FALSE, PA_status_dev = FALSE,
                            PA_Bmsy = c(refpts(brps[[stock]])["msy", "ssb"]), 
                            PA_Fmsy = c(refpts(brps[[stock]])["msy", "harvest"])))
-  ctrl.mp <- mpCtrl(list(
-    ctrl.est = mseCtrl(method = est_comps,
+  ctrl <- mpCtrl(list(
+    est = mseCtrl(method = est_comps,
                        args = pars_est),
-    ctrl.phcr = mseCtrl(method = phcr_comps,
+    phcr = mseCtrl(method = phcr_comps,
                         args = pars_est),
-    ctrl.hcr = mseCtrl(method = hcr_comps,
+    hcr = mseCtrl(method = hcr_comps,
                        args = pars_est),
-    ctrl.is = mseCtrl(method = is_comps,
+    isys = mseCtrl(method = is_comps,
                       args = pars_est)
   ))
   iem <- FLiem(method = iem_comps,
                args = list(use_dev = FALSE, iem_dev = iem_dev))
-  ### genArgs
-  genArgs <- list(fy = dims(stk_fwd)$maxyear, ### final simulation year
+  ### args
+  args <- list(fy = dims(stk_fwd)$maxyear, ### final simulation year
                   y0 = dims(stk_fwd)$minyear, ### first data year
                   iy = 100, ### first simulation (intermediate) year
                   nsqy = 3, ### not used, but has to provided
@@ -313,9 +315,9 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
   refpts <- refpts(brps[[stock]])
   Blim <- attr(brps[[stock]], "Blim")
   
-  ### list with input to mpDL()
-  input <- list(om = om, oem = oem, iem = iem, ctrl.mp = ctrl.mp, 
-                genArgs = genArgs,
+  ### list with input to mp()
+  input <- list(om = om, oem = oem, iem = iem, ctrl = ctrl, 
+                args = args,
                 scenario = "GA", tracking = tracking, 
                 verbose = TRUE,
                 refpts = refpts, Blim = Blim, I_loss = I_loss)
@@ -329,13 +331,13 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass",
 
 # debugonce(wklife_3.2.1_est)
 # debugonce(wklife_3.2.1_obs)
-# debugonce(input$ctrl.mp$ctrl.hcr@method)
-# debugonce(mpDL)
+# debugonce(input$ctrl$hcr@method)
+# debugonce(mp)
 # debugonce(goFishDL)
-# input$genArgs$nblocks = 250
-# res <- do.call(mpDL, input)
+# input$args$nblocks = 250
+# res <- do.call(mp, input)
 # 
 # ### timing
-# system.time({res1 <- do.call(mpDL, input)})
+# system.time({res1 <- do.call(mp, input)})
 
 
