@@ -168,15 +168,15 @@ input <- lapply(input, function(x) {
   ### IEM: do not activate uncertainty
   x$iem@args$use_dev <- FALSE
   ### catch rule components
-  x$ctrl.mp$ctrl.est@args$comp_r <- comp_r
-  x$ctrl.mp$ctrl.est@args$comp_f <- comp_f
-  x$ctrl.mp$ctrl.est@args$comp_b <- comp_b
+  x$ctrl$est@args$comp_r <- comp_r
+  x$ctrl$est@args$comp_f <- comp_f
+  x$ctrl$est@args$comp_b <- comp_b
   ### catch lag fixed
-  x$ctrl.mp$ctrl.est@args$catch_lag <- 1
+  x$ctrl$est@args$catch_lag <- 1
   ### turn of uncertainty cap when index below Itrigger?
   if (isFALSE(cap_below_b)) {
-    x$ctrl.mp$ctrl.is@args$cap_below_b <- cap_below_b
-    #x$ctrl.mp$ctrl.is@method <- is_comps
+    x$ctrl$isys@args$cap_below_b <- cap_below_b
+    #x$ctrl$isys@method <- is_comps
   }
   
   return(x)
