@@ -75,6 +75,35 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       return(x)
     })
     
+    ### if group of stocks, check if results for individual stocks exist
+    group <- ifelse(isTRUE(length(input) > 1) & isTRUE(check_file), TRUE, FALSE)
+    if (group) {
+      ### get paths
+      group_stocks <- names(input)
+      path_base <- gsub(x = path, 
+                        pattern = paste0(paste0(group_stocks, collapse = "_"), 
+                                         "/"),
+                        replacement = "")
+      path_stocks <- paste0(path_base, group_stocks, "/")
+      ### check for files
+      run_exists <- file.exists(paste0(path_stocks, run_i, ".rds"))
+      group <- ifelse(any(run_exists), TRUE, FALSE)
+      
+      ### do some results exist?
+      if (group) {
+        ### load results
+        files_exist <- paste0(path_stocks, run_i, ".rds")[run_exists]
+        stats_group <- lapply(files_exist, readRDS)
+        names(stats_group) <- group_stocks[run_exists]
+        ### get stocks which require simulation
+        run_stocks <- group_stocks[!run_exists]
+        ### subset input
+        input <- input[run_stocks]
+        
+      }
+      
+    }
+    
     ### run MP for each list element
     res_mp <- lapply(input, function(x) {
       if (getDoParWorkers() > 1)
@@ -89,6 +118,23 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     ### calculate stats
     stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs,
                       collapse_correction = collapse_correction)
+    
+    ### add existing results for stock groups
+    if (group) {
+      
+      ### split old stats into list
+      if (isTRUE(length(stats) > 0)) {
+        stats <- asplit(stats, MARGIN = 2)
+      }
+      ### stats_group is already a list
+      ### combine new and existing stats
+      stats <- c(stats_group, stats)
+      ### sort and coerce into matrix
+      stats <- stats[group_stocks]
+      stats <- do.call(cbind, stats)
+      
+    }
+    
     ### save result in file
     if (isTRUE(check_file)) {
       saveRDS(stats, paste0(path, run_i, ".rds"))
