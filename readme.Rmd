@@ -1,5 +1,5 @@
 ---
-title: "data-limited catch rule optimisation with MSE and Genetic Algorithms"
+title: "Using a genetic algorithm to optimise a data-limited catch rule"
 output: github_document
 ---
 
@@ -7,11 +7,9 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Using a genetic algorithm to optimise the data-limited WKMSYCat34 catch rule 3.2.1
-
 ## Introduction
 
-This repository contains the code for optimising the data-limited empirical rfb-rule (WKMSYCat34 catch rule 3.2.1) with a genetic algorithm.
+This repository contains the code for optimising the data-limited empirical rfb-rule ([ICES WKMSYCat34](http://www.ices.dk/sites/pub/Publication%20Reports/Expert%20Group%20Report/acom/2017/WKMSYCAT34/01.%20WKMSYCAT34%20REPORT%202017.pdf) catch rule 3.2.1, [Fischer et al., 2020](https://doi.org/10.1093/icesjms/fsaa054)) with a genetic algorithm.
 The simulation is based on the Fisheries Library in R ([FLR](http://www.flr-project.org/)) and the Assessment for All (a4a) standard MSE framework ([`FLR/mse`](github.com/FLR/mse)) developed during the Workshop on development of MSE algorithms with R/FLR/a4a ([Jardim et al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
 ## Repository structure
@@ -20,46 +18,88 @@ The root folder contains the following R scripts:
 
 * `OM.R`: This script creates the operating models,
 * `funs.R` contains functions and methods used for the creation of the operating models and for running the MSE,
-* `GA_funs.R` contains the function used in the optimisation procedure,
-* `run_ms.R` is an R script for running MSE scenarios and is called from a job submission script
+* `funs_GA.R` contains the function used in the optimisation procedure,
+* `run_ms.R` is an R script for running MSE projections and is called from a job submission script
 * `run*.pbs` are job submission scripts which are used on a high performance computing cluster and call `run_ms.R`
 * `analysis.R` is for analysing the results
+
+The following input files are provided:
 
 * `input/stocks.csv` contains the stock definitions and life-history parameters
 * `input/brps.rds` contains the FLBRP objects which are the basis for the OMs
 
+The following outputs summarising the results from running the optimisation are provided:
+
+* `output/pol_obj_fun_explorations_stats.csv` exploration of fitness functions for pollack
+* `output/pol_interval_MSY_stats.csv` impact of fixing the catch advice interval for pollack
+* `output/all_stocks_MSY_stats.csv` optimisation results for all 29 simulated stocks
+* `output/groups_MSY_stats.csv` optimisation results for stock groups
+
 ## R, R packages and version info
 
-The MSE simulation was run on a high performance computing cluster:
+The MSE simulations were run on a high performance computing cluster:
 ```{r, eval = FALSE}
-sessionInfo()
-R version 3.5.0 (2018-04-23)
-Platform: x86_64-pc-linux-gnu (64-bit)
-Running under: CentOS release 6.7 (Final)
+> sessionInfo()
+R version 3.6.1 (2019-07-05)
+Platform: x86_64-conda_cos6-linux-gnu (64-bit)
+Running under: CentOS Linux 7 (Core)
+
+Matrix products: default
+BLAS/LAPACK: /rds/general/user/shf4318/home/anaconda3/envs/R_2020/lib/R/lib/libRblas.so
+
+locale:
+ [1] LC_CTYPE=en_GB.UTF-8       LC_NUMERIC=C
+ [3] LC_TIME=en_GB.UTF-8        LC_COLLATE=en_GB.UTF-8
+ [5] LC_MONETARY=en_GB.UTF-8    LC_MESSAGES=en_GB.UTF-8
+ [7] LC_PAPER=en_GB.UTF-8       LC_NAME=C
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_GB.UTF-8 LC_IDENTIFICATION=C
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices utils     datasets  methods
+[8] base
+
+other attached packages:
+ [1] doMPI_0.2.2         Rmpi_0.6-9          doRNG_1.8.2
+ [4] rngtools_1.5        doParallel_1.0.15   GA_3.2.1
+ [7] foreach_1.4.8       mse_2.0.3           FLBRP_2.5.4
+[10] data.table_1.12.2   ggplotFL_2.6.7.9001 ggplot2_3.1.1
+[13] FLash_2.5.11        FLCore_2.6.14.9004  iterators_1.0.12
+[16] lattice_0.20-40
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.5       pillar_1.4.6     compiler_3.6.1   plyr_1.8.4
+ [5] tools_3.6.1      digest_0.6.18    lifecycle_0.2.0  tibble_2.1.1
+ [9] gtable_0.3.0     pkgconfig_2.0.2  rlang_0.4.5      Matrix_1.2-18
+[13] cli_2.0.2        gridExtra_2.3    withr_2.3.0      dplyr_0.8.0.1
+[17] stats4_3.6.1     grid_3.6.1       tidyselect_0.2.5 glue_1.3.2
+[21] R6_2.4.0         fansi_0.4.1      purrr_0.3.3      magrittr_1.5
+[25] scales_1.0.0     codetools_0.2-16 ellipsis_0.3.0   MASS_7.3-51.5
+[29] assertthat_0.2.1 colorspace_1.4-1 lazyeval_0.2.2   munsell_0.5.0
+[33] crayon_1.3.4
 ```
 
 
-The framework uses FLR and the required FLR packages can be installed with `remotes`:
+The framework is based on the Fisheries Library in R (FLR) framework. The exact versions of the packages as used here can be installed with `remotes`:
 ```{r, eval = FALSE}
-remotes::install_github(repo = "flr/FLCore")
-remotes::install_github(repo = "flr/FLash")
-remotes::install_github(repo = "flr/FLBRP")
-remotes::install_github(repo = "flr/FLife", ref = "ff95b029e7af5fe72332321a84f2a5f32bcf1850")
+remotes::install_github(repo = "flr/FLCore", ref = "3d694903b9e6717b86c3e8486fc14ebf92908786")
+remotes::install_github(repo = "shfischer/FLash", ref = "d1fb86fa081aaa5b6980d74b07d9adb44ad19a7f") # silenced version of FLash
+remotes::install_github(repo = "flr/FLBRP", ref = "3a4d6390abc56870575fbaba3637091036468217")
 ```
 
-Furthermore, a data-limited fork of the `mse/flr` package is required:
+Furthermore, a data-limited fork of the `mse/flr` package is required
 ```{r, eval = FALSE}
-remotes::install_github(repo = "shfischer/mse", ref = "mseDL")
+remotes::install_github(repo = "shfischer/mse", ref = "mseDL2.0")
 ```
 
-And a modified version of the `GA` package for genetic algorithms which also runs on HPCs and support MPI parallelisation:
+And a modified version of the `GA` package for genetic algorithms which also runs on HPCs and supports MPI parallelisation:
 ```{r, eval = FALSE}
 remotes::install_github(repo = "shfischer/GA")
 ```
 
 Furthermore, some more R packages available from CRAN are required:
 ```{r, eval = FALSE}
-install.packages(c("foreach", "DoParallel", "doRNG", "dplyr", "tidyr", "ggplot2", "scales", "cowplot", "Cairo")) 
+install.packages(c("foreach", "DoParallel", "doRNG", "dplyr", "tidyr", "ggplot2", "scales", "cowplot", "Cairo", "scales")) 
 ```
 
 For using MPI parallelisation, an MPI backend such as OpenMPI and the R packages `Rmpi` and `doMPI` are required.
