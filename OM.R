@@ -2,7 +2,6 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
-library(FLife) ### GitHub SHA 25f481f1 2020-03-02
 library(FLash)
 ### use mse fork from shfischer/mse, branch mseDL2.0 
 ### remotes::install_github("shfischer/mse", ref = "mseDL2.0)
