@@ -190,7 +190,7 @@ n_iter <- 500
 all_MSY <- foreach(stock = stocks$stock, .combine = rbind) %:%
   foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
   foreach(scenario = "MSY", .combine = rbind) %:%
-  foreach(fhist = c("one-way"), .combine = rbind) %do% {#browser()
+  foreach(fhist = c("one-way", "random"), .combine = rbind) %do% {#browser()
     #browser()
     ### find files
     fs <- list.files(path = paste0("output/", n_iter, "_", n_yrs, "/", scenario, 
@@ -587,6 +587,13 @@ p_pol_trajectories <- plot_grid(
             plot_catch_rel + theme(legend.position = "none"),
             ncol = 1, align = "v", rel_heights = c(1.1, 1, 1.2)),
   get_legend(plot_catch_rel), rel_widths = c(1, 0.4), ncol = 2)
+ggsave(filename = "output/plots/pol_trajectories.png", 
+       plot = p_pol_trajectories,
+       width = 8.5, height = 10, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/pol_trajectories.pdf", 
+       plot = p_pol_trajectories,
+       width = 8.5, height = 10, units = "cm", dpi = 600)
+
 
 ### add GA progress to same plot
 pol_ga <- readRDS(paste0("output/500_50/fitness_function/one-way/pol/",
@@ -616,6 +623,14 @@ p_ga <- ga_df %>%
         legend.key = element_blank(), 
         legend.key.size = unit(0.5, "lines"), legend.key.width = unit(1, "lines"),
         strip.text.x = element_blank(), legend.title = element_blank())
+ggsave(filename = "output/plots/pol_ga.png", 
+       plot = p_ga,
+       width = 8.5, height = 4, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/pol_ga.pdf", 
+       plot = p_ga,
+       width = 8.5, height = 4, units = "cm", dpi = 600)
+
+
 
 
 ### plot stats
@@ -830,6 +845,14 @@ p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, p_pol_stats_F, p_pol_stats_C,
                               p_pol_stats_fitness,
                               ncol = 1, align = "v",
                               rel_heights = c(1.25, 1, 1, 1, 1, 2.1))
+ggsave(filename = "output/plots/pol_stats.png", 
+       plot = p_pol_stats_comb,
+       width = 8.5, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/pol_stats.pdf", 
+       plot = p_pol_stats_comb,
+       width = 8.5, height = 13, units = "cm", dpi = 600)
+
+
 
 ### combine all plots
 p <- plot_grid(
@@ -1083,6 +1106,13 @@ p_stats_combined <- plot_grid(p_stats_SSB, p_stats_F, p_stats_C,
                               p_stats_fitness,
                               ncol = 1, align = "v",
                               rel_heights = c(1.25, 1, 1, 1, 1, 1.5))
+ggsave(filename = "output/plots/stats_single.png", 
+       plot = p_stats_combined,
+       width = 15, height = 13, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/stats_single.pdf", 
+       plot = p_stats_combined,
+       width = 15, height = 13, units = "cm", dpi = 600)
+
 
 ### ------------------------------------------------------------------------ ###
 ### k-groups stats: default vs. optimised ####
@@ -1317,26 +1347,12 @@ stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
                             stats_i$risk_Blim, stats_i$ICV)
     return(stats_i)
 }
-### stats from default rfb-rule in random fishing history
-stats_rfb_rnd <- foreach(stock = stocks$stock, .combine = "rbind") %:%
-  foreach(fhist = c("random"), .combine = "rbind") %do% {
-  
-    stats_i <- readRDS(paste0("output/500_50/catch_rule/", fhist, "/", stock, 
-                              "_stats.rds"))
-    stats_i <- as.data.frame(lapply(as.data.frame(t(stats_i)), unlist))
-    stats_i$fhist <- fhist
-    stats_i$stock = stock
-    stats_i$catch_rule = "default"
-    stats_i$fitness <- -sum(abs(stats_i$SSB_rel - 1), 
-                            abs(stats_i$Catch_rel - 1), 
-                            stats_i$risk_Blim, stats_i$ICV)
-    return(stats_i)
-}
+
 ### combine 
 stats_plot <- bind_rows(stats_rfb %>%
                           select(fhist, catch_rule, fitness, stock, 
                                  risk_Blim:ICV), 
-                        stats_2over3, stats_rfb_rnd)
+                        stats_2over3)
 
 stats_plot <- stats_plot %>% 
   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
