@@ -29,7 +29,7 @@ cat $PBS_NODEFILE
 echo ""
 
 ### set working directory
-cd $HOME/git/GA_MSE_PA
+cd $HOME/git/wklife9_GA_tmp
 
 ## load modules
 ## anaconda includes R and OpenMPI
@@ -41,13 +41,7 @@ source activate R_2020
 echo "starting the simulations..."
 ### run job
 ### when running with MPI, worker count is one less than selected cores
-mpiexec R CMD BATCH --vanilla --quiet "--args use_MPI=TRUE n_workers=0 n_blocks=1 popSize=100 maxiter=100 run=10
- stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='one-way' catch_rule='catch_rule' ga_search=TRUE 
- lag_idx=FALSE range_idx_1=FALSE range_idx_2=FALSE range_catch=FALSE exp_r=FALSE exp_f=FALSE exp_b=FALSE 
- interval=FALSE multiplier=TRUE upper_constraint=FALSE lower_constraint=FALSE 
- obj_SSB=FALSE obj_F=FALSE obj_C=FALSE obj_risk=FALSE obj_ICV=FALSE obj_ICES_PA=FALSE obj_ICES_PA2=FALSE 
- obj_ICES_MSYPA=TRUE collate=TRUE scenario='PA' stat_yrs='more' add_suggestions=FALSE" 
- $HOME/git/GA_MSE_PA/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+mpiexec R CMD BATCH --vanilla --quiet "--args use_MPI=TRUE n_workers=0 n_blocks=1 popSize=100 maxiter=100 run=10 stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='one-way' catch_rule='catch_rule' ga_search=TRUE lag_idx=FALSE range_idx_1=FALSE range_idx_2=FALSE range_catch=FALSE exp_r=FALSE exp_f=FALSE exp_b=FALSE  interval=FALSE multiplier=TRUE upper_constraint=FALSE lower_constraint=FALSE  obj_SSB=FALSE obj_F=FALSE obj_C=FALSE obj_risk=FALSE obj_ICV=FALSE obj_ICES_PA=FALSE obj_ICES_PA2=FALSE  obj_ICES_MSYPA=TRUE collate=TRUE scenario='PA' stat_yrs='more' add_suggestions=FALSE"  $HOME/git/wklife9_GA_tmp/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
 ## $PBS_ARRAY_INDEX
 
 echo ""
