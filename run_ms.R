@@ -49,6 +49,7 @@ if (length(args) > 0) {
     if (!exists("obj_ICES_PA")) obj_ICES_PA <- FALSE
     if (!exists("obj_ICES_PA2")) obj_ICES_PA2 <- FALSE
     if (!exists("obj_ICES_MSYPA")) obj_ICES_MSYPA <- FALSE
+    if (!exists("risk_threshold")) risk_threshold <- 0.05
     ### GA
     if (!exists("add_suggestions")) add_suggestions <- TRUE
     if (!exists("stat_yrs")) stat_yrs <- "all"
@@ -342,7 +343,16 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
   ### check if previous solutions can be used as suggestions ####
   ### ------------------------------------------------------------------------ ###
   
-  file_ext <- ifelse(stat_yrs == "all", "_res.rds", paste0("_res_", stat_yrs, ".rds"))
+  ### years for summary statistics
+  file_ext <- ifelse(stat_yrs == "all", "_res", 
+                     paste0("_res_", stat_yrs))
+  ### suffix if different risk limit used
+  file_ext <- ifelse(isTRUE(!identical(risk_threshold, 0.05) & 
+                              isTRUE(obj_ICES_MSYPA)), 
+                     paste0(file_ext, "_", risk_threshold), 
+                     file_ext)
+  file_ext <- paste0(file_ext, ".rds")
+
   if (isTRUE(add_suggestions)) {
     ### find files
     avail <- list.files(path_out, pattern = paste0("--", obj_desc, file_ext))
@@ -396,7 +406,7 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
               obj_SSB = obj_SSB, obj_F = obj_F, obj_C = obj_C, 
               obj_risk = obj_risk, obj_ICV = obj_ICV, obj_ICES_PA = obj_ICES_PA,
               obj_ICES_PA2 = obj_ICES_PA2, obj_ICES_MSYPA = obj_ICES_MSYPA,
-              stat_yrs = stat_yrs,
+              stat_yrs = stat_yrs, risk_threshold = risk_threshold,
               path = path_out, check_file = TRUE,
               scenario = scenario,
               suggestions = ga_suggestions, lower = ga_lower, upper = ga_upper,
@@ -437,8 +447,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
     })
     scns[sapply(scns, is.null)] <- NULL
     #scns <- scns[order(sapply(scns, "[[", "obj"), decreasing = TRUE)]
-    saveRDS(scns, file = paste0(path_out, scn_pars_c, "--", obj_desc, "_runs",
-                              ifelse(identical(stat_yrs, "last10"), "_last10", ""), 
+    saveRDS(scns, 
+            file = paste0(path_out, scn_pars_c, "--", obj_desc, "_runs",
+                          ifelse(identical(stat_yrs, "last10"), "_last10", ""), 
                               ".rds"))
   }
 

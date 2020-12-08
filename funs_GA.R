@@ -9,6 +9,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                    obj_risk = TRUE, obj_ICV = TRUE, obj_ICES_PA = FALSE,
                    obj_ICES_PA2 = FALSE, obj_ICES_MSYPA = FALSE,
                    stat_yrs = "all",
+                   risk_threshold = 0.05,
                    ...) {
   
   ### housekeeping
@@ -186,7 +187,8 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       sum(abs(unlist(Catch_rel) - 1)) -
       sum(unlist(ICV)) -
       sum(penalty(x = unlist(risk_Blim), 
-                             negative = FALSE, max = 5, inflection = 0.06, 
+                             negative = FALSE, max = 5, 
+                             inflection = risk_threshold + 0.01, 
                              steepness = 0.5e+3))
       ### max penalty: 5
       ### for pollack zero catch has fitness of -4.7
