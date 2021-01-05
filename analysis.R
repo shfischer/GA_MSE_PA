@@ -60,10 +60,11 @@ p_f <- df_hist %>%
   ggplot(aes(x = year, y = data, group = iter, colour = type, alpha = type,
              linetype = type, size = type)) +
   geom_line() +
-  scale_alpha_manual("", values = c(replicate = 0.15, median = 1), ) +
+  scale_alpha_manual("", values = c(replicate = 0.075, median = 1), ) +
   scale_colour_manual("", values = c(replicate = "black", median = "red")) +
   scale_linetype_manual("", values = c(replicate = "solid", median = "dashed")) +
   scale_size_manual("", values = c(replicate = 0.1, median = 0.5)) +
+  geom_hline(yintercept = 1, size = 0.1, colour = "black", linetype = "dashed") +
   guides(alpha = FALSE) +
   theme_bw(base_size = 8) +
   facet_grid(~ fhist, scales = "free_y") +
@@ -86,10 +87,11 @@ p_ssb <- df_hist %>%
   ggplot(aes(x = year, y = data, group = iter, colour = type, alpha = type,
              linetype = type, size = type)) +
   geom_line(show.legend = FALSE) +
-  scale_alpha_manual("", values = c(replicate = 0.1, median = 1), ) +
+  scale_alpha_manual("", values = c(replicate = 0.075, median = 1), ) +
   scale_colour_manual("", values = c(replicate = "black", median = "red")) +
   scale_linetype_manual("", values = c(replicate = "solid", median = "dashed")) +
   scale_size_manual("", values = c(replicate = 0.1, median = 0.5)) +
+  geom_hline(yintercept = 1, size = 0.1, colour = "black", linetype = "dashed") +
   theme_bw(base_size = 8) +
   facet_grid(~ fhist, scales = "free_y") +
   scale_y_continuous(
@@ -103,9 +105,9 @@ p_both <- plot_grid(p_f, p_ssb, ncol = 1, align = "v")
 p_both
 
 ggsave(filename = "output/plots/pol_fhist.png", plot = p_both,
-       width = 8.5, height = 5, units = "cm", dpi = 600, type = "cairo")
+       width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/pol_fhist.pdf", plot = p_both,
-       width = 8.5, height = 5, units = "cm")
+       width = 8.5, height = 6, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
 ### collate results - pollack objective function explorations ####
@@ -116,6 +118,7 @@ n_iter <- 500
 ### get optimised parameterisation
 pol_obj <- foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
   foreach(scenario = "fitness_function", .combine = rbind) %:%
+  foreach(stock = "pol", .combine = rbind) %:%
   foreach(fhist = c("one-way", "random"), .combine = rbind) %do% {
     #browser()
     ### find files
@@ -132,6 +135,7 @@ pol_obj <- foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
                                             "multiplier--obj_|_res\\.rds"), 
                            replacement = "")
     trials$fhist <- fhist
+    trials$stock <- stock
     trials$scenario <- scenario
     trials$optimised <- optimised
     ### load GA results
@@ -150,17 +154,19 @@ pol_obj <- foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
     names(res_par) <- trials$obj_fun
     ### default (non-optimised?)
     if (isFALSE(optimised)) {
-      trials <- trials[1, ]
-      res_lst <- res_lst[1]
-      res_par <- res_par[1]
-      res_par[[1]][] <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
+      res_par <- lapply(res_par, function(x) {
+        x[] <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
+        x})
     }
     res <- as.data.frame(do.call(rbind, res_par))
     res$file <- trials$file
     res$solution <- sapply(res_par, paste0, collapse = "_")
     res$fitness <- sapply(res_lst, slot, "fitnessValue")
     res$iter <- sapply(res_lst, slot, "iter")
-    if (isFALSE(optimised)) res$fitness <- NA
+    if (isFALSE(optimised)) {
+      res$fitness <- NA
+      res$iter <- NA
+    }
     ### combine
     res <- merge(trials, res)
     ### load stats of solution
@@ -174,8 +180,38 @@ pol_obj <- foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
     })
     res_stats <- do.call(rbind, res_stats)
     res <- cbind(res, res_stats)
+    if (isFALSE(optimised)) {
+      for (i in 1:nrow(res)) {
+        res$fitness[i] <- switch(res$obj_fun[i],
+          "C"                = -abs(res$Catch_rel[i] - 1),
+          "SSB"              = -abs(res$SSB_rel[i] - 1),
+          "SSB_risk_ICV"     = -sum(abs(res$Catch_rel[i] - 1),
+                                    res$ICV[i], res$risk_Blim[i]),
+          "SSB_C_risk_ICV"   = -sum(abs(res$Catch_rel[i] - 1),
+                                    abs(res$SSB_rel[i] - 1),
+                                    res$ICV[i], res$risk_Blim[i]),
+          "SSB_F_C_risk_ICV" = -sum(abs(res$Catch_rel[i] - 1),
+                                    abs(res$SSB_rel[i] - 1),
+                                    abs(res$Fbar_rel[i] - 1),
+                                    res$ICV[i], res$risk_Blim[i]))
+      }
+    }
     return(res)
 }
+### fitness improvement
+pol_obj_improvement <- pol_obj %>%
+  select(obj_fun, fhist, optimised, fitness) %>%
+  pivot_wider(names_from = optimised, values_from = fitness) %>%
+  mutate(fitness_improvement = (`FALSE` - `TRUE`)/`FALSE` * 100,
+         optimised = TRUE, `TRUE` = NULL, `FALSE` = NULL)
+pol_obj <- pol_obj %>%
+  left_join(pol_obj_improvement)
+pol_obj_improvement %>%
+  arrange(fhist) %>%
+  mutate(fitness_improvement = round(fitness_improvement),
+         optimised = NULL) %>%
+  print(n = Inf)
+
 saveRDS(pol_obj, file = "output/pol_obj_fun_explorations_stats.rds")
 write.csv(pol_obj, file = "output/pol_obj_fun_explorations_stats.csv", 
           row.names = FALSE)
@@ -256,7 +292,20 @@ all_MSY <- foreach(stock = stocks$stock, .combine = rbind) %:%
     }
     
     return(res)
-}
+  }
+### fitness improvement
+all_MSY_improvement <- all_MSY %>%
+  select(stock, fhist, optimised, fitness) %>%
+  pivot_wider(names_from = optimised, values_from = fitness) %>%
+  mutate(fitness_improvement = (`FALSE` - `TRUE`)/`FALSE` * 100,
+         optimised = TRUE, `TRUE` = NULL, `FALSE` = NULL)
+all_MSY <- all_MSY %>%
+  left_join(all_MSY_improvement)
+all_MSY_improvement %>%
+  arrange(fhist) %>%
+  mutate(fitness_improvement = round(fitness_improvement),
+         optimised = NULL) %>%
+  print(n = Inf)
 saveRDS(all_MSY, file = "output/all_stocks_MSY_stats.rds")
 write.csv(all_MSY, file = "output/all_stocks_MSY_stats.csv", row.names = FALSE)
 
@@ -352,7 +401,21 @@ groups_MSY <- foreach(group = c("low", "medium", "high"), .combine = rbind) %:%
     res$fitness <- NA
     res <- rbind(res_group, res)
     return(res)
-}
+  }
+### fitness improvement
+groups_MSY_improvement <- groups_MSY %>%
+  select(stock, group, fhist, optimised, fitness) %>%
+  pivot_wider(names_from = optimised, values_from = fitness) %>%
+  mutate(fitness_improvement = (`FALSE` - `TRUE`)/`FALSE` * 100,
+         optimised = TRUE, `TRUE` = NULL, `FALSE` = NULL)
+groups_MSY <- groups_MSY %>%
+  left_join(groups_MSY_improvement)
+groups_MSY_improvement %>%
+  arrange(fhist) %>%
+  mutate(fitness_improvement = round(fitness_improvement),
+         optimised = NULL) %>%
+  print(n = Inf)
+
 saveRDS(groups_MSY, file = "output/groups_MSY_stats.rds")
 write.csv(groups_MSY, file = "output/groups_MSY_stats.csv", row.names = FALSE)
 
