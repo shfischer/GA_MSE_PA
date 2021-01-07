@@ -34,6 +34,11 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
   if (isTRUE(check_file)) {
     ### current run
     run_i <- paste0(params, collapse = "_")
+    ### get current stock(s)
+    stock_i <- strsplit(x = tail(strsplit(x = path, split = "/")[[1]], 1), 
+                        split = "_")[[1]]
+    base_path <- paste0(paste0(head(strsplit(x = path, split = "/")[[1]], -1), 
+                               collapse = "/"), "/")
     ### check if path exists
     if (!dir.exists(path)) dir.create(path, recursive = TRUE)
     ### check if run already exists
@@ -47,7 +52,30 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
         if (!any(grepl(x = rownames(stats), pattern = stat_yrs))) run_mp <- TRUE
       }
     } else {
-      run_mp <- TRUE
+      ### check if run exist in larger group
+      dir_i <- paste0(stock_i, collapse = "_")
+      dirs_i <- setdiff(x = dir(path = base_path, pattern = dir_i),
+                        y = dir_i)
+      files_tmp <- lapply(dirs_i, function(x) {
+        #browser()
+        path_tmp <- paste0(base_path, x, "/", run_i, ".rds")
+        if (isTRUE(file.exists(path = path_tmp))) {
+          return(path_tmp)
+        } else {
+          return(NA)
+        }
+      })
+      files_tmp[is.na(files_tmp)] <- NULL
+      if (isTRUE(length(files_tmp) > 0)) {
+        ### load stats from larger group
+        stats <- readRDS(files_tmp[[1]])
+        ### subset to current group
+        stats <- stats[, stock_i]
+        ### do not run MP
+        run_mp <- FALSE
+      } else {
+        run_mp <- TRUE
+      }
     }
   } else {
     run_mp <- TRUE
