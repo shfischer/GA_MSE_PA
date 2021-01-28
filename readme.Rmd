@@ -9,8 +9,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-This repository contains the code for optimising the data-limited empirical rfb-rule ([ICES WKMSYCat34](http://www.ices.dk/sites/pub/Publication%20Reports/Expert%20Group%20Report/acom/2017/WKMSYCAT34/01.%20WKMSYCAT34%20REPORT%202017.pdf) catch rule 3.2.1, [Fischer et al., 2020](https://doi.org/10.1093/icesjms/fsaa054)) with a genetic algorithm.
+This repository contains the code for the publication:
+
+> Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T. (in press). Using a genetic algorithm to optimise a data-limited catch rule. ICES Journal of Marine Science. https://dx.doi.org/10.1093/icesjms/fsab018.
+
+The status of the repository used for the publication is saved in the release [code for ICESJMS publication](https://github.com/shfischer/GA_MSE/releases/tag/v1.0) and has a DOI:
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4475589.svg)](https://doi.org/10.5281/zenodo.4475589)
+
 The simulation is based on the Fisheries Library in R ([FLR](http://www.flr-project.org/)) and the Assessment for All (a4a) standard MSE framework ([`FLR/mse`](github.com/FLR/mse)) developed during the Workshop on development of MSE algorithms with R/FLR/a4a ([Jardim et al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
+
+
+
 
 ## Repository structure
 
