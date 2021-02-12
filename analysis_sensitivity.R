@@ -46,10 +46,10 @@ df_mult <- df_mult %>%
 p_mult <- df_mult %>%
   filter(sigmaL == 0.2) %>%
   ggplot(aes(x = multiplier, y = risk_Blim)) +
+  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   geom_smooth(method = "loess", span = 0.1, n = 10000, colour = "black", 
               level = 0, size = 0.5) +
   geom_point(size = 0.0, stroke = 0) +
-  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   geom_vline(xintercept = 0.75, colour = "black", linetype = "dashed",
              size = 0.4) +
   geom_text(x = 0.77, y = 1, hjust = 0, size = 2, check_overlap = TRUE,
@@ -249,12 +249,12 @@ df_risk$name <- factor(df_risk$name,
 
 p_years <- df_risk %>%
   ggplot(aes(x = year, y = value, linetype = name)) +
-  geom_line() +
+  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
+  geom_line(size = 0.5) +
   theme_bw(base_size = 8) +
   scale_linetype("") +
   labs(x = "year", y = expression(italic(B)[lim]~risk)) +
   ylim(c(0, 0.5)) +
-  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   geom_vline(xintercept = 50, colour = "black", linetype = "dashed",
              size = 0.4) +
   geom_text(x = 52, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
@@ -286,10 +286,10 @@ df_unc <- df_unc %>%
 
 p_obs <- df_unc %>%
   ggplot(aes(x = sigmaB, y = risk_Blim)) +
+  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   geom_smooth(method = "loess", span = 0.1, n = 10000, colour = "black",
               level = 0, size = 0.5) +
   geom_point(size = 0.0, stroke = 0) +
-  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   geom_vline(xintercept = 0.2, colour = "black", linetype = "dashed",
              size = 0.4) +
   geom_text(x = 0.21, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
@@ -306,6 +306,44 @@ p_obs
 #        width = 8.5, height = 6, units = "cm")
 # ggsave(filename = "output/plots/pol_risk_obs_unc.png",
 #        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
+
+### ------------------------------------------------------------------------ ###
+### recruitment variability with 0.75 multiplier ####
+### ------------------------------------------------------------------------ ###
+
+runs <- readRDS("output/500_50/risk/random/pol/all_runs.rds")
+
+df_rec <- runs2df(runs)
+df_rec <- df_rec %>%
+  filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
+         exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
+           multiplier %in% c(0.75, 1) &
+         upper_constraint == Inf & lower_constraint == 0 &
+           sigmaL == 0.2 & sigmaB == 0.2 & sigmaR_rho == 0)
+
+p_rec <- df_rec %>%
+  ggplot(aes(x = sigmaR, y = risk_Blim, linetype = as.factor(multiplier))) +
+  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
+  geom_smooth(method = "loess", span = 0.5, n = 10000, colour = "black",
+              level = 0, size = 0.5, se = FALSE) +
+  geom_point(size = 0.0, stroke = 0) +
+  scale_linetype("multiplier") +
+  geom_vline(xintercept = 0.6, colour = "black", linetype = "dashed",
+             size = 0.4) +
+  geom_text(x = 0.61, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
+            #label = ("default: 0.6")
+            label = expression("default:"~sigma[R]==0.6)) +
+  ylim(c(0, 0.5)) + 
+  theme_bw(base_size = 8) +
+  labs(x = expression(recruitment~variability~"("*sigma[R]*")"), 
+       y = "") +
+  theme(legend.position = c(0.2, 0.8),
+        legend.background = element_blank(),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(1, "lines"),
+        legend.key = element_blank(),
+        )
+p_rec
 
 
 ### ------------------------------------------------------------------------ ###
@@ -343,6 +381,7 @@ p_Blim <- as.data.frame(SSBs) %>%
   geom_histogram(aes(y = (stat(count)/sum(count))*50),
                  binwidth = 0.05, colour = "grey", fill = "white",
                  show.legend = TRUE, size = 0.1) +
+  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   stat_ecdf(aes(y = ..y..),
             pad = FALSE, geom = "step", size = 0.5) +
   # scale_y_continuous(labels = scales::percent, name = "frequency",
@@ -353,7 +392,6 @@ p_Blim <- as.data.frame(SSBs) %>%
   # scale_x_continuous(expand = c(0, 0), breaks = 0:6) +
   # coord_cartesian(xlim = c(NA, 7)) +
   xlim(c(0, 7)) +
-  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
   geom_vline(xintercept = Blim/c(refpts["msy", "ssb"]),
              colour = "black", linetype = "dashed",
              size = 0.4) +
@@ -430,14 +468,14 @@ df_risk <- data.frame(SSB0 = unlist(SSB_levels)[-length(SSB_levels)],
 
 p_initial <- df_risk %>%
   ggplot(aes(x = SSB0, y = risk)) +
+  geom_hline(yintercept = 0.05, colour = "red", size = 0.4) +
   geom_smooth(method = "loess", span = 0.3, colour = "black",
               level = 0, size = 0.5) +
   geom_point(size = 0.0, stroke = 0) +
-  geom_hline(yintercept = 0.05, colour = "red", size = 0.4) +
   theme_bw(base_size = 8) +
   labs(x = expression(SSB[italic(y) == 0]/italic(B)[MSY]), 
        y = "") +
-  ylim(c(0, 0.5)) + #xlim(c(0, 4)) +
+  ylim(c(0, 0.2)) + #xlim(c(0, 4)) +
   coord_cartesian(xlim = c(0, 2))
   # scale_y_continuous(expand = expansion(mult = c(0.00, 0.00), add = 0),
   #                    limits = c(0, 0.5)) +
@@ -455,9 +493,10 @@ p_initial
 ### combine sensitivity plots ####
 ### ------------------------------------------------------------------------ ###
 
-p <- plot_grid(p_mult, p_Blim, NULL, p_years, p_obs, p_initial, 
+p <- plot_grid(p_mult, p_Blim, p_initial, 
+               p_years, p_obs, p_rec, 
                nrow = 2, ncol = 3, align = "hv", 
-               labels = c("(a)", "(b)", "", "(c)", "(d)", "(e)"), 
+               labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)"), 
                hjust = 0, label_size = 10)
 p 
 ggsave(filename = "output/plots/pol_sensitivity.png", plot = p,
