@@ -1,5 +1,5 @@
 ### ------------------------------------------------------------------------ ###
-### run MSE without optimisation ####
+### sensitivity analysis - run MSE (without optimisation) ####
 ### ------------------------------------------------------------------------ ###
 
 ### ------------------------------------------------------------------------ ###
@@ -25,14 +25,20 @@ if (length(args) > 0) {
   if (!exists("part")) part <- 1
   ### projection details
   if (!exists("n_iter")) n_iter <- 500
-  if (!exists("n_yrs")) n_yrs <- 100
-  if (!exists("fhist")) fhist <- "random"
+  if (!exists("n_yrs")) n_yrs <- 50
+  if (!exists("fhist")) fhist <- "random" ### use random for sensitivity analysis
   if (!exists("catch_rule")) catch_rule <- "catch_rule"
-  
+  if (!exists("comp_r")) comp_r <- TRUE
+  if (!exists("comp_f")) comp_f <- TRUE
+  if (!exists("comp_b")) comp_b <- TRUE
   if (!exists("scenario")) scenario <- "risk"
-  ### uncertainty
+  if (!exists("cap_below_b")) cap_below_b <- TRUE
+  ### observation uncertainty
   if (!exists("sigmaL")) sigmaL <- 0.2
   if (!exists("sigmaB")) sigmaB <- 0.2
+  ### recruitment variability
+  if (!exists("sigmaR")) sigmaR <- 0.6
+  if (!exists("sigmaR_rho")) sigmaR_rho <- 0.0 ### auto-correlation
   ### what to save
   if (!exists("saveMP")) saveMP <- FALSE
   if (!exists("cut_hist")) cut_hist <- TRUE
@@ -181,12 +187,14 @@ rfb_names <- c("lag_idx", "range_idx_1", "range_idx_2", "range_catch",
              "exp_r", "exp_f", "exp_b", "interval", "multiplier",
              "upper_constraint", "lower_constraint")
 rfb_pars <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
-### uncertainty parameters
+### observation uncertainty and recruitment variability parameters
 unc_names <- c("sigmaL", "sigmaB")
 unc_pars <- c(0.2, 0.2)
+var_names <- c("sigmaR", "sigmaR_rho")
+var_pars <- c(0.6, 0)
 ### combine
-pars_names <- c(rfb_names, unc_names)
-pars_def <- as.list(c(rfb_pars, unc_pars))
+pars_names <- c(rfb_names, unc_names, var_names)
+pars_def <- as.list(c(rfb_pars, unc_pars, var_pars))
 names(pars_def) <- pars_names
 ### load parameter values, if provided
 pars <- mget(pars_names, ifnotfound = FALSE)
@@ -216,7 +224,9 @@ path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
                    paste0(stock, collapse = "_"), "/")
 dir.create(path_out, recursive = TRUE)
 
-
+### ------------------------------------------------------------------------ ###
+### go through scenarios ####
+### ------------------------------------------------------------------------ ###
 . <- foreach(par_i = split(pars, seq(nrow(pars)))) %do_pars% {
   
   input_i <- input
@@ -242,13 +252,14 @@ dir.create(path_out, recursive = TRUE)
     x$ctrl$phcr@args$exp_f <- par_i$exp_f
     x$ctrl$phcr@args$exp_b <- par_i$exp_b
     x$ctrl$hcr@args$interval <- par_i$interval
+    x$ctrl$isys@args$interval <- par_i$interval
     x$ctrl$isys@args$upper_constraint <- par_i$upper_constraint
     x$ctrl$isys@args$lower_constraint <- par_i$lower_constraint
     return(x)
   })
   
   ## ---------------------------------------------------------------------- ###
-  ## uncertainty ####
+  ## observation uncertainty ####
   ## ---------------------------------------------------------------------- ###
   ### change uncertainty?
   sigmaB_i <- par_i$sigmaB
@@ -283,6 +294,59 @@ dir.create(path_out, recursive = TRUE)
       I_trigger_dev <- I_loss_dev * 1.4
       x$ctrl$est@args$I_trigger <- c(I_trigger_dev)
       x$I_loss$idx_dev <- I_loss_dev
+      
+      return(x)
+      
+    })
+    
+  }
+  
+  ## ---------------------------------------------------------------------- ###
+  ## recruitment variability ####
+  ## ---------------------------------------------------------------------- ###
+  ### change variability?
+  sigmaR_i <- par_i$sigmaR
+  sigmaR_rho_i <- par_i$sigmaR_rho
+  if (sigmaR_i != pars_def$sigmaR | sigmaR_rho_i != pars_def$sigmaR_rho) {
+  
+    input_i <- lapply(input_i, function(x) {
+      
+      #browser()
+      ### retrieve original residuals
+      dev_R_original <- x$om@sr@residuals
+      
+      ### create recruitment residuals for projection period
+      set.seed(1)
+      dev_R_new <- rlnoise(dims(dev_R_original)$iter, dev_R_original %=% 0, 
+                           sd = sigmaR_i, b = sigmaR_rho_i)
+      ### replicate residuals from GA paper
+      qnt_150 <- FLQuant(NA, 
+                         dimnames = list(age = "all", year = 0:150,
+                                         iter = dimnames(dev_R_original)$iter))
+      qnt_100 <- FLQuant(NA, 
+                         dimnames = list(age = "all", year = 1:100,
+                                         iter = dimnames(dev_R_original)$iter))
+      set.seed(0)
+      res_150 <- rlnoise(dims(dev_R_original)$iter,
+                         qnt_150 %=% 0, 
+                         sd = sigmaR_i, b = sigmaR_rho_i)
+      set.seed(0)
+      res_100 <- rlnoise(dims(dev_R_original)$iter,
+                         qnt_100 %=% 0, 
+                         sd = sigmaR_i, b = sigmaR_rho_i)
+      ### insert into template
+      yrs_150 <- seq(from = dims(dev_R_original)$minyear,
+                     to = ifelse(dims(dev_R_original)$maxyear >= 150, 
+                        150, dims(dev_R_original)$maxyear))
+      dev_R_new[, ac(yrs_150)] <- res_150[, ac(yrs_150)]
+      
+      yrs_100 <- seq(from = dims(dev_R_original)$minyear,
+                     to = 100)
+      dev_R_new[, ac(yrs_100)] <- res_100[, ac(yrs_100)]
+      
+      
+      ### insert
+      x$om@sr@residuals[] <- dev_R_new
       
       return(x)
       
