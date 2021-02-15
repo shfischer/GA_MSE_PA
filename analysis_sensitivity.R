@@ -10,10 +10,8 @@ Blim <- readRDS("input/brps.rds")[["pol"]]@Blim
 refpts <- refpts(readRDS("input/brps.rds")[["pol"]])
 
 ### ------------------------------------------------------------------------ ###
-### pollack: multiplier vs risk ####
+### collate data ####
 ### ------------------------------------------------------------------------ ###
-
-runs <- readRDS("output/500_50/risk/random/pol/all_runs.rds")
 
 runs2df <- function(x) {
   res <- lapply(x, function(y) {
@@ -24,21 +22,34 @@ runs2df <- function(x) {
     df <- c(pars, stats)
     return(df)
   })
-  res <- do.call(rbind, res)
+  res <- do.call(bind_rows, res)
   res <- as.data.frame(res)
-  res$file <- rownames(res)
-  rownames(res) <- NULL
-  res <- lapply(res, unlist)
-  res <- as.data.frame(res)
+  res$file <- names(x)
   return(res)
 }
 
-df_mult <- runs2df(runs)
+### get results
+runs <- readRDS("output/500_50/risk/random/pol/all_runs.rds")
+runs_df <- runs2df(runs)
+
+### save
+saveRDS(runs_df, file = "output/pol_PA_sensitivity.rds")
+write.csv(runs_df, file = "output/pol_PA_sensitivity.csv", row.names = FALSE)
+
+
+
+### ------------------------------------------------------------------------ ###
+### pollack: multiplier vs risk ####
+### ------------------------------------------------------------------------ ###
+
+df_mult <- readRDS("output/pol_PA_sensitivity.rds")
 df_mult <- df_mult %>%
   filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
          exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
          upper_constraint == Inf & lower_constraint == 0 &
-           sigmaL %in% c(0.2, 0.4, 0.6) & sigmaB %in% c(0.2, 0.4, 0.6))
+         sigmaL %in% c(0.2, 0.4, 0.6) & sigmaB %in% c(0.2, 0.4, 0.6) &
+         (sigmaR == 0.6 | is.na(sigmaR)) & 
+         (sigmaR_rho == 0.6 | is.na(sigmaR)))
 
 ### plot Blim risk vs multiplier
 # plot(df_mult$risk_Blim ~ df_mult$multiplier)
@@ -57,15 +68,7 @@ p_mult <- df_mult %>%
   theme_bw(base_size = 8) +
   labs(x = expression(multiplier~(italic(x))), y = expression(italic(B)[lim]~risk)) +
   ylim(c(0, 1))
-  # scale_y_continuous(expand = expansion(mult = c(0, 0), add = 0),
-  #                    limits = c(0, 1)) +
-  # scale_x_continuous(expand = expansion(mult = 0, add = 0))
 p_mult
-# ggsave(filename = "output/plots/pol_risk_multiplier.pdf",
-#        width = 8.5, height = 6, units = "cm")
-# ggsave(filename = "output/plots/pol_risk_multiplier.png",
-#        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
-# 
 # ### for different levels of observation uncertainty
 # df_mult %>%
 #   filter(sigmaB %in% c(0.2, 0.4, 0.6)) %>%
@@ -82,8 +85,6 @@ p_mult
 #   scale_y_continuous(expand = expansion(mult = c(0, 0), add = 0),
 #                      limits = c(0, 1)) +
 #   scale_x_continuous(expand = expansion(mult = 0, add = 0))
-# ggsave(filename = "output/plots/pol_risk_multiplier_obs_levels.pdf",
-#        width = 8.5, height = 10, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
 ### numerical approximation of risk slope ####
@@ -265,24 +266,19 @@ p_years <- df_risk %>%
         legend.key.width = unit(1, "lines"),
         legend.key = element_blank())
 p_years
-# ggsave(filename = "output/plots/pol_risk_time_0.75.pdf",
-#        width = 8.5, height = 6, units = "cm")
-# ggsave(filename = "output/plots/pol_risk_time_0.75.png",
-#        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
-
 
 ### ------------------------------------------------------------------------ ###
 ### observation uncertainty with 0.75 multiplier ####
 ### ------------------------------------------------------------------------ ###
 
-runs <- readRDS("output/500_50/risk/random/pol/all_runs.rds")
-
-df_unc <- runs2df(runs)
+df_unc <- readRDS("output/pol_PA_sensitivity.rds")
 df_unc <- df_unc %>%
   filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
          exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
-           multiplier == 0.75 &
-         upper_constraint == Inf & lower_constraint == 0)
+         multiplier == 0.75 &
+         upper_constraint == Inf & lower_constraint == 0 &
+         (is.na(sigmaR) | sigmaR == 0.6) &
+         (is.na(sigmaR_rho) | sigmaR_rho == 0.6))
 
 p_obs <- df_unc %>%
   ggplot(aes(x = sigmaB, y = risk_Blim)) +
@@ -298,22 +294,13 @@ p_obs <- df_unc %>%
   theme_bw(base_size = 8) +
   labs(x = "observation uncertainty (CV)", 
        y = "")# +
-  # scale_y_continuous(expand = expansion(mult = c(0, 0), add = c(0, 0)),
-  #                    limits = c(0, 0.4)) +
-  # scale_x_continuous(expand = expansion(mult = 0, add = 0))
 p_obs
-# ggsave(filename = "output/plots/pol_risk_obs_unc.pdf",
-#        width = 8.5, height = 6, units = "cm")
-# ggsave(filename = "output/plots/pol_risk_obs_unc.png",
-#        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
 
 ### ------------------------------------------------------------------------ ###
 ### recruitment variability with 0.75 multiplier ####
 ### ------------------------------------------------------------------------ ###
 
-runs <- readRDS("output/500_50/risk/random/pol/all_runs.rds")
-
-df_rec <- runs2df(runs)
+df_rec <- readRDS("output/pol_PA_sensitivity.rds")
 df_rec <- df_rec %>%
   filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
          exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
@@ -477,17 +464,7 @@ p_initial <- df_risk %>%
        y = "") +
   ylim(c(0, 0.2)) + #xlim(c(0, 4)) +
   coord_cartesian(xlim = c(0, 2))
-  # scale_y_continuous(expand = expansion(mult = c(0.00, 0.00), add = 0),
-  #                    limits = c(0, 0.5)) +
-  # scale_x_continuous(expand = expansion(mult = 0, add = 0),
-  #                    limits = c(0, NA))
 p_initial
-# ggsave(filename = "output/plots/pol_risk_start_level.pdf",
-#        width = 8.5, height = 6, units = "cm")
-# ggsave(filename = "output/plots/pol_risk_start_level.png",
-#        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
-
-
 
 ### ------------------------------------------------------------------------ ###
 ### combine sensitivity plots ####
