@@ -138,8 +138,8 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 stock <- stocks$stock[stock_id]
 names(stock) <- stock
 input <- lapply(stock, function(x) {
-  readRDS(paste0("input/", n_iter, "_", n_yrs, "/OM_2_mp_input/", fhist, "/", x,
-                        ".rds"))
+  readRDS(paste0("input/sensitivity/", n_iter, "_", n_yrs, "/OM_2_mp_input/", 
+                 fhist, "/", x, ".rds"))
 })
 
 ### ------------------------------------------------------------------------ ###

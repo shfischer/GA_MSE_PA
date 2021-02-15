@@ -206,7 +206,7 @@ p_mult
 ### risk over time of optimised rfb-rule with 0.75 multiplier ####
 ### ------------------------------------------------------------------------ ###
 
-input <- readRDS("input/500_100/OM_2_mp_input/random/pol.rds")
+input <- readRDS("input/sensitivity/500_100/OM_2_mp_input/random/pol.rds")
 res <- readRDS("output/500_100/risk/random/pol/mp_1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds")
 
 ### collapse correction
@@ -351,7 +351,7 @@ p_rec
 ### ------------------------------------------------------------------------ ###
 ### use 10,000 replicates to split into groups
 
-input <- readRDS("input/10000_50/OM_2_mp_input/random/pol.rds")
+input <- readRDS("input/sensitivity/10000_50/OM_2_mp_input/random/pol.rds")
 res_stats <- readRDS("output/10000_50/risk/random/pol/1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds")
 res <- readRDS("output/10000_50/risk/random/pol/mp_1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds")
 
@@ -499,7 +499,7 @@ p <- plot_grid(p_mult, p_Blim, p_initial,
                labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)"), 
                hjust = 0, label_size = 10)
 p 
-ggsave(filename = "output/plots/pol_sensitivity.png", plot = p,
+ggsave(filename = "output/plots/sensitivity/pol_sensitivity.png", plot = p,
        width = 17, height = 8, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/pol_sensitivity.pdf", plot = p,
+ggsave(filename = "output/plots/sensitivity/pol_sensitivity.pdf", plot = p,
        width = 17, height = 8, units = "cm")

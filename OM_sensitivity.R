@@ -135,7 +135,8 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
                  sr.residuals.mult = TRUE, maxF = 5) 
 
   name(stk_stf) <- stock
-  path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
+  path <- paste0("input/sensitivity/", n_iter, "_", yrs_proj, "/OM_1_hist/", 
+                 fhist, "/")
   dir.create(path, recursive = TRUE)
   saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, ".rds"))
   
@@ -148,8 +149,8 @@ stks_hist <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
 
 stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
   ### load stock
-  tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
-                        "/", stock, ".rds"))
+  tmp <- readRDS(paste0("input/sensitivity/", n_iter, "_", yrs_proj, 
+                        "/OM_1_hist/", fhist, "/", stock, ".rds"))
   stk_fwd <- tmp$stk
   stk_sr <- tmp$sr
   ### life-history data
@@ -274,7 +275,8 @@ stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
                 refpts = refpts, Blim = Blim, I_loss = I_loss)
   
   ### save OM
-  path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist, "/")
+  path <- paste0("input/sensitivity/", n_iter, "_", yrs_proj, "/OM_2_mp_input/",
+                 fhist, "/")
   dir.create(path, recursive = TRUE)
   saveRDS(object = input, file = paste0(path, stock, ".rds"))
   return(NULL)
