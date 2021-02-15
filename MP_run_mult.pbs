@@ -1,0 +1,51 @@
+#!/bin/sh
+## job name
+#PBS -N risk_mult
+## maximum runtime
+#PBS -l walltime=06:00:00
+## select number of nodes, cpus (per node) and memory (per node)
+#PBS -l select=1:ncpus=24:mpiprocs=1:mem=100gb
+## standard output standard error
+#PBS -o reports
+#PBS -e reports
+## request disk space for temporary directory
+###PBS -l tmpspace=10gb
+## array job
+##PBS -J 2-20
+## start job after another job finished?
+###PBS -W depend=afterany:1624711.pbs
+
+
+### print details about job
+echo ""
+echo "This is job $PBS_JOBID index $PBS_ARRAY_INDEX"
+echo "The following ressources have been allocated"
+cat $PBS_NODEFILE
+echo ""
+
+### set working directory
+cd $HOME/git/wklife9_GA-risk
+
+## load modules
+## anaconda includes R and OpenMPI
+module purge
+module load mpi/intel-2018.1.163 anaconda3/personal
+### activate MPI environment
+source activate R_2020
+
+echo "starting the simulations..."
+### run job
+### when running with MPI, worker count is one less than selected cores
+#mpiexec 
+R CMD BATCH --vanilla --quiet "--args use_MPI=FALSE n_workers=20 n_blocks=1 stock_id=12 n_iter=500 n_yrs=50 fhist='random' catch_rule='catch_rule' multiplier=seq(from=0,to=2,by=0.01) saveMP=FALSE collate=TRUE" $HOME/git/wklife9_GA-risk/run_ms_sensitivity.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+## $PBS_ARRAY_INDEX
+
+echo ""
+echo "R job finished!"
+echo ""
+
+## print details about job
+echo "job details from PBS:"
+echo "==============================================================================="
+qstat -f
+echo "==============================================================================="
