@@ -102,6 +102,7 @@ stats <- lapply(stocks_subset, function(x) {
 })
 stats <- do.call(rbind, stats)
 saveRDS(stats, "output/10000_100/test/corrected_21-29_stats.rds")
+stats <- readRDS("output/10000_100/test/corrected_21-29_stats.rds")
 
 ### summarise into discrete cells
 cut_mean <- function(x, bins = NULL, interval = NULL) {
@@ -135,13 +136,17 @@ stats3 <- stats2 %>%
   mutate(stock_k = paste0(stock, "~~(italic(k)==", k, ")"))
 stats3$stock_k <- factor(stats3$stock_k, levels = unique(stats3$stock_k))
 
+saveRDS(stats3, "output/10000_100/test/corrected_21-29_stats_plot.rds")
+stats3 <- readRDS("output/10000_100/test/corrected_21-29_stats_plot.rds")
 
 # df_brill <- stats3 %>%
 #   filter(stock == "bll")
 max_y <- max(stats3$catch, na.rm = TRUE)
 stats3 %>%
   ggplot(aes(x = status, y = HR, fill = catch)) +
-  geom_raster() +
+  geom_raster() + 
+  # geom_contour(aes(z = catch), breaks = c(0.75), colour = "black",
+  #              alpha = 0.5, size = 0.1) +
   facet_grid(stock_k ~ period, labeller = "label_parsed") +
   scale_fill_gradientn(expression(catch/MSY), 
                        colours = c("red", "orange", "yellow", "green",
@@ -158,8 +163,34 @@ stats3 %>%
 
 ggsave(filename = "output/plots/HR_catch.pdf",
        width = 25, height = 15, units = "cm", dpi = 600)
-ggsave(filename = "output/plots/HR_catch.png", type = "cairo",
+ggsave(filename = "output/plots/HR_catch2.png", type = "cairo",
        width = 25, height = 15, units = "cm", dpi = 3840/(25/2.54))
+
+### only 10 & 100 years
+stats3 %>%
+  filter(period %in% c("10~years", "100~years")) %>%
+  ggplot(aes(x = status, y = HR, fill = catch)) +
+  geom_raster() + 
+  # geom_contour(aes(z = catch), breaks = c(0.75), colour = "black",
+  #              alpha = 0.5, size = 0.1) +
+  facet_grid(period ~ stock_k, labeller = "label_parsed") +
+  scale_fill_gradientn(expression(catch/MSY), 
+                       colours = c("red", "orange", "yellow", "green",
+                                   "darkgreen"),
+                       values = c(0, 0.33, 0.66, 1, max_y)/max_y
+                       ) +
+  theme_bw(base_size = 7) +
+  labs(x = expression(initial~stock~status~(SSB/italic(B)[MSY])), 
+       y = "harvest rate") +
+  #xlim(c(0, 5)) +
+  coord_cartesian(xlim = c(0, 5), y = c(0, 1)) +
+  theme(panel.spacing.x = unit(0, units = "pt"),
+        panel.spacing.y = unit(0, units = "pt"))
+
+ggsave(filename = "output/plots/HR_catch_10_100.pdf",
+       width = 17, height = 5, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/HR_catch_10_100.png", type = "cairo",
+       width = 17, height = 5, units = "cm", dpi = 300)
 
 
 ### ------------------------------------------------------------------------ ###
@@ -698,7 +729,7 @@ as.data.frame(idxL[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "mean catch length [cm]")
 ggsave(filename = "output/plots/length_procedure_lmean_1.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### add LFeM
 as.data.frame(idxL[,,,,, i]) %>%
@@ -708,7 +739,7 @@ as.data.frame(idxL[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "mean catch length [cm]")
 ggsave(filename = "output/plots/length_procedure_lmean_2.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### mark length above LFeM
 as.data.frame(idxL[,,,,, i]) %>%
@@ -720,7 +751,7 @@ as.data.frame(idxL[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "mean catch length [cm]")
 ggsave(filename = "output/plots/length_procedure_lmean_3.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### catch
 as.data.frame(catch(stk)[,,,,, i]) %>%
@@ -729,7 +760,7 @@ as.data.frame(catch(stk)[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "catch")
 ggsave(filename = "output/plots/length_procedure_catch.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### biomass index
 as.data.frame(idxB[,,,,, i]) %>%
@@ -738,7 +769,7 @@ as.data.frame(idxB[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "biomass index")
 ggsave(filename = "output/plots/length_procedure_idxB.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### catch/biomass index
 as.data.frame(idxB[,,,,, i]/catch(stk)[,,,,, i]) %>%
@@ -747,7 +778,7 @@ as.data.frame(idxB[,,,,, i]/catch(stk)[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "catch/biomass index")
 ggsave(filename = "output/plots/length_procedure_cr_1.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### add points
 as.data.frame(idxB[,,,,, i]/catch(stk)[,,,,, i]) %>%
@@ -758,7 +789,7 @@ as.data.frame(idxB[,,,,, i]/catch(stk)[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "catch/biomass index")
 ggsave(filename = "output/plots/length_procedure_cr_2.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
 ### add mean
 as.data.frame(idxB[,,,,, i]/catch(stk)[,,,,, i]) %>%
@@ -773,7 +804,231 @@ as.data.frame(idxB[,,,,, i]/catch(stk)[,,,,, i]) %>%
   theme_bw(base_size = 8) +
   labs(x = "year", y = "catch/biomass index")
 ggsave(filename = "output/plots/length_procedure_cr_3.png",
-       width = 10, height = 6, units = "cm", dpi = 3840/(10/2.54),
+       width = 10, height = 6, units = "cm", dpi = 600,
        type = "cairo")
+
+
+
+### ------------------------------------------------------------------------ ###
+### HR with +20 -30% uncertainty cap - multipliers ####
+### ------------------------------------------------------------------------ ###
+
+res_cap <- foreach(stock = stocks$stock[1:29], .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
+    ### load data
+    path <- paste0("output/500_50/length/", fhist, "/", stock, "/")
+    path_runs <- paste0(path, "collated_stats_length_0-1_1_1_1_1_1.2_0.7.rds")
+    if (!file.exists(path_runs)) return(NULL)
+    print("found something")
+    runs <- readRDS(path_runs)
+    runs <- as.data.frame(lapply(runs, unlist))
+    runs$fhist <- fhist
+    return(runs)
+}
+
+res_cap <- res_cap %>%
+  left_join(stocks[, c("stock", "k")]) %>%
+  mutate(stock_k = paste0(stock, "~(italic(k)==", k, ")")) %>%
+  mutate(stock_k = factor(stock_k, levels = unique(stock_k))) %>%
+  mutate(stock = factor(stock, levels = stocks$stock))
+  
+
+
+saveRDS(res_cap, file = "output/500_50/length/cap2030.rds")
+res_cap <- readRDS("output/500_50/length/cap2030.rds")
+
+
+### plot
+res_cap <- res_cap %>%
+  #filter(stat_yrs == "all") %>%
+  select(multiplier, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV,
+         stock, fhist, stock_k) %>%
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel",
+                                       "risk_Blim", "ICV", "fitness"), 
+                       labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                  "B[lim]~risk", "ICV", "fitness~value")))
+stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                     "B[lim]~risk", "ICV"),
+                            target = c(1, 1, 1, 0, 0))
+### plot full period rfb-rule
+p <- res_cap %>% 
+  ggplot(aes(x = multiplier, y = value,
+             colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_line(size = 0.3) +
+  geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.05),
+             aes(yintercept = y), colour = "red") +
+  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  scale_linetype_discrete("fishing\nhistory") +
+  scale_colour_discrete("fishing\nhistory") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_text(size = 6)) +
+  labs(x = "multiplier", y = "") +
+  ylim(c(0, NA)) +
+  scale_x_continuous(breaks = c(0, 0.5, 1)#,
+                     #expand = expansion(mult = c(0.1, 0.1))
+                     )
+p
+ggsave(filename = "output/plots/length_cap2030.pdf",
+       width = 50, height = 10, units = "cm")
+ggsave(filename = "output/plots/length_cap2030.png", type = "cairo",
+       width = 50, height = 10, units = "cm", dpi = 600)
+
+
+
+### ------------------------------------------------------------------------ ###
+### HR with +20 -30% uncertainty cap if index above trigger - multipliers ####
+### ------------------------------------------------------------------------ ###
+
+stocks_subset <- stocks$stock
+res_cap <- foreach(stock = stocks_subset, .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
+    ### load data
+    path <- paste0("output/500_100/length_cap_b/", fhist, "/", stock, "/")
+    path_runs <- paste0(path, "collated_stats_length_0-1_1_1_1_1_1.2_0.7.rds")
+    if (!file.exists(path_runs)) return(NULL)
+    print("found something")
+    runs <- readRDS(path_runs)
+    runs <- as.data.frame(lapply(runs, unlist))
+    runs$fhist <- fhist
+    return(runs)
+}
+
+### split reporting periods
+smry_stats <- c("risk_Blim", "risk_Bmsy", "risk_halfBmsy", "risk_collapse", 
+                "SSB", "Fbar", "Catch", "SSB_rel", "Fbar_rel", "Catch_rel", "ICV")
+periods <- c("first10", "41to50", "last10", "firsthalf", "lastfhalf", "11to50")
+res_cap <- lapply(split(res_cap, seq(nrow(res_cap))), function(x) {
+  stats_more <- t(sapply(periods, function(y) {
+    as.numeric(x[grep(x = names(x), pattern = y)])
+  }))
+  stats <- rbind(all = as.numeric(x[smry_stats]), stats_more)
+  stats <- as.data.frame(stats)
+  colnames(stats) <- smry_stats
+  stats$stat_yrs <- rownames(stats)
+  rownames(stats) <- NULL
+  ### add scenario definition
+  stats <- cbind(x[c("stock", "multiplier", "comp_b", "idxB_lag", "idxB_range_3", 
+                     "interval", "upper_constraint", "lower_constraint", 
+                     "fhist")],
+                 stats)
+  return(stats)
+})
+res_cap <- do.call(rbind, res_cap)
+
+### add k
+res_cap <- res_cap %>%
+  left_join(stocks[, c("stock", "k")]) %>%
+  mutate(stock_k = paste0(stock, "~(italic(k)==", k, ")")) %>%
+  mutate(stock_k = factor(stock_k, levels = unique(stock_k))) %>%
+  mutate(stock = factor(stock, levels = stocks$stock))
+
+saveRDS(res_cap, file = "output/500_100/length_cap_b/collated.rds")
+res_cap <- readRDS("output/500_100/length_cap_b/collated.rds")
+
+
+### prepare data for plotting
+res_plot <- res_cap %>%
+  filter(stat_yrs == "all") %>%
+  select(multiplier, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV,
+         stock, fhist, stock_k) %>%
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel",
+                                       "risk_Blim", "ICV", "fitness"), 
+                       labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                  "B[lim]~risk", "ICV", "fitness~value")))
+### plot summary stats for all stocks
+p <- res_plot %>% 
+  ggplot(aes(x = multiplier, y = value,
+             colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_line(size = 0.3) +
+  geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.05),
+             aes(yintercept = y), colour = "red") +
+  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  scale_linetype_discrete("fishing\nhistory") +
+  scale_colour_discrete("fishing\nhistory") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_text(size = 6)) +
+  labs(x = "multiplier", y = "") +
+  ylim(c(0, NA)) +
+  scale_x_continuous(breaks = c(0, 0.5, 1)#,
+                     #expand = expansion(mult = c(0.1, 0.1))
+                     )
+p
+ggsave(filename = "output/plots/length_cap2030_b/all_stocks_stats.pdf",
+       width = 50, height = 10, units = "cm")
+ggsave(filename = "output/plots/length_cap2030_b/all_stocks_stats.png", 
+       type = "cairo", width = 50, height = 10, units = "cm", dpi = 600)
+
+### medians
+res_plot <- res_cap %>%
+  filter(stat_yrs == "all") %>%
+  mutate(ICV = ifelse(multiplier == 0 & ICV == 1, NA, ICV)) %>%
+  filter(stock %in% c("gut", "whg", "bll", "lem", "ane")) %>%
+  select(multiplier, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV,
+         fhist, stock, stock_k, k)
+res_mult <- res_plot %>% 
+  group_by(multiplier) %>%
+  summarise(risk_Blim = median(risk_Blim),
+            SSB_rel = median(SSB_rel),
+            Fbar_rel = median(Fbar_rel),
+            Catch_rel = median(Catch_rel),
+            ICV = median(ICV)) %>%
+  mutate(stock = "median")
+res_mult %>%
+  filter(risk_Blim >= 0.04 & risk_Blim <= 0.07)
+res_plot <- res_plot %>%
+  full_join(res_mult)
+res_plot <- res_plot %>%
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel",
+                                       "risk_Blim", "ICV", "fitness"), 
+                       labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                  "B[lim]~risk", "ICV", "fitness~value"))) %>%
+  mutate(group = ifelse(stock == "median", "median", NA),
+         group = ifelse(stock != "median" & fhist == "one-way", "one-way", group),
+         group = ifelse(stock != "median" & fhist == "random", "random", group))
+
+res_plot %>% 
+  ggplot(aes(x = multiplier, y = value,
+             colour = group, 
+             alpha = group,
+             group = interaction(stock, fhist))) +
+  geom_line(size = 0.3) +
+  geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.05),
+             aes(yintercept = y), colour = "red") +
+  facet_wrap(~ stat, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  #scale_colour_manual("", values = c("TRUE" = "black", "FALSE" = "blue")) +
+  scale_colour_manual("", values = c("median" = "black", "one-way" = "blue",
+                                     "random" = "green")) +
+  scale_alpha_manual("", values = c("median" = 1, "one-way" = 0.2,
+                                     "random" = 0.2)) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_text(size = 6)) +
+  labs(x = "multiplier", y = "") +
+  ylim(c(0, NA)) +
+  scale_x_continuous(breaks = c(0, 0.5, 1))
+ggsave(filename = "output/plots/length_cap2030_b/multiplier.pdf",
+       width = 17, height = 10, units = "cm")
+ggsave(filename = "output/plots/length_cap2030_b/multiplier.png", 
+       type = "cairo", width = 17, height = 10, units = "cm", dpi = 600)
+
+
+
 
 
