@@ -36,7 +36,7 @@ source activate R_2020
 echo "starting the simulations..."
 ### run job
 ### when running with MPI, worker count is one less than selected cores
-R CMD BATCH --vanilla --quiet "--args n_workers=20 n_blocks=1 stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='random' hr='length' multiplier=seq(from=0,to=1,length.out=101) comp_b=TRUE interval=1 idxB_lag=1 idxB_range_3=1 upper_constraint=1.2 lower_constraint=0.7 scenario='length' saveMP=FALSE stats=TRUE collate=TRUE" $HOME/git/wklife9_GA-harvest_rate/run_ms.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
+R CMD BATCH --vanilla --quiet "--args n_workers=20 n_blocks=1 stock_id=$PBS_ARRAY_INDEX n_iter=500 n_yrs=50 fhist='random' hr='length' multiplier=seq(from=0,to=1,length.out=101) comp_b=TRUE interval=1 idxB_lag=1 idxB_range_3=1 upper_constraint=1.2 lower_constraint=0.7 scenario='length' saveMP=FALSE stats=TRUE collate=TRUE" $HOME/git/wklife9_GA-harvest_rate/run_ms_hr.R $HOME/reports/$PBS_JOBID.$PBS_ARRAY_INDEX.Rout
 ## $PBS_ARRAY_INDEX
 
 echo ""
