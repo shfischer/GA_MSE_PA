@@ -14,6 +14,8 @@ for (i in seq_along(args)) eval(parse(text = args[[i]]))
 ### ------------------------------------------------------------------------ ###
 
 ### load packages
+### use mse fork from shfischer/mse, branch mseDL2.0 
+### remotes::install_github("shfischer/mse", ref = "mseDL2.0)
 req_pckgs <- c("FLCore", "FLash", "FLBRP", "mse", "FLife", 
                "tidyr", "dplyr", "foreach", "doParallel")
 for (i in req_pckgs) library(package = i, character.only = TRUE)
@@ -105,6 +107,11 @@ if (exists("OM")) {
       set.seed(0)
       residuals(stk_sr) <- rlnoise(dim(stk)[6], rec(stk) %=% 0, 
                                    sd = 0.6, b = 0)
+      ### replicate residuals from GA paper
+      set.seed(0)
+      residuals(stk_sr)[, ac(0:150)] <- rlnoise(dim(stk)[6], 
+                                                rec(stk)[, ac(0:150)] %=% 0,
+                                                sd = 0.6, b = 0)
       ### replicate residuals from catch rule paper for historical period
       set.seed(0)
       residuals <- rlnoise(dim(stk)[6], (rec(stk) %=% 0)[, ac(1:100)], 
@@ -149,7 +156,7 @@ if (exists("OM")) {
       #                  sr.residuals.mult = TRUE, maxF = 4)
       # }
       name(stk_stf) <- stock
-      path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
+      path <- paste0("input/hr/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
       dir.create(path, recursive = TRUE)
       saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, ".rds"))
       
@@ -169,8 +176,8 @@ if (exists("MP")) {
     stks_mp <- foreach(stock = stocks_subset, .errorhandling = "pass", 
                        .packages = c("FLCore", "mse")) %dopar% {
       ### load stock
-      tmp <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
-                            "/", stock, ".rds"))
+      tmp <- readRDS(paste0("input/hr/", n_iter, "_", yrs_proj, "/OM_1_hist/", 
+                            fhist, "/", stock, ".rds"))
       stk_fwd <- tmp$stk
       stk_sr <- tmp$sr
       rm(tmp); gc()
@@ -203,13 +210,21 @@ if (exists("MP")) {
       set.seed(2)
       PA_status_dev["negative"] <- rbinom(n = PA_status_dev["negative"], 
                                           size = 1, prob = 1 - 0.4216946)
-      set.seed(696)
+      set.seed(695)
       idx_dev <- FLQuants(sel = stk_fwd@mat %=% 1,
                           idxB = rlnoise(n = dims(idx$idxB)$iter, idx$idxB %=% 0, 
                                         sd = 0.2, b = 0),
                           idxL = rlnoise(n = dims(idx$idxL)$iter, idx$idxL %=% 0, 
                                          sd = 0.2, b = 0),
                           PA_status = PA_status_dev)
+      ### replicate previous deviates from GA paper
+      set.seed(696)
+      idx_dev$idxB[, ac(50:150)] <- rlnoise(n = dims(idx$idxB)$iter,
+                                            window(idx$idxB, end = 150) %=% 0,
+                                            sd = 0.2, b = 0)
+      idx_dev$idxL[, ac(50:150)] <- rlnoise(n = dims(idx$idxL)$iter, 
+                                            window(idx$idxB, end = 150) %=% 0,
+                                            sd = 0.2, b = 0)
       ### iem deviation
       set.seed(205)
       iem_dev <- FLQuant(rlnoise(n = dims(stk_fwd)$iter,  catch(stk_fwd) %=% 0,
@@ -291,7 +306,8 @@ if (exists("MP")) {
                     refpts = refpts, Blim = Blim, I_loss = I_loss)
       
       ### save OM
-      path <- paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist, "/")
+      path <- paste0("input/hr/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", 
+                     fhist, "/")
       dir.create(path, recursive = TRUE)
       saveRDS(object = input, file = paste0(path, stock, ".rds"))
       return(NULL)
@@ -319,8 +335,8 @@ if (exists("ROC")) {
   
     roc <- foreach(stock = stocks_subset) %dopar%  {
       
-      input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
-                              "/", stock, ".rds"))
+      input <- readRDS(paste0("input/hr/", n_iter, "_", yrs_proj, "/OM_1_hist/",
+                              fhist, "/", stock, ".rds"))
       ### calculate Lmean
       lhist <- stocks[stocks$stock == stock, ]
       pars_l <- FLPar(a = lhist$a,
@@ -361,7 +377,7 @@ if (exists("ROC")) {
       mutate(label = factor(stock, levels = stocks$stock,
                             labels = paste0("italic(k)==", stocks$k, "~", 
                                             stocks$stock)))
-    saveRDS(roc, file = "input/10000_100/roc.rds")
+    saveRDS(roc, file = "input/hr/10000_100/roc.rds")
     roc <- roc %>%
       left_join(stocks[, c("stock", "k")]) %>%
       mutate(stock_k = paste0(stock, "~(italic(k)==", k, ")")) %>%
@@ -376,9 +392,9 @@ if (exists("ROC")) {
       theme_bw(base_size = 8) +
       scale_x_continuous(breaks = c(0, 0.5, 1)) + 
       scale_y_continuous(breaks = c(0, 0.5, 1))
-    ggsave(filename = "input/ROC_LFeM.pdf",
+    ggsave(filename = "input/hr/ROC_LFeM.pdf",
           width = 17, height = 13, units = "cm", dpi = 600)
-    ggsave(filename = "input/ROC_LFeM.png", type = "cairo", 
+    ggsave(filename = "input/hr/ROC_LFeM.png", type = "cairo", 
           width = 17, height = 13, units = "cm", dpi = 1920/(17/2.54))
 
   }
@@ -395,8 +411,8 @@ if (exists("CI")) {
     cis <- foreach(stock = stocks_subset, .errorhandling = "pass", 
                          .packages = c("FLCore", "mse")) %dopar% {
         ### load stock
-        input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist,
-                              "/", stock, ".rds"))
+        input <- readRDS(paste0("input/hr/", n_iter, "_", yrs_proj, 
+                                "/OM_1_hist/", fhist, "/", stock, ".rds"))
         stk <- iter(input$stk, 1)
         sr <- iter(input$sr, 1)
         residuals(sr) <- residuals(sr) %=% 1
@@ -438,8 +454,8 @@ if (exists("CI")) {
         ci_ssb <- catch(stk_fwd)/ssb(stk_fwd)
         ci_ssb <- median(ci_ssb[, ac(191:200)])
         ### normal index
-        input <- readRDS(paste0("input/", n_iter, "_", yrs_proj, "/OM_2_mp_input/", fhist,
-                              "/", stock, ".rds"))
+        input <- readRDS(paste0("input/hr/", n_iter, "_", yrs_proj, 
+                                "/OM_2_mp_input/", fhist, "/", stock, ".rds"))
         idx <- quantSums(stk_fwd@stock.n * stk_fwd@stock.wt * 
                            (stk_fwd@mat %=% c(input$oem@observations$idx$sel[, 1,,,, 1])))
         ci <- catch(stk_fwd)/idx
@@ -465,7 +481,7 @@ if (exists("CI")) {
         
     }
     names(cis) <- stocks_subset
-    saveRDS(cis, file = "input/catch_rates.rds")
+    saveRDS(cis, file = "input/hr/catch_rates.rds")
 
   }
 }

@@ -51,7 +51,7 @@ stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
 stock <- stocks$stock[stock_id]
 
 ### path to input files
-path_in <- paste0("input/", n_iter, "_", n_yrs, "/OM_2_mp_input/", fhist, "/")
+path_in <- paste0("input/hr/", n_iter, "_", n_yrs, "/OM_2_mp_input/", fhist, "/")
 input <- readRDS(paste0(path_in, stock, ".rds"))
 
 input$args$nblocks <- n_blocks
@@ -115,21 +115,21 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
                        par_i$idxB_range_3, par_i$interval, 
                        par_i$upper_constraint, par_i$lower_constraint), 
                      collapse = "_")
-  path_out <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/",
+  path_out <- paste0("output/hr/", n_iter, "_", n_yrs, "/", scenario, "/",
                      fhist, "/", paste0(stock, collapse = "_"), "/")
   dir.create(path_out, recursive = TRUE)
   ### skip if run already exists
   if (file.exists(paste0(path_out, "stats_", file_out, ".rds"))) return(NULL)
   
-  ### ------------------------------------------------------------------------ ###
+  ### ---------------------------------------------------------------------- ###
   ### run  ####
-  ### ------------------------------------------------------------------------ ###
+  ### ---------------------------------------------------------------------- ###
   
   res <- do.call(mp, input)
   
-  ### ------------------------------------------------------------------------ ###
+  ### ---------------------------------------------------------------------- ###
   ### save ####
-  ### ------------------------------------------------------------------------ ###
+  ### ---------------------------------------------------------------------- ###
   
   if (isTRUE(saveMP))
     saveRDS(object = res, file = paste0(path_out, "mp_", file_out, ".rds"))
