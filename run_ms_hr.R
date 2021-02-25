@@ -133,7 +133,7 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   
   par_i <- hr_params[hr_i, ]
   
-  input <- hr_par(input = input, brp = brp, lhist = lhist,
+  input_i <- hr_par(input = input, brp = brp, lhist = lhist,
                   hr = hr, hr_ref = hr_ref, 
                   multiplier = par_i$multiplier,
                   comp_b = par_i$comp_b, idxB_lag = par_i$idxB_lag, 
@@ -150,40 +150,33 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   sigmaB_i <- par_i$sigmaB
   sigmaL_i <- par_i$sigmaL
   if (par_i$sigmaB != 0.2 | par_i$sigmaL != 0.2) {
+      
+    #browser()
+    ### create observation noise
+    set.seed(695)
+    dev_idxB <- input_i$oem@deviances$idx$idxB
+    dev_idxL <- input_i$oem@deviances$idx$idxL
+    dev_idxB[] <- rlnoise(n = dims(dev_idxB)$iter, dev_idxB %=% 0, 
+                          sd = sigmaB_i, b = 0)
+    dev_idxL[] <- rlnoise(n = dims(dev_idxL)$iter, dev_idxL %=% 0, 
+                          sd = sigmaL_i, b = 0)
+    set.seed(696)
+    dev_idxB[, ac(50:150)] <- rlnoise(n = dims(dev_idxB)$iter,
+                                      window(dev_idxB, end = 150) %=% 0,
+                                      sd = sigmaB_i, b = 0)
+    dev_idxL[, ac(50:150)] <- rlnoise(n = dims(dev_idxB)$iter,
+                                      window(dev_idxB, end = 150) %=% 0,
+                                      sd = sigmaL_i, b = 0)
+    ### insert
+    input_i$oem@deviances$idx$idxB <- dev_idxB
+    input_i$oem@deviances$idx$idxL <- dev_idxL
     
-    input_i <- lapply(list(input), function(x) {
-      
-      #browser()
-      ### create observation noise
-      set.seed(695)
-      dev_idxB <- x$oem@deviances$idx$idxB
-      dev_idxL <- x$oem@deviances$idx$idxL
-      dev_idxB[] <- rlnoise(n = dims(dev_idxB)$iter, dev_idxB %=% 0, 
-                            sd = sigmaB_i, b = 0)
-      dev_idxL[] <- rlnoise(n = dims(dev_idxL)$iter, dev_idxL %=% 0, 
-                            sd = sigmaL_i, b = 0)
-      set.seed(696)
-      dev_idxB[, ac(50:150)] <- rlnoise(n = dims(dev_idxB)$iter,
-                                        window(dev_idxB, end = 150) %=% 0,
-                                        sd = sigmaB_i, b = 0)
-      dev_idxL[, ac(50:150)] <- rlnoise(n = dims(dev_idxB)$iter,
-                                        window(dev_idxB, end = 150) %=% 0,
-                                        sd = sigmaL_i, b = 0)
-      ### insert
-      x$oem@deviances$idx$idxB <- dev_idxB
-      x$oem@deviances$idx$idxL <- dev_idxL
-      
-      ### update I_trigger
-      I_loss_dev <- apply((x$oem@observations$idx$idxB *
-                             dev_idxB)[, ac(50:100)], 6, min)
-      I_trigger_dev <- I_loss_dev * 1.4
-      x$ctrl$est@args$I_trigger <- c(I_trigger_dev)
-      x$I_loss$idx_dev <- I_loss_dev
-      
-      return(x)
-      
-    })
-    input <- input_i[[1]]
+    ### update I_trigger
+    I_loss_dev <- apply((input_i$oem@observations$idx$idxB *
+                           dev_idxB)[, ac(50:100)], 6, min)
+    I_trigger_dev <- I_loss_dev * 1.4
+    input_i$ctrl$est@args$I_trigger <- c(I_trigger_dev)
+    input_i$I_loss$idx_dev <- I_loss_dev
     
   }
   
@@ -195,49 +188,42 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   sigmaR_rho_i <- par_i$sigmaR_rho
   if (sigmaR_i != 0.6 | sigmaR_rho_i != 0) {
     
-    input_i <- lapply(list(input), function(x) {
-      
-      #browser()
-      ### retrieve original residuals
-      dev_R_original <- x$om@sr@residuals
-      
-      ### create recruitment residuals for projection period
-      set.seed(1)
-      dev_R_new <- rlnoise(dims(dev_R_original)$iter, dev_R_original %=% 0, 
-                           sd = sigmaR_i, b = sigmaR_rho_i)
-      ### replicate residuals from GA paper
-      qnt_150 <- FLQuant(NA, 
-                         dimnames = list(age = "all", year = 0:150,
-                                         iter = dimnames(dev_R_original)$iter))
-      qnt_100 <- FLQuant(NA, 
-                         dimnames = list(age = "all", year = 1:100,
-                                         iter = dimnames(dev_R_original)$iter))
-      set.seed(0)
-      res_150 <- rlnoise(dims(dev_R_original)$iter,
-                         qnt_150 %=% 0, 
+    #browser()
+    ### retrieve original residuals
+    dev_R_original <- input_i$om@sr@residuals
+    
+    ### create recruitment residuals for projection period
+    set.seed(1)
+    dev_R_new <- rlnoise(dims(dev_R_original)$iter, dev_R_original %=% 0, 
                          sd = sigmaR_i, b = sigmaR_rho_i)
-      set.seed(0)
-      res_100 <- rlnoise(dims(dev_R_original)$iter,
-                         qnt_100 %=% 0, 
-                         sd = sigmaR_i, b = sigmaR_rho_i)
-      ### insert into template
-      yrs_150 <- seq(from = dims(dev_R_original)$minyear,
-                     to = ifelse(dims(dev_R_original)$maxyear >= 150, 
-                                 150, dims(dev_R_original)$maxyear))
-      dev_R_new[, ac(yrs_150)] <- res_150[, ac(yrs_150)]
-      
-      yrs_100 <- seq(from = dims(dev_R_original)$minyear,
-                     to = 100)
-      dev_R_new[, ac(yrs_100)] <- res_100[, ac(yrs_100)]
-      
-      
-      ### insert
-      x$om@sr@residuals[] <- dev_R_new
-      
-      return(x)
-      
-    })
-    input <- input_i[[1]]
+    ### replicate residuals from GA paper
+    qnt_150 <- FLQuant(NA, 
+                       dimnames = list(age = "all", year = 0:150,
+                                       iter = dimnames(dev_R_original)$iter))
+    qnt_100 <- FLQuant(NA, 
+                       dimnames = list(age = "all", year = 1:100,
+                                       iter = dimnames(dev_R_original)$iter))
+    set.seed(0)
+    res_150 <- rlnoise(dims(dev_R_original)$iter,
+                       qnt_150 %=% 0, 
+                       sd = sigmaR_i, b = sigmaR_rho_i)
+    set.seed(0)
+    res_100 <- rlnoise(dims(dev_R_original)$iter,
+                       qnt_100 %=% 0, 
+                       sd = sigmaR_i, b = sigmaR_rho_i)
+    ### insert into template
+    yrs_150 <- seq(from = dims(dev_R_original)$minyear,
+                   to = ifelse(dims(dev_R_original)$maxyear >= 150, 
+                               150, dims(dev_R_original)$maxyear))
+    dev_R_new[, ac(yrs_150)] <- res_150[, ac(yrs_150)]
+    
+    yrs_100 <- seq(from = dims(dev_R_original)$minyear,
+                   to = 100)
+    dev_R_new[, ac(yrs_100)] <- res_100[, ac(yrs_100)]
+    
+    
+    ### insert
+    input_i$om@sr@residuals[] <- dev_R_new
     
   }
   
@@ -262,7 +248,7 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   ### run  ####
   ### ---------------------------------------------------------------------- ###
   
-  res <- do.call(mp, input)
+  res <- do.call(mp, input_i)
   
   ### ---------------------------------------------------------------------- ###
   ### save ####
@@ -276,7 +262,7 @@ if (isTRUE(n_workers > 1 & n_blocks == 1)) {
   ### ---------------------------------------------------------------------- ###
   
   if (isTRUE(stats)) {
-    res_stats <- mp_stats(input = list(input), res_mp = list(res), 
+    res_stats <- mp_stats(input = list(input_i), res_mp = list(res), 
                           collapse_correction = TRUE,
                           stat_yrs = stat_yrs)
     res_stats <- cbind(stock = stock, par_i, t(res_stats))
