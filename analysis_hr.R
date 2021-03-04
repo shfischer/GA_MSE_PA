@@ -1,3 +1,8 @@
+### ------------------------------------------------------------------------ ###
+### analysis of constant harvest rate rule ####
+### ------------------------------------------------------------------------ ###
+
+
 library(mse)
 library(tidyverse)
 library(doParallel)
@@ -5,9 +10,9 @@ library(scales)
 library(cowplot)
 source("funs.R")
 
-cl <- makeCluster(3)
-registerDoParallel(cl)
-clusterEvalQ(cl = cl, expr = {library(mse)})
+# cl <- makeCluster(3)
+# registerDoParallel(cl)
+# clusterEvalQ(cl = cl, expr = {library(mse)})
 
 ### stock list
 stocks <- read.csv("input/stocks.csv", stringsAsFactors = FALSE)
@@ -15,6 +20,12 @@ stocks_subset <- stocks$stock[21:29]
 names(stocks_subset) <- stocks_subset
 ### brps
 brps <- readRDS("input/brps.rds")
+
+
+### ------------------------------------------------------------------------ ###
+### ... ####
+### ------------------------------------------------------------------------ ###
+
 
 ### "correct" time series
 ### once a replicate collapsed, keep it at zero
@@ -1030,5 +1041,943 @@ ggsave(filename = "output/plots/length_cap2030_b/multiplier.png",
 
 
 
+### ------------------------------------------------------------------------ ###
+### pure HR - multipliers - 50 years ####
+### ------------------------------------------------------------------------ ###
+
+res_def <- foreach(stock = stocks$stock[1:29], .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
+    ### load data
+    path <- paste0("output/500_50/length/", fhist, "/", stock, "/")
+    path_runs <- paste0(path, "collated_stats_length_0-2_1_1_1_1_Inf_0.rds")
+    if (!file.exists(path_runs)) return(NULL)
+    print("found something")
+    runs <- readRDS(path_runs)
+    runs <- as.data.frame(lapply(runs, unlist))
+    runs$fhist <- fhist
+    return(runs)
+}
+
+res_def <- res_def %>%
+  left_join(stocks[, c("stock", "k")]) %>%
+  mutate(stock_k = paste0(stock, "~(italic(k)==", k, ")")) %>%
+  mutate(stock_k = factor(stock_k, levels = unique(stock_k))) %>%
+  mutate(stock = factor(stock, levels = stocks$stock))
+  
 
 
+saveRDS(res_def, file = "output/500_50/length/all_def_mult.rds")
+res_def <- readRDS("output/500_50/length/all_def_mult.rds")
+
+
+### plot
+res_def_p <- res_def %>%
+  #filter(stat_yrs == "all") %>%
+  select(multiplier, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV,
+         stock, fhist, stock_k) %>%
+  mutate(ICV = ifelse(multiplier == 0, NA, ICV)) %>%
+  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel",
+                                       "risk_Blim", "ICV", "fitness"), 
+                       labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                  "B[lim]~risk", "ICV", "fitness~value")))
+stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+                                     "B[lim]~risk", "ICV"),
+                            target = c(1, 1, 1, 0, 0))
+### plot all stocks
+p <- res_def_p %>% 
+  ggplot(aes(x = multiplier, y = value,
+             colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_line(size = 0.3) +
+  # geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.05),
+  #            aes(yintercept = y), colour = "red") +
+  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  scale_linetype_discrete("fishing\nhistory") +
+  scale_colour_discrete("fishing\nhistory") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_text(size = 6)) +
+  labs(x = "multiplier", y = "") +
+  ylim(c(0, NA))# +
+  # scale_x_continuous(breaks = c(0, 0.5, 1)#,
+  #                    #expand = expansion(mult = c(0.1, 0.1))
+  #                    )
+p
+ggsave(filename = "output/plots/length_all_def_mult.pdf",
+       width = 50, height = 10, units = "cm")
+ggsave(filename = "output/plots/length_all_def_mult.png", type = "cairo",
+       width = 50, height = 10, units = "cm", dpi = 600)
+
+### plot subset and stats individually
+p_SSB <- res_def_p %>% 
+  filter(stock %in% c("ang3", "pol", "bll", "san")) %>%
+  filter(key == "SSB_rel") %>%
+  ggplot(aes(x = multiplier, y = value,
+             colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_line(size = 0.3) +
+  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  scale_linetype_discrete("fishing history") +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  labs(x = "multiplier", y = "") +
+  ylim(c(0, NA)) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_text(size = 8),
+        legend.key.height = unit(0.6, "lines"),
+        legend.key = element_blank(),
+        legend.background = element_blank(),
+        legend.position = c(0.9, 0.75),
+        axis.title.y = element_blank(),
+        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank())
+p_SSB
+p_Catch <- res_def_p %>% 
+  filter(stock %in% c("ang3", "pol", "bll", "san")) %>%
+  filter(key == "Catch_rel") %>%
+  ggplot(aes(x = multiplier, y = value,
+             colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_line(size = 0.3, show.legend = FALSE) +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  labs(x = "multiplier", y = "") +
+  scale_y_continuous(breaks = c(0, 0.5, 1), limits = c(0, NA)) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank())
+p_Catch
+p_risk <- res_def_p %>% 
+  filter(stock %in% c("ang3", "pol", "bll", "san")) %>%
+  filter(key == "risk_Blim") %>%
+  ggplot(aes(x = multiplier, y = value,
+             colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_line(size = 0.3, show.legend = FALSE) +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+             scales = "free_y") +
+  labs(x = "multiplier", y = "") +
+  scale_y_continuous(breaks = c(0, 0.5, 1), limits = c(0, 1)) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        strip.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"))
+p_risk
+plot_grid(p_SSB, p_Catch, p_risk,
+          ncol = 1, align = "v",
+          rel_heights = c(1.25, 1, 1.25))
+ggsave(filename = "output/plots/length_all_subset_def_mult.pdf",
+       width = 17, height = 10, units = "cm")
+ggsave(filename = "output/plots/length_all_subset_def_mult.png", type = "cairo",
+       width = 17, height = 10, units = "cm", dpi = 600)
+
+### find max catch
+max_catch <- res_def %>%
+  group_by(stock, fhist, k) %>%
+  filter(Catch_rel == max(Catch_rel))
+summary(max_catch)
+table(max_catch$multiplier)
+
+### estimate correlation
+max_catch_cor <- foreach(fhist = c("one-way", "random")) %:%
+                   foreach(stat = c("Catch_rel", "multiplier")) %do% {
+  #browser()
+  data_i <- max_catch %>%
+    filter(fhist == !!fhist) %>%
+    select(stock, k, !!stat) %>%
+    rename(stat = !!stat)
+  cor_res <- cor.test(y = data_i$stat, x = data_i$k)
+  cor_res <- capture.output(cor_res)
+  c(paste0("\n\nCorrelation for fhist: ", fhist, "; stat: ", stat, "\n"),
+      paste(cor_res, "\n"))
+}
+lapply(do.call(c, max_catch_cor), cat)
+# Correlation for fhist: one-way; stat: Catch_rel
+#   
+#  	Pearson's product-moment correlation 
+#   
+#  data:  data_i$k and data_i$stat 
+#  t = -14.189, df = 27, p-value = 4.903e-14 
+#  alternative hypothesis: true correlation is not equal to 0 
+#  95 percent confidence interval: 
+#   -0.9712578 -0.8729319 
+#  sample estimates: 
+#         cor  
+#  -0.9390145  
+#   
+# 
+# Correlation for fhist: one-way; stat: multiplier
+#   
+#  	Pearson's product-moment correlation 
+#   
+#  data:  data_i$k and data_i$stat 
+#  t = -10.358, df = 27, p-value = 6.636e-11 
+#  alternative hypothesis: true correlation is not equal to 0 
+#  95 percent confidence interval: 
+#   -0.9493434 -0.7842543 
+#  sample estimates: 
+#         cor  
+#  -0.8938402  
+#   
+# 
+# Correlation for fhist: random; stat: Catch_rel
+#   
+#  	Pearson's product-moment correlation 
+#   
+#  data:  data_i$k and data_i$stat 
+#  t = -10.302, df = 27, p-value = 7.47e-11 
+#  alternative hypothesis: true correlation is not equal to 0 
+#  95 percent confidence interval: 
+#   -0.9488603 -0.7823728 
+#  sample estimates: 
+#        cor  
+#  -0.892857  
+#   
+# 
+# Correlation for fhist: random; stat: multiplier
+#   
+#  	Pearson's product-moment correlation 
+#   
+#  data:  data_i$k and data_i$stat 
+#  t = -8.5716, df = 27, p-value = 3.473e-09 
+#  alternative hypothesis: true correlation is not equal to 0 
+#  95 percent confidence interval: 
+#   -0.9301314 -0.7116912 
+#  sample estimates: 
+#         cor  
+#  -0.8551425
+
+
+### prepare for plotting
+max_catch_p <- max_catch %>%
+  select(multiplier, Catch_rel, risk_Blim, stock, fhist, k) %>%
+  pivot_longer(c(multiplier, Catch_rel, risk_Blim), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, levels = c("multiplier", "Catch_rel", "risk_Blim"), 
+                       labels = c("multiplier~(m)", "Catch/MSY", "B[lim]~risk")))
+### plot
+max_catch_p %>%
+  filter(stat %in% c("multiplier~(m)", "Catch/MSY")) %>%
+  ggplot(aes(x = k, y = value)) +
+  geom_smooth(method = lm, se = TRUE, size = 0.5) +
+  geom_point(size = 0.3) +
+  facet_grid(stat ~ fhist, scales = "free_y", switch = "y",
+             labeller = "label_parsed") +
+  #ylim(c(0, NA)) +  xlim(c(0, NA)) +
+  coord_cartesian(ylim = c(0, NA), xlim = c(0, 1)) + 
+  labs(x = expression(k~"[year"^{-1}*"]"), y = "") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8), 
+        axis.title.y = element_blank())
+ggsave(filename = "output/plots/length_all_def_mult_max_catch_cor.pdf",
+       width = 8.5, height = 8, units = "cm")
+ggsave(filename = "output/plots/length_all_def_multmax_catch_cor.png", 
+       type = "cairo",
+       width = 8.5, height = 8, units = "cm", dpi = 600)
+max_catch_p %>%
+  filter(stat %in% c("multiplier~(m)", "Catch/MSY")) %>%
+  ggplot(aes(x = k, y = value, colour = fhist, shape = fhist, linetype = fhist)) +
+  geom_smooth(method = lm, se = FALSE, size = 0.3) +
+  geom_point(size = 0.4) +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  scale_shape("fishing history") +
+  scale_linetype("fishing history") +
+  facet_wrap(~ stat, scales = "free_y", strip.position = "left",
+             labeller = "label_parsed", ncol = 1) +
+  #ylim(c(0, NA)) +  xlim(c(0, NA)) +
+  coord_cartesian(ylim = c(0, NA), xlim = c(0, 1)) + 
+  labs(x = expression(k~"[year"^{-1}*"]"), y = "") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8), 
+        axis.title.y = element_blank(),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.key.height = unit(0.6, "lines"),
+        legend.position = c(0.85, 0.89))
+ggsave(filename = "output/plots/length_all_def_multmax_catch_cor.png", 
+       type = "cairo",
+       width = 8.5, height = 7, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/length_all_def_mult_max_catch_cor.pdf",
+       width = 8.5, height = 7, units = "cm")
+
+
+### ------------------------------------------------------------------------ ###
+### visualise calculation of target HR - pollack ####
+### ------------------------------------------------------------------------ ###
+
+stock <- "pol"
+input <- readRDS(paste0("input/hr/500_50/OM_2_mp_input/random/", stock, ".rds"))
+lhist <- stocks[stocks$stock == stock, ]
+brp <- brps$pol
+refpts(brp)
+
+### find iteration with increasing F
+pos <- which(fbar(input$om@stock)[, ac(50)] < 0.05 * c(refpts(brp)["crash","harvest"]) &
+        fbar(input$om@stock)[, ac(100)] > 0.95 * c(refpts(brp)["crash","harvest"]))
+### 478
+plot(input$om@stock, iter = 478)
+
+### recreate mean catch length without noise
+Lc <- calc_lc(stk = input$om@stock[, ac(50:100)], 
+              a = lhist$a, b = lhist$b)
+pars_l <- FLPar(a = lhist$a,  b = lhist$b, Lc = Lc)
+idxL = lmean(stk = input$om@stock[, ac(50:100)], params = pars_l)
+LFeM <- (lhist$linf + 2*1.5*c(Lc)) / (1 + 2*1.5)
+
+plot(idxL, iter = 478) + geom_hline(yintercept = LFeM)
+
+df_idxL <- as.data.frame(idxL) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+df_catch <- as.data.frame(catch(input$om@stock[, ac(50:100)])) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+df_idxB <- as.data.frame(input$oem@observations$idx$idxB[, ac(50:100)]) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+df_cr <- as.data.frame(catch(input$om@stock[, ac(50:100)]) / 
+                         input$oem@observations$idx$idxB[, ac(50:100)]) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+
+### find years where L > LFeM
+df_years <- df_idxL %>% filter(data >= LFeM) %>% select(year) %>% unlist()
+
+### mean length
+p_idxL1 <- df_idxL %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  facet_wrap(~ "step 1", strip.position = "top") +
+  labs(x = "year", y = "mean catch length [cm]") +
+  theme_bw(base_size = 8) +
+  theme(strip.text = element_text(size = 8))
+p_idxL1
+### add reference length
+p_idxL2 <- df_idxL %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_hline(yintercept = LFeM, linetype = "dashed") + 
+  facet_wrap(~ "step 2", strip.position = "top") +
+  labs(x = "year", y = "mean catch length [cm]") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_idxL2
+### add points
+p_idxL3 <- df_idxL %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_hline(yintercept = LFeM, linetype = "dashed") + 
+  geom_point(data = df_idxL %>% filter(year %in% df_years),
+             colour = "red", size = 0.4) +
+  facet_wrap(~ "step 3", strip.position = "top") +
+  labs(x = "year", y = "mean catch length [cm]") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_idxL3
+
+### catch
+p_catch <- df_catch %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  labs(x = "year", y = "catch") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.x = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_rect(fill = "transparent", colour = NA),
+        panel.background = element_rect(fill = "transparent", colour = NA))
+p_catch
+### biomass index
+p_idxB <- df_idxB %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  labs(x = "year", y = "index") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.x = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_rect(fill = "transparent", colour = NA),
+        panel.background = element_rect(fill = "transparent", colour = NA))
+p_idxB
+
+### catch rate
+p_cr1 <- df_cr %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  facet_wrap(~ "step 4", strip.position = "top") +
+  labs(x = "year", y = "catch/index") +
+  ylim(c(0, 0.4)) +
+  theme_bw(base_size = 8) +
+  theme(strip.text = element_text(size = 8)) +
+  annotation_custom(grob = ggplotGrob(p_catch),
+                    xmin = -50, xmax = -35,
+                    ymin = 0.3, ymax = 0.4) +
+  annotation_custom(grob = ggplotGrob(p_idxB),
+                    xmin = -30, xmax = -15,
+                    ymin = 0.3, ymax = 0.4) +
+  annotate("segment", x = -34, xend = -31, y = 0.3, yend = 0.4,
+           colour = "black", size = 1)
+p_cr1
+### catch rate & points
+p_cr2 <- df_cr %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_point(data = df_cr %>% filter(year %in% df_years),
+             colour = "red", size = 0.4) +
+  facet_wrap(~ "step 5", strip.position = "top") +
+  labs(x = "year", y = "catch/index") +
+  ylim(c(0, 0.4)) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_cr2
+### catch rate & points & reference
+p_cr3 <- df_cr %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_point(data = df_cr %>% filter(year %in% df_years),
+             colour = "red", size = 0.4) +
+  geom_hline(yintercept = df_cr %>% 
+               filter(year %in% df_years) %>% 
+               summarise(mean(data)) %>% unlist(),
+             colour = "red") +
+  facet_wrap(~ "step 6", strip.position = "top") +
+  labs(x = "year", y = "catch/index") +
+  ylim(c(0, 0.4)) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_cr3
+
+
+### combine all plots
+plot_grid(p_idxL1, p_idxL2, p_idxL3,
+          ncol = 3, rel_widths = c(1.12, 1, 1))
+ggsave(filename = "output/plots/length_procedure_combined_1.png",
+       width = 17, height = 6, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/length_procedure_combined_1.pdf",
+       width = 17, height = 6, units = "cm")
+ggsave(filename = "output/plots/length_procedure_combined_1_.pdf",
+       width = 17, height = 6, units = "cm")
+plot_grid(p_cr1, p_cr2, p_cr3,
+          ncol = 3, rel_widths = c(1.12, 1, 1))
+ggsave(filename = "output/plots/length_procedure_combined_2.png",
+       width = 17, height = 6, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/length_procedure_combined_2.pdf",
+       width = 17, height = 6, units = "cm")
+
+### ------------------------------------------------------------------------ ###
+### HR principle visualisation ####
+### ------------------------------------------------------------------------ ###
+
+data.frame(x = c(0, 1, 2),
+           y = c(0, 1, 1)) %>%
+  ggplot(aes(x = x, y = y)) +
+  annotation_raster(matrix(colorRampPalette(c("red", "orange", "yellow"))(255), 
+                           nrow = 1),
+                    xmin = 0, xmax = 1, ymin = 0, ymax = 1, interpolate = TRUE) + 
+  annotate("polygon", x = c(0, 1, 0), y = c(0, 1.01, 1.01), fill = "white") +
+  annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
+  # annotation_custom(
+  #   grid::rasterGrob(c("red", "orange"),
+  #                    width = 1, height = 1), 
+  #   xmin = 0, xmax = 1, ymin = 0, ymax = 1
+  # ) +
+  # annotate("polygon", x = c(0, 1, 1), y = c(0, 0, 1), fill = "orange") +
+  # annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
+  geom_line() +
+  scale_x_continuous("index I", expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
+  scale_y_continuous("harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, "H")) +
+  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1, 
+           linetype = "dotted") +
+  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1, 
+           linetype = "dotted") +
+  #theme(panel.background = element_blank())
+  theme_classic()
+ggsave(filename = "output/plots/HR_principle.png",
+       width = 8.5, height = 5, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/HR_principle.pdf",
+       width = 8.5, height = 5, units = "cm")
+
+
+### ------------------------------------------------------------------------ ###
+### sensitivity to simulation assumptions ####
+### ------------------------------------------------------------------------ ###
+### use pollack as example
+### default: 50 yrs, 500 iterations
+
+### some generic parameters
+brp <- readRDS("input/brps.rds")[["pol"]]
+Blim <- brp@Blim
+Bmsy <- c(refpts(brp)["msy", "ssb"])
+MSY <- c(refpts(brp)["msy", "yield"])
+
+
+### ------------------------------------------------------------------------ ###
+### sensitivity - stats over time ####
+### ------------------------------------------------------------------------ ###
+
+stats_time <- foreach(fhist = c("random", "one-way"),
+                     .combine = rbind) %do% {
+  
+  res <- readRDS(paste0("output/hr/500_100/sensitivity/", fhist, 
+                        "/pol/mp_length_1_TRUE_1_1_1_Inf_0.rds"))
+  
+  ### collapse correction
+  res_corrected <- collapse_correction(stk = res@stock, yrs = 101:200)
+  
+  ### template
+  df_i <- data.frame(year = 1:100)
+  
+  ### Blim risk
+  df_i$risk_cumulative <- sapply(1:100, function(x) {
+    mean(c(res_corrected$ssb[, ac(seq(from = 101, length.out = x))] < Blim), 
+         na.rm = TRUE)
+  })
+  df_i$risk_annual <- c(apply(res_corrected$ssb < Blim, 2, mean, na.rm = TRUE))
+  
+  ### SSB
+  df_i$SSB_annual <- sapply(1:100, function(x) {
+    median(c(res_corrected$ssb[, x]/Bmsy), na.rm = TRUE)
+  })
+  df_i$SSB_cumulative <-  sapply(1:100, function(x) {
+    median(c(res_corrected$ssb[, ac(seq(from = 101, length.out = x))]/Bmsy), 
+           na.rm = TRUE)
+  })
+  
+  ### Catch
+  df_i$Catch_annual <- sapply(1:100, function(x) {
+    median(c(res_corrected$catch[, x]/MSY), na.rm = TRUE)
+  })
+  df_i$Catch_cumulative <-  sapply(1:100, function(x) {
+    median(c(res_corrected$catch[, ac(seq(from = 101, length.out = x))]/MSY), 
+           na.rm = TRUE)
+  })
+  
+  df_i <- df_i %>%
+    pivot_longer(2:7, names_to = c(".value", "period"), names_sep = "_") %>%
+    mutate(fhist = !!fhist)
+  return(df_i)
+}
+saveRDS(stats_time, file = "output/hr_pol_sensitivity_time.rds")
+write.csv(stats_time, row.names = FALSE, 
+          file = "output/hr_pol_sensitivity_time.csv")
+stats_time <- readRDS("output/hr_pol_sensitivity_time.rds")
+
+p_time_ssb <- stats_time %>%
+  ggplot(aes(x = year, y = SSB, colour = fhist, linetype = period)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = "year", y = expression(SSB/B[MSY])) +
+  theme_bw(base_size = 8)
+p_time_catch <- stats_time %>%
+  ggplot(aes(x = year, y = Catch, colour = fhist, linetype = period)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = "year", y = expression(Catch/MSY)) +
+  theme_bw(base_size = 8)
+p_time_risk <- stats_time %>%
+  ggplot(aes(x = year, y = risk, colour = fhist, linetype = period)) +
+  geom_line(show.legend = TRUE) +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  scale_linetype("") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = "year", y = expression(B[lim]~risk)) +
+  theme_bw(base_size = 8) +
+  theme(legend.position = c(0.7, 0.8),
+        legend.key.height = unit(0.8, "line"),
+        legend.key = element_blank(),
+        legend.background = element_blank())
+
+p_time <- plot_grid(p_time_ssb, p_time_catch, p_time_risk,
+                    ncol = 3, align = "hv")
+p_time
+
+### ------------------------------------------------------------------------ ###
+### sensitivity - stock status ####
+### ------------------------------------------------------------------------ ###
+
+stats_status <- foreach(fhist = c("random", "one-way"),
+                     .combine = rbind) %do% {
+  
+  res <- readRDS(paste0("output/hr/10000_50/sensitivity/", fhist, 
+                        "/pol/mp_length_1_TRUE_1_1_1_Inf_0.rds"))
+  
+  ### collapse correction
+  res_corrected <- collapse_correction(stk = res@stock, yrs = 101:150)
+  
+  ### starting condition
+  SSBs0 <- ssb(res@stock)[, ac(100)]
+  SSBs0 <- SSBs0/Bmsy
+  SSBs0 <- c(SSBs0)
+  SSB_breaks <- seq(from = 0, to = max(SSBs0), by = 0.1)
+  SSB_groups <- cut(SSBs0, breaks = SSB_breaks)
+  
+  SSB_levels <- unique(as.character(SSB_groups))
+  
+  ### number of replicates per group:
+  group_n <- sapply(SSB_levels, function(x) {
+    length(which(SSB_groups %in% x))
+  })
+  group_n[sort(names(group_n))]
+  
+  ### Blim risk per group
+  ### SSB is on absolut scale 
+  risk_group <- sapply(SSB_levels, function(x) {
+    tmp <- res_corrected$ssb[,,,,, which(SSB_groups %in% x)]
+    mean(tmp < (Blim))
+  })
+  ### SSB (long-term median) per group
+  SSB_group <- sapply(SSB_levels, function(x) {
+    tmp <- res_corrected$ssb[,,,,, which(SSB_groups %in% x)]/Bmsy
+    median(tmp)
+  })
+  ### Catch (long-term median) per group
+  Catch_group <- sapply(SSB_levels, function(x) {
+    tmp <- res_corrected$catch[,,,,, which(SSB_groups %in% x)]/MSY
+    median(tmp)
+  })
+  
+  ### get starting conditions
+  SSB_levels <- sapply(SSB_levels, function(x) {
+    x <- gsub(x = x, pattern = "\\(|\\]", replacement = "")
+    x <- unlist(strsplit(x, split = ","))
+    mean(as.numeric(x))
+  })
+  pos_remove <- which(is.na(SSB_levels))
+  
+  df_i <- data.frame(SSB0 = unlist(SSB_levels)[-pos_remove],
+                     SSB = unlist(SSB_group)[-pos_remove],
+                     Catch = unlist(Catch_group)[-pos_remove],
+                     risk = unlist(risk_group)[-pos_remove],
+                     fhist = fhist,
+                     iter = unlist(group_n)[-pos_remove])
+  row.names(df_i) <- NULL
+  
+  return(df_i)
+}
+write.csv(stats_status, row.names = FALSE, 
+          file = "output/hr_pol_sensitivity_status.csv")
+saveRDS(stats_status, file = "output/hr_pol_sensitivity_status.rds")
+stats_status <- readRDS("output/hr_pol_sensitivity_status.rds")
+
+
+p_status_ssb <- stats_status %>%
+  filter(iter >= 200) %>%
+  ggplot(aes(x = SSB0, y = SSB, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, 1.5) + ylim(0, NA) +
+  labs(x = expression(SSB[y == 0]/B[MSY]), y = expression(SSB/B[MSY])) +
+  theme_bw(base_size = 8)
+p_status_catch <- stats_status %>%
+  filter(iter >= 200) %>%
+  ggplot(aes(x = SSB0, y = Catch, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, 1.5) + ylim(0, NA) +
+  labs(x = expression(SSB[y == 0]/B[MSY]), y = expression(Catch/MSY)) +
+  theme_bw(base_size = 8)
+p_status_risk <- stats_status %>%
+  filter(iter >= 200) %>%
+  ggplot(aes(x = SSB0, y = risk, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, 1.5) + ylim(0, NA) +
+  labs(x = expression(SSB[y == 0]/B[MSY]), y = expression(B[lim]~risk)) +
+  theme_bw(base_size = 8)
+
+p_status <- plot_grid(p_status_ssb, p_status_catch, p_status_risk,
+                      ncol = 3, align = "hv")
+p_status
+
+### ------------------------------------------------------------------------ ###
+### sensitivity - recruitment variability ####
+### ------------------------------------------------------------------------ ###
+
+stats_rec <- foreach(fhist = c("one-way", "random"), 
+                     .combine = bind_rows) %do% {
+  tmp <- readRDS(
+    paste0("output/hr/500_50/sensitivity/", fhist, 
+           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds"))
+  tmp <- as.data.frame(lapply(tmp, unlist))
+  tmp$fhist <- fhist
+  tmp$n_yrs <- 50
+  tmp$n_iter <- 500
+  return(tmp)
+}
+write.csv(stats_rec, row.names = FALSE, 
+          file = "output/hr_pol_sensitivity_rec.csv")
+saveRDS(stats_rec, file = "output/hr_pol_sensitivity_rec.rds")
+stats_rec <- readRDS("output/hr_pol_sensitivity_rec.rds")
+
+p_rec_ssb <- stats_rec %>%
+  ggplot(aes(x = sigmaR, y = SSB_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[R]), y = expression(SSB/B[MSY])) +
+  theme_bw(base_size = 8)
+p_rec_catch <- stats_rec %>%
+  ggplot(aes(x = sigmaR, y = Catch_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[R]), y = expression(Catch/MSY)) +
+  theme_bw(base_size = 8)
+p_rec_risk <- stats_rec %>%
+  ggplot(aes(x = sigmaR, y = risk_Blim, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[R]), y = expression(B[lim]~risk)) +
+  theme_bw(base_size = 8)
+
+p_rec <- plot_grid(p_rec_ssb, p_rec_catch, p_rec_risk,
+                   ncol = 3, align = "hv")
+p_rec
+
+### ------------------------------------------------------------------------ ###
+### sensitivity - biomass index ####
+### ------------------------------------------------------------------------ ###
+
+stats_idx <- foreach(fhist = c("one-way", "random"), 
+                     .combine = bind_rows) %do% {
+  tmp <- readRDS(
+    paste0("output/hr/500_50/sensitivity/", fhist, 
+           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds"))
+  tmp <- as.data.frame(lapply(tmp, unlist))
+  tmp$fhist <- fhist
+  tmp$n_yrs <- 50
+  tmp$n_iter <- 500
+  return(tmp)
+}
+write.csv(stats_idx, row.names = FALSE, 
+          file = "output/hr_pol_sensitivity_idx.csv")
+saveRDS(stats_idx, file = "output/hr_pol_sensitivity_idx.rds")
+stats_idx <- readRDS("output/hr_pol_sensitivity_idx.rds")
+
+
+
+p_idx_ssb <- stats_idx %>%
+  ggplot(aes(x = sigmaB, y = SSB_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[B]), y = expression(SSB/B[MSY])) +
+  theme_bw(base_size = 8)
+p_idx_catch <- stats_idx %>%
+  ggplot(aes(x = sigmaB, y = Catch_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[B]), y = expression(Catch/MSY)) +
+  theme_bw(base_size = 8)
+p_idx_risk <- stats_idx %>%
+  ggplot(aes(x = sigmaB, y = risk_Blim, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[B]), y = expression(B[lim]~risk)) +
+  theme_bw(base_size = 8)
+
+p_idx <- plot_grid(p_idx_ssb, p_idx_catch, p_idx_risk,
+                   ncol = 3, align = "hv")
+p_idx
+
+### ------------------------------------------------------------------------ ###
+### sensitivity - length index ####
+### ------------------------------------------------------------------------ ###
+
+stats_lngth <- foreach(fhist = c("one-way", "random"), 
+                     .combine = bind_rows) %do% {
+  tmp <- readRDS(
+    paste0("output/hr/500_50/sensitivity/", fhist, 
+           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds"))
+  tmp <- as.data.frame(lapply(tmp, unlist))
+  tmp$fhist <- fhist
+  tmp$n_yrs <- 50
+  tmp$n_iter <- 500
+  return(tmp)
+}
+write.csv(stats_lngth, row.names = FALSE, 
+          file = "output/hr_pol_sensitivity_lngth.csv")
+saveRDS(stats_lngth, file = "output/hr_pol_sensitivity_lngth.rds")
+stats_lngth <- readRDS("output/hr_pol_sensitivity_lngth.rds")
+
+
+
+p_lngth_ssb <- stats_lngth %>%
+  ggplot(aes(x = sigmaL, y = SSB_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[L]), y = expression(SSB/B[MSY])) +
+  theme_bw(base_size = 8)
+p_lngth_catch <- stats_lngth %>%
+  ggplot(aes(x = sigmaL, y = Catch_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[L]), y = expression(Catch/MSY)) +
+  theme_bw(base_size = 8)
+p_lngth_risk <- stats_lngth %>%
+  ggplot(aes(x = sigmaL, y = risk_Blim, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[L]), y = expression(B[lim]~risk)) +
+  theme_bw(base_size = 8)
+
+p_lngth <- plot_grid(p_lngth_ssb, p_lngth_catch, p_lngth_risk,
+                   ncol = 3, align = "hv")
+p_lngth
+
+### ------------------------------------------------------------------------ ###
+### sensitivity - length & biomass index ####
+### ------------------------------------------------------------------------ ###
+
+stats_idx_lngth <- foreach(fhist = c("one-way", "random"), 
+                       .combine = bind_rows) %do% {
+  tmp <- readRDS(
+    paste0("output/hr/500_50/sensitivity/", fhist, 
+           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds"))
+  tmp <- as.data.frame(lapply(tmp, unlist))
+  tmp$fhist <- fhist
+  tmp$n_yrs <- 50
+  tmp$n_iter <- 500
+  return(tmp)
+}
+write.csv(stats_idx_lngth, row.names = FALSE, 
+          file = "output/hr_pol_sensitivity_lngth.csv")
+saveRDS(stats_idx_lngth, file = "output/hr_pol_sensitivity_idx_lngth.rds")
+stats_idx_lngth <- readRDS("output/hr_pol_sensitivity_idx_lngth.rds")
+
+p_idx_lngth_ssb <- stats_idx_lngth %>%
+  ggplot(aes(x = sigmaB, y = SSB_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[L]~"&"~sigma[B]), y = expression(SSB/B[MSY])) +
+  theme_bw(base_size = 8)
+p_idx_lngth_catch <- stats_idx_lngth %>%
+  ggplot(aes(x = sigmaB, y = Catch_rel, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[L]~"&"~sigma[B]), y = expression(Catch/MSY)) +
+  theme_bw(base_size = 8)
+p_idx_lngth_risk <- stats_idx_lngth %>%
+  ggplot(aes(x = sigmaB, y = risk_Blim, colour = fhist)) +
+  geom_line(show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2") +
+  xlim(0, NA) + ylim(0, NA) +
+  labs(x = expression(sigma[L]~"&"~sigma[B]), y = expression(B[lim]~risk)) +
+  theme_bw(base_size = 8)
+
+p_idx_lngth <- plot_grid(p_idx_lngth_ssb, p_idx_lngth_catch, p_idx_lngth_risk,
+                     ncol = 3, align = "hv")
+p_idx_lngth
+
+### ------------------------------------------------------------------------ ###
+### combine sensitivity plots ####
+### ------------------------------------------------------------------------ ###
+df_stats_idx_lngth <- stats_idx_lngth %>% 
+  select(fhist, sigmaB, SSB_rel, Catch_rel, risk_Blim) %>%
+  rename(x = sigmaB, SSB = SSB_rel, Catch = Catch_rel, risk = risk_Blim) %>%
+  mutate(sensitivity = "obs") %>%
+  pivot_longer(c(SSB, Catch, risk))
+df_stats_rec <- stats_rec %>% 
+  select(fhist, sigmaR, SSB_rel, Catch_rel, risk_Blim) %>%
+  rename(x = sigmaR, SSB = SSB_rel, Catch = Catch_rel, risk = risk_Blim) %>%
+  mutate(sensitivity = "rec") %>%
+  pivot_longer(c(SSB, Catch, risk))
+df_stats_status <- stats_status %>%
+  filter(SSB0 <= 2) %>% ### remove SSB/Bmsy>2
+  rename(x = SSB0) %>%
+  mutate(sensitivity = "stock_status") %>%
+  select(-iter) %>%
+  pivot_longer(c(SSB, Catch, risk))
+df_stats_time <- stats_time %>%
+  filter(period == "cumulative") %>%
+  rename(x = year) %>%
+  mutate(sensitivity = "period") %>%
+  pivot_longer(c(SSB, Catch, risk))
+
+df_sens <- bind_rows(df_stats_idx_lngth, df_stats_rec, df_stats_status,
+                     df_stats_time) %>%
+  mutate(period = ifelse(is.na(period), "annual", period)) %>%
+  mutate(sensitivity = factor(sensitivity, 
+                              levels = c("rec", "obs", "stock_status", "period"), 
+                              labels = c("atop(sigma[R],bold(recruitment~variability))", 
+                                         "atop(sigma[obs],bold(observation~uncertainty))",
+                                         "atop(SSB[y==0]/B[MSY],bold(initial~stock~status))",
+                                         "atop(years,bold(projection~period))"))) %>%
+  mutate(name = factor(name, levels = c("SSB", "Catch", "risk"),
+                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk")))
+
+
+df_sens %>%
+  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist)) +
+  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21) +
+  facet_grid(name ~ sensitivity, scales = "free", labeller = "label_parsed",
+             switch = "both") +
+  #scale_linetype(guide = FALSE) +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  scale_fill_brewer("fishing history", palette = "Dark2") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.background = element_blank(),
+        axis.title = element_blank(),
+        legend.key.height = unit(0.6, "lines"),
+        legend.position = c(0.9, 0.45),
+        legend.background = element_blank(),
+        legend.key = element_blank())
+ggsave(filename = "output/plots/hr_sensitivity_stats.pdf",
+       width = 17, height = 12, units = "cm")
+ggsave(filename = "output/plots/hr_sensitivity_stats.png", type = "cairo",
+       width = 17, height = 12, units = "cm", dpi = 600)
