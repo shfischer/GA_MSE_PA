@@ -2,15 +2,15 @@
 ### objective function for multi species run ####
 ### ------------------------------------------------------------------------ ###
 mp_fitness <- function(params, inp_file, path, check_file = FALSE,
-                   scenario, 
-                   return_res = FALSE,
-                   collapse_correction = TRUE,
-                   obj_SSB = TRUE, obj_C = TRUE, obj_F = FALSE,
-                   obj_risk = TRUE, obj_ICV = TRUE, obj_ICES_PA = FALSE,
-                   obj_ICES_PA2 = FALSE, obj_ICES_MSYPA = FALSE,
-                   stat_yrs = "all",
-                   risk_threshold = 0.05,
-                   ...) {
+                       catch_rule, 
+                       return_res = FALSE,
+                       collapse_correction = TRUE,
+                       obj_SSB = FALSE, obj_C = FALSE, obj_F = FALSE,
+                       obj_risk = FALSE, obj_ICV = FALSE, obj_ICES_PA = FALSE,
+                       obj_ICES_PA2 = FALSE, obj_ICES_MSYPA = FALSE,
+                       stat_yrs = "all",
+                       risk_threshold = 0.05,
+                       ...) {
   
   ### housekeeping
   invisible(gc())
@@ -22,13 +22,24 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     . <- foreach(i = 1:getDoParWorkers()) %dopar% {invisible(gc())}
   
   ### rounding of arguments
-  params[1:4] <- round(params[1:4])
-  params[5:7] <- round(params[5:7], 1)
-  params[8] <- round(params[8])
-  params[9] <- round(params[9], 2)
-  params[10:11] <- round(params[10:11], 2)
-  ### fix NaN for upper_constraint
-  if (is.nan(params[10])) params[10] <- Inf
+  if (identical(catch_rule, "catch_rule")) {
+    params[1:4] <- round(params[1:4])
+    params[5:7] <- round(params[5:7], 1)
+    params[8] <- round(params[8])
+    params[9] <- round(params[9], 2)
+    params[10:11] <- round(params[10:11], 2)
+    ### fix NaN for upper_constraint
+    if (is.nan(params[10])) params[10] <- Inf
+  } else if (identical(catch_rule, "hr")) {
+    ### idxB_lag, idxB_range_3, interval [years]
+    params[c(1, 2, 5)] <- round(params[c(1, 2, 5)])
+    ### exp_b, comp_b_multiplier
+    params[c(3, 4)] <- round(params[c(3, 4)], 1)
+    ### multiplier, upper_constraint, lower_constraint
+    params[c(6, 7, 8)] <- round(params[c(6, 7, 8)], 2)
+    ### fix NaN for upper_constraint
+    if (is.nan(params[7])) params[7] <- Inf
+  }
   
   ### check for files?
   if (isTRUE(check_file)) {
@@ -87,22 +98,53 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     input <- readRDS(inp_file)
     
     ### insert arguments into input object for mp
-    input <- lapply(input, function(x) {
-      x$ctrl$est@args$idxB_lag     <- params[1]
-      x$ctrl$est@args$idxB_range_1 <- params[2]
-      x$ctrl$est@args$idxB_range_2 <- params[3]
-      x$ctrl$est@args$catch_range  <- params[4]
-      x$ctrl$est@args$comp_m <- params[9]
-      x$ctrl$phcr@args$exp_r <- params[5]
-      x$ctrl$phcr@args$exp_f <- params[6]
-      x$ctrl$phcr@args$exp_b <- params[7]
-      x$ctrl$hcr@args$interval <- params[8]
-      x$ctrl$isys@args$interval <- params[8]
-      x$ctrl$isys@args$upper_constraint <- params[10]
-      x$ctrl$isys@args$lower_constraint <- params[11]
-      
-      return(x)
-    })
+    ### rfb-rule
+    if (identical(catch_rule, "catch_rule")) {
+      input <- lapply(input, function(x) {
+        x$ctrl$est@args$idxB_lag     <- params[1]
+        x$ctrl$est@args$idxB_range_1 <- params[2]
+        x$ctrl$est@args$idxB_range_2 <- params[3]
+        x$ctrl$est@args$catch_range  <- params[4]
+        x$ctrl$est@args$comp_m <- params[9]
+        x$ctrl$phcr@args$exp_r <- params[5]
+        x$ctrl$phcr@args$exp_f <- params[6]
+        x$ctrl$phcr@args$exp_b <- params[7]
+        x$ctrl$hcr@args$interval <- params[8]
+        x$ctrl$isys@args$interval <- params[8]
+        x$ctrl$isys@args$upper_constraint <- params[10]
+        x$ctrl$isys@args$lower_constraint <- params[11]
+        
+        return(x)
+      })
+    ### harvest rates
+    } else if (identical(catch_rule, "hr")) {
+      input <- lapply(input, function(x) {
+        
+        
+        ### biomass index 
+        x$ctrl$est@args$idxB_lag <- params[1]
+        x$ctrl$est@args$idxB_range_3 <- params[2]
+        ### biomass safeguard
+        x$ctrl$phcr@args$exp_b <- params[3]
+        ### change Itrigger? (default: Itrigger=1.4*Iloss)
+        if (isFALSE(params[4] == 1.4)) {
+          x$ctrl$est@args$I_trigger <- x$ctrl$est@args$I_trigger/1.4*params[4]
+        }
+        ### multiplier
+        x$ctrl$est@args$comp_m <- params[6]
+        ### catch interval (default: 1)
+        if (is.numeric(params[5])) {
+          x$ctrl$hcr@args$interval <- params[5]
+          x$ctrl$isys@args$interval <- params[5]
+        }
+        ### catch constraint
+        x$ctrl$isys@args$upper_constraint <- params[7]
+        x$ctrl$isys@args$lower_constraint <- params[8]
+        #x$ctrl$isys@args$cap_below_b <- params[]
+        
+        return(x)
+      })
+    }
     
     ### if group of stocks, check if results for individual stocks exist
     group <- ifelse(isTRUE(length(input) > 1) & isTRUE(check_file), TRUE, FALSE)

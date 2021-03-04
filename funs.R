@@ -710,7 +710,7 @@ collapse_correction <- function(stk, quants = c("catch", "ssb", "fbar"),
 ### ------------------------------------------------------------------------ ###
 ### harvest rate parameter ####
 ### ------------------------------------------------------------------------ ###
-hr_par <- function(input, brp, lhist,
+hr_par <- function(input, lhist,
                    hr, hr_ref, multiplier, comp_b, interval, 
                    idxB_lag, idxB_range_3,
                    upper_constraint, lower_constraint,
