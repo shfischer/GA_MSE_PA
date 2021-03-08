@@ -6,7 +6,7 @@ Using a genetic algorithm to optimise a data-limited catch rule
 This repository contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
-> (in press). Using a genetic algorithm to optimise a data-limited catch
+> (2021). Using a genetic algorithm to optimize a data-limited catch
 > rule. ICES Journal of Marine Science.
 > <https://dx.doi.org/10.1093/icesjms/fsab018>.
 
@@ -14,7 +14,6 @@ The status of the repository used for the publication is saved in the
 release [code for ICESJMS
 publication](https://github.com/shfischer/GA_MSE/releases/tag/v1.0) and
 has a DOI:
-
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4475589.svg)](https://doi.org/10.5281/zenodo.4475589)
 
 The simulation is based on the Fisheries Library in R
@@ -23,6 +22,15 @@ standard MSE framework ([`FLR/mse`](github.com/FLR/mse)) developed
 during the Workshop on development of MSE algorithms with R/FLR/a4a
 ([Jardim et
 al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
+
+The operating models provided as an input are those from the repository
+[shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
+described in:
+
+> Simon H. Fischer, José A. A. De Oliveira, Laurence T. Kell (2020).
+> Linking the performance of a data-limited empirical catch rule to
+> life-history traits, ICES Journal of Marine Science,
+> <https://doi.org/10.1093/icesjms/fsaa054>.
 
 ## Repository structure
 
