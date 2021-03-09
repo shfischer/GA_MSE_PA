@@ -1,3 +1,4 @@
+args <- c("use_MPI=FALSE", "n_workers=0", "n_blocks=1", "popSize=100", "maxiter=100", "run=10", "stock_id=12", "n_iter=500", "n_yrs=50", "fhist='random'", "catch_rule='hr'", "ga_search=TRUE", "idxB_lag=FALSE", "idxB_range_3=FALSE", "exp_b=FALSE", "comp_b_multiplier=FALSE", "interval=TRUE", "multiplier=TRUE", "upper_constraint=FALSE", "lower_constraint=FALSE", "obj_SSB=TRUE", "obj_F=FALSE", "obj_C=TRUE", "obj_risk=TRUE", "obj_ICV=TRUE", "obj_ICES_PA=FALSE", "obj_ICES_PA2=FALSE", "obj_ICES_MSYPA=FALSE", "collate=TRUE", "scenario='GA'", "stat_yrs='all'", "add_suggestions=FALSE")
 ### ------------------------------------------------------------------------ ###
 ### run MSE ####
 ### ------------------------------------------------------------------------ ###
@@ -448,36 +449,36 @@ if (isFALSE(ga_search)) {
                                       c(1.2, Inf), c(0, 0.8))
                          )
   ### turn of parameters not requested, i.e. limit to default value
-  pos_default <- which(!unlist(mget(ga_names, ifnotfound = FALSE)))
+  pos_default <- which(sapply(mget(ga_names, ifnotfound = FALSE), isFALSE))
   ga_lower[pos_default] <- ga_default[pos_default]
   ga_upper[pos_default] <- ga_default[pos_default]
   ### fix parameters?
   pos_fixed <- which(sapply(mget(ga_names, ifnotfound = FALSE), is.numeric))
   par_fixed <- names(pos_fixed)
   val_fixed <- as.vector(unlist(mget(ga_names, ifnotfound = FALSE)[pos_fixed]))
-  ga_lower[pos_fixed] <- val_fixed
-  ga_upper[pos_fixed] <- val_fixed
-  ### remove not requested parameters from suggestions
-  ga_suggestions[, pos_default] <- rep(ga_default[pos_default], 
+  ga_lower[pos_fixed] <- min(val_fixed, na.rm = TRUE)
+  ga_upper[pos_fixed] <- max(val_fixed, na.rm = TRUE)
+  ### check if only 1 parameter required
+  run_all <- ifelse(isTRUE(length(pos_default) == 7) & 
+                      isTRUE(length(pos_fixed) == 1),
+                    TRUE, FALSE)
+  if (isFALSE(run_all)) {
+    ### remove not requested parameters from suggestions
+    ga_suggestions[, pos_default] <- rep(ga_default[pos_default], 
+                                         each = nrow(ga_suggestions))
+    ga_suggestions[, pos_fixed] <- rep(val_fixed, 
                                        each = nrow(ga_suggestions))
-  ga_suggestions[, pos_fixed] <- rep(val_fixed, 
-                                     each = nrow(ga_suggestions))
-  ga_suggestions <- unique(ga_suggestions)
-  names(ga_suggestions) <- ga_names
-  
-  ### multiplier only: run all possible values
-  if (exists("multiplier")) {
-    if (isTRUE(multiplier) & 
-        !any(sapply(mget(setdiff(ga_names, "multiplier"), ifnotfound = FALSE),
-                    isTRUE))) {
-      m_vals <- seq(from = ga_lower[9], to = ga_upper[9], by = 0.01)
-      ga_suggestions[1, ] <- ga_lower
-      ga_suggestions <- ga_suggestions[rep(1, length(m_vals)), ]
-      ga_suggestions$multiplier <- m_vals
-      ### adapt GA dimensions
-      maxiter <- run <- 1
-      popSize <- length(m_vals)
-    }
+    ga_suggestions <- unique(ga_suggestions)
+    names(ga_suggestions) <- ga_names
+  ### add all supplied values
+  } else {
+    n_vals <- length(val_fixed)
+    ga_suggestions <- ga_suggestions[rep(1, n_vals),]
+    ga_suggestions[, pos_default] <- rep(ga_default[pos_default], each = n_vals)
+    ga_suggestions[, pos_fixed] <- val_fixed
+    ### adapt GA dimensions
+    maxiter <- run <- 1
+    popSize <- n_vals
   }
   
   ### ---------------------------------------------------------------------- ###
@@ -487,8 +488,10 @@ if (isFALSE(ga_search)) {
   ### output path
   ### set name depending on which GA parameters are used
   scn_pars <- ga_names[setdiff(seq_along(ga_names), pos_default)]
-  scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
-    scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
+  if (isFALSE(run_all)) {
+    scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
+      scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
+  }
   scn_pars_c <- paste0(scn_pars, collapse = "-")
   #scenario <- "trial"
   path_out <- paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
@@ -542,9 +545,9 @@ if (isFALSE(ga_search)) {
         ### load results
         res_add <- lapply(avail, function(x) {
           tmp <- readRDS(file = 
-                           paste0(path_out, paste0(x, collapse = "-"), "--", obj_desc, "_res",
-                                  ifelse(identical(stat_yrs, "all"), "", paste0("_", stat_yrs)), 
-                                  ".rds"))
+            paste0(path_out, paste0(x, collapse = "-"), "--", obj_desc, "_res",
+                   ifelse(identical(stat_yrs, "all"), "", paste0("_", stat_yrs)), 
+                   ".rds"))
           tmp <- tmp@solution[1, ]
           if (is.na(tmp[which("upper_constraint" == names(tmp))])) {
             tmp[which("upper_constraint" == names(tmp))] <- Inf
@@ -610,7 +613,9 @@ if (isFALSE(ga_search)) {
       names(pars) <- ga_names
       ### only keep scenarios where requested parameters are changed
       if (!all(ga_default[pos_default] == pars[pos_default])) return(NULL)
-      if (!all(val_fixed == pars[pos_fixed])) return(NULL)
+      if (!isTRUE(run_all)) {
+        if (!all(val_fixed == pars[pos_fixed])) return(NULL)
+      } 
       stats <- readRDS(paste0(path_out, x))
       list(pars = pars, stats = stats)
     })
