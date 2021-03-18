@@ -67,6 +67,10 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       dir_i <- paste0(stock_i, collapse = "_")
       dirs_i <- setdiff(x = dir(path = base_path, pattern = dir_i),
                         y = dir_i)
+      dirs_i <- dirs_i[which(sapply(dirs_i, function(x) {
+        tmp <- strsplit(x = x, split = "_")[[1]]
+        ifelse(isFALSE(dir_i %in% tmp), FALSE, TRUE)
+      }))]
       files_tmp <- lapply(dirs_i, function(x) {
         #browser()
         path_tmp <- paste0(base_path, x, "/", run_i, ".rds")
