@@ -1,4 +1,4 @@
-args <- c("use_MPI=FALSE", "n_workers=0", "n_blocks=1", "popSize=100", "maxiter=100", "run=10", "stock_id=12", "n_iter=500", "n_yrs=50", "fhist='random'", "catch_rule='hr'", "ga_search=TRUE", "idxB_lag=FALSE", "idxB_range_3=FALSE", "exp_b=FALSE", "comp_b_multiplier=FALSE", "interval=TRUE", "multiplier=TRUE", "upper_constraint=FALSE", "lower_constraint=FALSE", "obj_SSB=TRUE", "obj_F=FALSE", "obj_C=TRUE", "obj_risk=TRUE", "obj_ICV=TRUE", "obj_ICES_PA=FALSE", "obj_ICES_PA2=FALSE", "obj_ICES_MSYPA=FALSE", "collate=TRUE", "scenario='GA'", "stat_yrs='all'", "add_suggestions=FALSE")
+#args <- c("use_MPI=FALSE", "n_workers=0", "n_blocks=1", "popSize=100", "maxiter=100", "run=10", "stock_id=12", "n_iter=500", "n_yrs=50", "fhist='random'", "catch_rule='hr'", "ga_search=TRUE", "idxB_lag=FALSE", "idxB_range_3=FALSE", "exp_b=FALSE", "comp_b_multiplier=FALSE", "interval=FALSE", "multiplier=FALSE", "upper_constraint=c(seq(1,5,0.01),Inf)", "lower_constraint=FALSE", "obj_SSB=TRUE", "obj_F=FALSE", "obj_C=TRUE", "obj_risk=TRUE", "obj_ICV=TRUE", "obj_ICES_PA=FALSE", "obj_ICES_PA2=FALSE", "obj_ICES_MSYPA=FALSE", "collate=TRUE", "scenario='GA'", "stat_yrs='all'", "add_suggestions=FALSE")
 ### ------------------------------------------------------------------------ ###
 ### run MSE ####
 ### ------------------------------------------------------------------------ ###
@@ -54,6 +54,7 @@ if (length(args) > 0) {
   if (!exists("sigmaR_rho")) sigmaR_rho <- 0.0
   
   ### what to save
+  if (!exists("check_file")) check_file <- TRUE
   if (!exists("saveMP")) saveMP <- TRUE
   if (!exists("stats")) stats <- TRUE
   if (!exists("collate")) collate <- FALSE
@@ -584,7 +585,7 @@ if (isFALSE(ga_search)) {
               obj_risk = obj_risk, obj_ICV = obj_ICV, obj_ICES_PA = obj_ICES_PA,
               obj_ICES_PA2 = obj_ICES_PA2, obj_ICES_MSYPA = obj_ICES_MSYPA,
               stat_yrs = stat_yrs, risk_threshold = risk_threshold,
-              path = path_out, check_file = TRUE,
+              path = path_out, check_file = check_file,
               catch_rule = catch_rule,
               suggestions = ga_suggestions, lower = ga_lower, upper = ga_upper,
               names = ga_names,
