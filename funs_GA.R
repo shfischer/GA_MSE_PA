@@ -56,27 +56,31 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
       dir_i <- paste0(stock_i, collapse = "_")
       dirs_i <- setdiff(x = dir(path = base_path, pattern = dir_i),
                         y = dir_i)
-      dirs_i <- dirs_i[which(sapply(dirs_i, function(x) {
-        tmp <- strsplit(x = x, split = "_")[[1]]
-        ifelse(isFALSE(dir_i %in% tmp), FALSE, TRUE)
-      }))]
-      files_tmp <- lapply(dirs_i, function(x) {
-        #browser()
-        path_tmp <- paste0(base_path, x, "/", run_i, ".rds")
-        if (isTRUE(file.exists(path = path_tmp))) {
-          return(path_tmp)
+      if (isTRUE(length(dirs_i) > 0)) {
+        dirs_i <- dirs_i[which(sapply(dirs_i, function(x) {
+          tmp <- strsplit(x = x, split = "_")[[1]]
+          ifelse(isFALSE(dir_i %in% tmp), FALSE, TRUE)
+        }))]
+        files_tmp <- lapply(dirs_i, function(x) {
+          #browser()
+          path_tmp <- paste0(base_path, x, "/", run_i, ".rds")
+          if (isTRUE(file.exists(path = path_tmp))) {
+            return(path_tmp)
+          } else {
+            return(NA)
+          }
+        })
+        files_tmp[is.na(files_tmp)] <- NULL
+        if (isTRUE(length(files_tmp) > 0)) {
+          ### load stats from larger group
+          stats <- readRDS(files_tmp[[1]])
+          ### subset to current group
+          stats <- stats[, stock_i]
+          ### do not run MP
+          run_mp <- FALSE
         } else {
-          return(NA)
+          run_mp <- TRUE
         }
-      })
-      files_tmp[is.na(files_tmp)] <- NULL
-      if (isTRUE(length(files_tmp) > 0)) {
-        ### load stats from larger group
-        stats <- readRDS(files_tmp[[1]])
-        ### subset to current group
-        stats <- stats[, stock_i]
-        ### do not run MP
-        run_mp <- FALSE
       } else {
         run_mp <- TRUE
       }
