@@ -39,6 +39,8 @@ if (isTRUE(n_workers > 1)) {
                                  quietly = TRUE)
     source("funs.R", echo = FALSE)
   }
+} else {
+  cl <- FALSE
 }
 
 ### ------------------------------------------------------------------------ ###
@@ -491,5 +493,5 @@ if (exists("CI")) {
 ### ------------------------------------------------------------------------ ###
 
 gc()
-clusterEvalQ(cl, {gc()})
+if (!isFALSE(cl)) clusterEvalQ(cl, {gc()})
 
