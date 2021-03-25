@@ -790,6 +790,9 @@ stats_plot <- bind_rows(
     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
     mutate(catch_rule = "2 over 3", group = "2 over 3")
 )
+saveRDS(stats_plot, "output/all_stocks_rfb_opt_stats.rds")
+stats_plot <- readRDS("output/all_stocks_rfb_opt_stats.rds")
+
 
 stocks_sorted <- stocks %>%
   select(stock, k) %>%
