@@ -140,98 +140,112 @@ saveRDS(pol_PA, file = "output/pol_PA_components_stats.rds")
 write.csv(pol_PA, file = "output/pol_PA_components_stats.csv", row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
-### collate results - all stocks ####
+### collate results - all stocks - PA & MSY ####
 ### ------------------------------------------------------------------------ ###
 n_yrs <- 50
 n_iter <- 500
 
 ### get optimised parameterisation
-all_PA <- foreach(stock = stocks$stock, .combine = rbind) %:%
-  foreach(optimised = c("zero-fishing", "default", "mult", "all_cap"),
-          .combine = rbind) %:%
-  foreach(scenario = "PA", .combine = rbind) %:%
-  foreach(stat_yrs = "more", .combine = rbind) %:%
-  foreach(fhist = c("one-way", "random"), .combine = rbind) %do% {#browser()
-    #browser()
-    ### find files
-    file_name <- switch(optimised,
-      "zero-fishing" = "multiplier--obj_ICES_MSYPA",
-      "default" = "multiplier--obj_ICES_MSYPA",
-      "mult" = "multiplier--obj_ICES_MSYPA",
-      "cap" = "upper_constraint-lower_constraint--obj_ICES_MSYPA",
-      "mult_cap" = paste0("multiplier-upper_constraint-lower_constraint--",
-                          "obj_ICES_MSYPA"),
+all_PA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
+  foreach(optimised = c("zero-fishing", "default", "mult", "all", "all_cap"),
+          .combine = bind_rows) %:%
+  foreach(scenario = c("PA", "MSY"), .combine = bind_rows) %:%
+  foreach(stat_yrs = "more", .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
+    
+    ### objective function name
+    name_obj <- switch(scenario,
+                       "PA" = "ICES_MSYPA",
+                       "MSY" = "SSB_C_risk_ICV")
+    ### parameters
+    name_pars <- switch(optimised,
+      "zero-fishing" = "multiplier",
+      "default" = "multiplier",
+      "mult" = "multiplier",
+      "cap" = "upper_constraint-lower_constraint",
+      "mult_cap" = paste0("multiplier-upper_constraint-lower_constraint--"),
       "all" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
-                     "interval-multiplier--obj_ICES_MSYPA"),
+                     "interval-multiplier"),
       "all_cap" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
-                         "interval-multiplier-upper_constraint-lower_constraint",
-                         "--obj_ICES_MSYPA"))
-    fs <- list.files(path = paste0("output/", n_iter, "_", n_yrs, "/", scenario, 
-                                   "/", fhist, "/", stock, "/"), 
-                     pattern = paste0("^", file_name, "_res_", stat_yrs, ".rds"))
-    if (length(fs) < 1) return(NULL)
-    trials <- data.frame(file = fs)
-    trials$obj_fun <- "MSYPA"
-    trials$fhist <- fhist
-    trials$scenario <- scenario
-    trials$optimised <- optimised
-    trials$stat_yrs <- stat_yrs
-    trials$stock <- stock
+                         "interval-multiplier-upper_constraint-lower_constraint"))
+    ### stats period
+    name_stats <- switch(scenario,
+                         "PA" = "_more",
+                         "MSY" = switch(optimised,
+                                      "mult" = "_more",
+                                      "zero-fishing" = "_more",
+                                      "default" = "_more", 
+                                      ""))
+    ### assemble file name
+    file_path <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, 
+                        "/", fhist, "/", stock, "/")
+    file_name <- paste0(name_pars, "--obj_", name_obj)
+    file_name_res <- paste0(file_name, "_res", name_stats, ".rds")
+    file_name_runs <- paste0(file_name, "_runs", ".rds")
+    if (isFALSE(file.exists(paste0(file_path, file_name_res)))) return(NULL)
+    res_df <- data.frame(file = file_name_res)
+    res_df$obj_fun <- scenario
+    res_df$fhist <- fhist
+    res_df$scenario <- scenario
+    res_df$optimised <- optimised
+    res_df$stat_yrs <- stat_yrs
+    res_df$stock <- stock
     ### load GA results
-    res_lst <- lapply(trials$file, function(x) {
-      readRDS(paste0("output/", n_iter, "_", n_yrs, "/", scenario, "/", fhist, 
-                     "/", stock, "/", x))
-    })
-    res_par <- lapply(res_lst, function(x) {
-      tmp <- x@solution[1,]
-      tmp[c(1:4, 8)] <- round(tmp[c(1:4, 8)])
-      tmp[5:7] <- round(tmp[5:7], 1)
-      tmp[9] <- round(tmp[9], 2)
-      tmp[10] <- ifelse(is.nan(tmp[10]), Inf, tmp[10])
-      tmp[10:11] <- round(tmp[10:11], 2)
-      return(tmp)
-    })
-    names(res_par) <- trials$obj_fun
-    ### default (non-optimised?)
-    if (isTRUE(optimised %in% c("default", "zero-fishing"))) {
-      trials <- trials[1, ]
-      res_lst <- res_lst[1]
-      res_par <- res_par[1]
-      res_par[[1]][] <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
-      if (identical(optimised, "zero-fishing")) res_par[[1]][9] <- 0
+    res <- readRDS(paste0(file_path, file_name_res))
+    ### get parameters
+    res_par <- res@solution[1, ]
+    res_par["lag_idx"] <- round(res_par["lag_idx"])
+    res_par["range_idx_1"] <- round(res_par["range_idx_1"])
+    res_par["range_idx_2"] <- round(res_par["range_idx_2"])
+    res_par["range_catch"] <- round(res_par["range_catch"])
+    res_par["exp_r"] <- round(res_par["exp_r"], 1)
+    res_par["exp_f"] <- round(res_par["exp_f"], 1)
+    res_par["exp_b"] <- round(res_par["exp_b"], 1)
+    res_par["interval"] <- round(res_par["interval"])
+    res_par["multiplier"] <- round(res_par["multiplier"], 2)
+    if ("upper_constraint" %in% names(res_par)) {
+      res_par["lower_constraint"] <- round(res_par["lower_constraint"], 2)
+      res_par["upper_constraint"] <- ifelse(!is.nan(res_par["upper_constraint"]),
+                                            round(res_par["upper_constraint"], 2),
+                                            Inf)
     }
-    res <- as.data.frame(do.call(rbind, res_par))
-    res$file <- trials$file
-    res$solution <- sapply(res_par, paste0, collapse = "_")
-    res$fitness <- sapply(res_lst, slot, "fitnessValue")
-    res$iter <- sapply(res_lst, slot, "iter")
+    ### default or zero-fishing?
+    if (identical(optimised, "zero-fishing")) res_par["multiplier"] <- 0
+    if (identical(optimised, "default")) res_par["multiplier"] <- 1
     ### combine
-    res <- merge(trials, res)
+    res_df <- cbind(as.data.frame(do.call(rbind, list(res_par))),
+                    as.data.frame(do.call(rbind, list(res_df))))
+    res_df$solution <- paste0(res_par, collapse = "_")
+    res_df$fitness <- res@fitnessValue
+    res_df$iter <- res@iter
+
     ### load stats of solution
-    res_stats <- lapply(split(res, seq(nrow(res))), function(x) {
-      res_runs <- readRDS(paste0("output/", n_iter, "_", n_yrs, "/", scenario, 
-                                 "/", fhist, "/", stock, "/",
-                                 gsub(x = x$file, 
-                                      pattern = paste0("res_", stat_yrs), 
-                                      replacement = "runs")))
-      stats_i <- t(res_runs[[x$solution]]$stats)
-      as.data.frame(lapply(as.data.frame(stats_i), unlist))
-    })
-    res_stats <- do.call(rbind, res_stats)
-    res <- cbind(res, res_stats)
+    res_runs <- readRDS(paste0(file_path, file_name_runs))
+    res_stats <- as.data.frame(
+      lapply(as.data.frame(t(res_runs[[res_df$solution]]$stats)), unlist))
+    res_df <- cbind(res_df, res_stats)
+    
     ### calculate fitness value for non-optimised rule
-    if (identical(optimised, "default")) {
-      res$fitness <- sapply(split(res, seq(nrow(res))), function(x) {
-        -sum(abs(x$SSB_rel - 1), abs(x$Catch_rel - 1), 
-             penalty(x = unlist(x$risk_Blim), negative = FALSE, max = 5, 
-                 inflection = 0.06, steepness = 0.5e+3),
-             x$ICV)
-      })
+    if (isTRUE(optimised %in% c("default", "zero-fishing"))) {
+      if (isTRUE(scenario == "PA")) {
+        res_df$fitness <- -sum(abs(res_df$SSB_rel - 1),
+                               abs(res_df$Catch_rel - 1),
+                               res_df$ICV,
+                               penalty(x = res_df$risk_Blim, negative = FALSE, 
+                                       max = 5, inflection = 0.06, 
+                                       steepness = 0.5e+3))
+      } else if (isTRUE(scenario == "MSY")) {
+        res_df$fitness <- -sum(abs(res_df$SSB_rel - 1),
+                               abs(res_df$Catch_rel - 1),
+                               res_df$ICV,
+                               res_df$risk_Blim)
+      }
     }
-    return(res)
+    return(res_df)
 }
-saveRDS(all_PA, file = "output/all_stocks_PA_stats.rds")
-write.csv(all_PA, file = "output/all_stocks_PA_stats.csv", row.names = FALSE)
+saveRDS(all_PA, file = "output/all_stocks_GA_optimised_stats.rds")
+write.csv(all_PA, file = "output/all_stocks_GA_optimised_stats.csv",
+          row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
 ### collate results - all stocks with multiplier ####
@@ -316,8 +330,8 @@ all_mult_refs <- bind_rows(
 saveRDS(all_mult, file = "output/plots/PA/data_all_stocks_multiplier_stats.rds")
 all_mult <- readRDS("output/plots/PA/data_all_stocks_multiplier_stats.rds")
 saveRDS(all_mult_refs, 
-        file = "output/plots/PA/data_all_stocks_multiplier_stats.rds")
-all_mult_refs <- readRDS("output/plots/PA/data_all_stocks_multiplier_stats.rds")
+        file = "output/plots/PA/data_all_stocks_multiplier_stats_refs.rds")
+all_mult_refs <- readRDS("output/plots/PA/data_all_stocks_multiplier_stats_refs.rds")
 
 
 ### plot some example stocks
@@ -581,13 +595,14 @@ ggsave(filename = "output/plots/PA/pol_components_stats.pdf",
 ### ------------------------------------------------------------------------ ###
 
 ### load data
-all_PA <- readRDS("output/all_stocks_PA_stats.rds")
+all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
 stocks_sorted <- stocks %>%
   select(stock, k) %>%
   arrange(k)
 
 ### format for plotting
-stats_plot <- all_PA %>% 
+stats_plot <- all_GA %>% 
+  filter(scenario == "PA" & optimised != "all") %>%
   mutate(ICV = ifelse(optimised == "zero-fishing", 0, ICV)) %>%
   mutate(stock = factor(stock, levels = stocks_sorted$stock)) %>%
   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
@@ -775,6 +790,8 @@ stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
     stats_i$group = "2 over 3"
     return(stats_i)
 }
+saveRDS(stats_2over3, "output_all_stocks_2over_stats.rds")
+stats_2over3 <- readRDS("output/output_all_stocks_2over_stats.rds")
 
 ### combine 
 stats_plot <- bind_rows(
