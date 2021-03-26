@@ -2,13 +2,15 @@
 ### analysis of constant harvest rate rule ####
 ### ------------------------------------------------------------------------ ###
 
-
 library(mse)
 library(tidyverse)
 library(doParallel)
 library(scales)
 library(cowplot)
+library(RColorBrewer)
+library(akima)
 source("funs.R")
+source("funs_GA.R")
 
 # cl <- makeCluster(3)
 # registerDoParallel(cl)
@@ -1181,9 +1183,10 @@ p_risk <- res_def_p %>%
         axis.title.y = element_blank(),
         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"))
 p_risk
-plot_grid(p_SSB, p_Catch, p_risk,
-          ncol = 1, align = "v",
-          rel_heights = c(1.25, 1, 1.25))
+p_stats <- plot_grid(p_SSB, p_Catch, p_risk,
+                     ncol = 1, align = "v",
+                     rel_heights = c(1.25, 1, 1.25))
+p_stats
 ggsave(filename = "output/plots/length_all_subset_def_mult.pdf",
        width = 17, height = 10, units = "cm")
 ggsave(filename = "output/plots/length_all_subset_def_mult.png", type = "cairo",
@@ -1272,30 +1275,10 @@ max_catch_p <- max_catch %>%
   pivot_longer(c(multiplier, Catch_rel, risk_Blim), 
                names_to = "key", values_to = "value") %>%
   mutate(stat = factor(key, levels = c("multiplier", "Catch_rel", "risk_Blim"), 
-                       labels = c("multiplier~(m)", "Catch/MSY", "B[lim]~risk")))
+                       labels = c("multiplier~(x)", "catch/MSY", "B[lim]~risk")))
 ### plot
-max_catch_p %>%
-  filter(stat %in% c("multiplier~(m)", "Catch/MSY")) %>%
-  ggplot(aes(x = k, y = value)) +
-  geom_smooth(method = lm, se = TRUE, size = 0.5) +
-  geom_point(size = 0.3) +
-  facet_grid(stat ~ fhist, scales = "free_y", switch = "y",
-             labeller = "label_parsed") +
-  #ylim(c(0, NA)) +  xlim(c(0, NA)) +
-  coord_cartesian(ylim = c(0, NA), xlim = c(0, 1)) + 
-  labs(x = expression(k~"[year"^{-1}*"]"), y = "") +
-  theme_bw(base_size = 8) +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(),
-        strip.text.y = element_text(size = 8), 
-        axis.title.y = element_blank())
-ggsave(filename = "output/plots/length_all_def_mult_max_catch_cor.pdf",
-       width = 8.5, height = 8, units = "cm")
-ggsave(filename = "output/plots/length_all_def_multmax_catch_cor.png", 
-       type = "cairo",
-       width = 8.5, height = 8, units = "cm", dpi = 600)
-max_catch_p %>%
-  filter(stat %in% c("multiplier~(m)", "Catch/MSY")) %>%
+p_max_catch <- max_catch_p %>%
+  filter(stat %in% c("multiplier~(x)", "catch/MSY")) %>%
   ggplot(aes(x = k, y = value, colour = fhist, shape = fhist, linetype = fhist)) +
   geom_smooth(method = lm, se = FALSE, size = 0.3) +
   geom_point(size = 0.4) +
@@ -1315,12 +1298,19 @@ max_catch_p %>%
         legend.background = element_blank(),
         legend.key = element_blank(),
         legend.key.height = unit(0.6, "lines"),
-        legend.position = c(0.85, 0.89))
-ggsave(filename = "output/plots/length_all_def_multmax_catch_cor.png", 
+        legend.position = c(0.77, 0.92))
+p_max_catch
+
+### combine plots
+plot_grid(p_stats, p_max_catch,
+          ncol = 2, rel_widths = c(0.67, 0.33),
+          labels = c("(a)", "(b)"), label_size = 10)
+ggsave(filename = "output/plots/HR_mult_max_catch_cor.png", 
        type = "cairo",
-       width = 8.5, height = 7, units = "cm", dpi = 600)
-ggsave(filename = "output/plots/length_all_def_mult_max_catch_cor.pdf",
-       width = 8.5, height = 7, units = "cm")
+       width = 17, height = 10, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/HR_mult_max_catch_cor.pdf",
+       width = 17, height = 10, units = "cm")
+
 
 
 ### ------------------------------------------------------------------------ ###
