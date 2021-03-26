@@ -1498,36 +1498,54 @@ ggsave(filename = "output/plots/length_procedure_combined_2.pdf",
 ### HR principle visualisation ####
 ### ------------------------------------------------------------------------ ###
 
-data.frame(x = c(0, 1, 2),
-           y = c(0, 1, 1)) %>%
-  ggplot(aes(x = x, y = y)) +
-  annotation_raster(matrix(colorRampPalette(c("red", "orange", "yellow"))(255), 
-                           nrow = 1),
-                    xmin = 0, xmax = 1, ymin = 0, ymax = 1, interpolate = TRUE) + 
-  annotate("polygon", x = c(0, 1, 0), y = c(0, 1.01, 1.01), fill = "white") +
-  annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
-  # annotation_custom(
-  #   grid::rasterGrob(c("red", "orange"),
-  #                    width = 1, height = 1), 
-  #   xmin = 0, xmax = 1, ymin = 0, ymax = 1
-  # ) +
-  # annotate("polygon", x = c(0, 1, 1), y = c(0, 0, 1), fill = "orange") +
-  # annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
-  geom_line() +
+ggplot() +
+  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
+           linetype = "dotted") +
+  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
+           linetype = "dotted") +
+  geom_line(data = data.frame(x = seq(0, 1, length.out = 1000), 
+                              y = seq(0, 1, length.out = 1000),
+                              z = seq(0, 1, length.out = 1000)),
+            aes(x = x, y = y, colour = z),
+            size = 1, show.legend = FALSE) +
+  scale_colour_gradient(low = "red", high = "yellow") +
+  geom_line(data = data.frame(x = c(1, 2), 
+                              y = c(1, 1)),
+            aes(x = x, y = y), colour = "green3", size = 1) +
   scale_x_continuous("index I", expand = c(0, 0),
                      breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
-  scale_y_continuous("harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
                      breaks = c(0, 1), labels = c(0, "H")) +
-  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1, 
-           linetype = "dotted") +
-  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1, 
-           linetype = "dotted") +
-  #theme(panel.background = element_blank())
   theme_classic()
 ggsave(filename = "output/plots/HR_principle.png",
        width = 8.5, height = 5, units = "cm", dpi = 600,
        type = "cairo")
 ggsave(filename = "output/plots/HR_principle.pdf",
+       width = 8.5, height = 5, units = "cm")
+
+data.frame(x = c(0, 1, 2),
+           y = c(0, 1, 1)) %>%
+  ggplot(aes(x = x, y = y)) +
+  annotation_raster(matrix(colorRampPalette(c("red", "orange", "yellow"))(255),
+                           nrow = 1),
+                    xmin = 0, xmax = 1, ymin = 0, ymax = 1, interpolate = TRUE) +
+  annotate("polygon", x = c(0, 1, 0), y = c(0, 1.01, 1.01), fill = "white") +
+  annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
+  geom_line() +
+  scale_x_continuous("index I", expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
+  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, "H")) +
+  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
+           linetype = "dotted") +
+  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
+           linetype = "dotted") +
+  #theme(panel.background = element_blank())
+  theme_classic()
+ggsave(filename = "output/plots/HR_principle_area.png",
+       width = 8.5, height = 5, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/HR_principle_area.pdf",
        width = 8.5, height = 5, units = "cm")
 
 
