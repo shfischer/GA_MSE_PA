@@ -779,7 +779,6 @@ all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
 
 stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
   foreach(fhist = c("one-way", "random"), .combine = "rbind") %do% {
-  
     stats_i <- readRDS(paste0("output/500_50/2over3/", fhist, "/", stock, 
                               "_stats.rds"))
     stats_i <- as.data.frame(lapply(as.data.frame(t(stats_i)), unlist))
@@ -787,7 +786,22 @@ stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
     stats_i$stock = stock
     stats_i$catch_rule = "2 over 3"
     stats_i$group = "2 over 3"
-    return(stats_i)
+    ### generate fitness
+    stats_i_MSY <- stats_i_PA <- stats_i
+    stats_i_MSY$fitness <- -sum(abs(stats_i_MSY$SSB_rel - 1),
+                                abs(stats_i_MSY$Catch_rel - 1),
+                                stats_i_MSY$ICV,
+                                stats_i_MSY$risk_Blim)
+    stats_i_PA$fitness <- -sum(abs(stats_i_PA$SSB_rel - 1),
+                               abs(stats_i_PA$Catch_rel - 1),
+                               stats_i_PA$ICV,
+                               penalty(x = stats_i_PA$risk_Blim, negative = FALSE, 
+                                       max = 5, inflection = 0.06, 
+                                       steepness = 0.5e+3))
+    stats_i_MSY$scenario <- "MSY"
+    stats_i_PA$scenario <- "PA"
+    stats_i_MSY$optimised <- stats_i_PA$optimised <- "default"
+    return(rbind(stats_i_MSY, stats_i_PA))
 }
 saveRDS(stats_2over3, "output/all_stocks_2over_stats.rds")
 stats_2over3 <- readRDS("output/all_stocks_2over_stats.rds")
@@ -803,6 +817,7 @@ stats_plot <- bind_rows(
     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
     mutate(catch_rule = "rfb", group = "rfb: MSY-PA"),
   stats_2over3 %>%
+    filter(scenario == "PA") %>%
     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
     mutate(catch_rule = "2 over 3", group = "2 over 3")
 )
