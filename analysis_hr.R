@@ -1958,34 +1958,635 @@ df_stats_time <- stats_time %>%
 df_sens <- bind_rows(df_stats_idx_lngth, df_stats_rec, df_stats_status,
                      df_stats_time) %>%
   mutate(period = ifelse(is.na(period), "annual", period)) %>%
-  mutate(sensitivity = factor(sensitivity, 
-                              levels = c("rec", "obs", "stock_status", "period"), 
-                              labels = c("atop(sigma[R],bold(recruitment~variability))", 
-                                         "atop(sigma[obs],bold(observation~uncertainty))",
-                                         "atop(SSB[y==0]/B[MSY],bold(initial~stock~status))",
-                                         "atop(years,bold(projection~period))"))) %>%
+  mutate(label_top = factor(sensitivity, 
+                            levels = c("rec", "obs", "stock_status", "period"), 
+                            labels = c("recruitment~variability", 
+                                       "observation~uncertainty",
+                                       "initial~stock~status",
+                                       "projection~period"))) %>%
+  mutate(label_bottom = factor(sensitivity, 
+                            levels = c("rec", "obs", "stock_status", "period"), 
+                            labels = c("sigma[R]", 
+                                       "sigma[obs]",
+                                       "SSB[y==0]/B[MSY]",
+                                       "years"))) %>%
   mutate(name = factor(name, levels = c("SSB", "Catch", "risk"),
-                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk")))
+                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk"))) %>%
+  mutate(value = ifelse(sensitivity == "stock_status" & fhist == "one-way",
+                        NA, value))
 
+df_blank <- data.frame(name = rep(c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk"),
+                                  each = 2),
+                       x = c(0, 1, 0, 1, 0, 1),
+                       value = c(0, 1.8, 0, 1.4, 0, 1))
 
-df_sens %>%
-  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist)) +
-  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21) +
-  facet_grid(name ~ sensitivity, scales = "free", labeller = "label_parsed",
-             switch = "both") +
-  #scale_linetype(guide = FALSE) +
-  scale_colour_brewer("fishing history", palette = "Dark2") +
-  scale_fill_brewer("fishing history", palette = "Dark2") +
+p_sens_rec <- df_sens %>%
+  filter(sensitivity == "rec") %>%
+  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
+              show.legend = FALSE) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_blank(data = df_blank) +
+  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("", palette = "Dark2") +
+  scale_fill_brewer("", palette = "Dark2") +
+  labs(x = expression(sigma[R])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
-        strip.background = element_blank(),
-        axis.title = element_blank(),
-        legend.key.height = unit(0.6, "lines"),
-        legend.position = c(0.9, 0.45),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(4, 2, 4, 4), "pt"))
+p_sens_obs <- df_sens %>%
+  filter(sensitivity == "obs") %>%
+  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
+              show.legend = FALSE) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_blank(data = df_blank) +
+  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("", palette = "Dark2") +
+  scale_fill_brewer("", palette = "Dark2") +
+  labs(x = expression(sigma[obs])) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.text.y = element_blank(),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(4, 2, 4, 0), "pt"))
+p_sens_status <- df_sens %>%
+  filter(sensitivity == "stock_status") %>%
+  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+  stat_smooth(n = 50, span = 0.4, se = FALSE, geom = "line", size = 0.4,
+              show.legend = FALSE) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_blank(data = df_blank) +
+  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("", palette = "Dark2") +
+  scale_fill_brewer("", palette = "Dark2") +
+  labs(x = expression(SSB[y == 0]/B[MSY])) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.text.y = element_blank(),
+        ### manual margins because no letter goes below base
+        strip.text.x = element_text(margin = unit(c(3.8, 0, 3.8, 0), "pt")),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(4, 2, 4, 0), "pt"))
+p_sens_period <- df_sens %>%
+  filter(sensitivity == "period") %>%
+  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+  stat_smooth(n = 50, span = 0.1, se = FALSE, geom = "line", size = 0.4) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21) +
+  geom_blank(data = df_blank) +
+  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("fishing history", palette = "Dark2") +
+  scale_fill_brewer("fishing history", palette = "Dark2") +
+  scale_linetype("fishing history") +
+  labs(x = "years") +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.text.y = element_blank(),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(4, 4, 4, 0), "pt"),
+        legend.position = c(0.7, 0.45),
         legend.background = element_blank(),
+        legend.key.height = unit(0.6, "lines"),
         legend.key = element_blank())
-ggsave(filename = "output/plots/hr_sensitivity_stats.pdf",
-       width = 17, height = 12, units = "cm")
+
+plot_grid(p_sens_rec, p_sens_obs, p_sens_status, p_sens_period, 
+          nrow = 1, rel_widths = c(1.2, 1, 1, 1), align = "h")
+
 ggsave(filename = "output/plots/hr_sensitivity_stats.png", type = "cairo",
        width = 17, height = 12, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/hr_sensitivity_stats.pdf",
+       width = 17, height = 12, units = "cm")
+
+### ------------------------------------------------------------------------ ###
+### GA: pollack explorations ####
+### ------------------------------------------------------------------------ ###
+
+n_yrs <- 50
+n_iter <- 500
+
+### get optimised parameterisation
+pol_GA <- foreach(stock = "pol", .combine = rbind) %:%
+  foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
+  foreach(parameters = c("all", "caps", "upper_cap", "lower_cap", "multiplier",
+                         "interval", "idx_range", "all_no_caps", "idx_lag",
+                         "b_multiplier"), .combine = rbind) %:%
+  foreach(objective = c("MSY", "MSY-PA"), .combine = rbind) %:%
+  foreach(scenario = "GA", .combine = rbind) %:%
+  foreach(catch_rule = "hr", .combine = rbind) %:%
+  foreach(stat_yrs = "all", .combine = rbind) %:%
+  foreach(fhist = c("one-way", "random"), .combine = rbind) %do% {#browser()
+    
+    ### find files
+    file_prefix <- switch(parameters,
+      "all" = paste0("idxB_lag-idxB_range_3-comp_b_multiplier-interval-",
+                     "multiplier-upper_constraint-lower_constraint"),
+      "all_no_caps" = paste0("idxB_lag-idxB_range_3-comp_b_multiplier-interval",
+                             "-multiplier"),
+      "caps" = "upper_constraint-lower_constraint",
+      "upper_cap" = "upper_constraint",
+      "lower_cap" = "lower_constraint",
+      "multiplier" = "multiplier",
+      "interval" = "interval",
+      "idx_range" = "idxB_range_3",
+      "idx_lag" = "idxB_lag",
+      "b_multiplier" = "comp_b_multiplier"
+      )
+    file_suffix <- switch(objective,
+      "MSY" = paste0("obj_SSB_C_risk_ICV"),
+      "MSY-PA" = "obj_ICES_MSYPA")
+    file_res <- paste0(file_prefix, "--", file_suffix, "_res.rds")
+    file_runs <- paste0(file_prefix, "--", file_suffix, "_runs.rds")
+    
+    if (!file.exists(paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
+                            scenario, "/", fhist, "/", stock, "/", file_res))) { 
+      return(NULL)
+    }
+    
+    df_res <- data.frame(optimised = optimised, stock = stock, 
+                         parameters = parameters, objective = objective, 
+                         scenario = scenario, catch_rule = catch_rule, 
+                         stat_yrs = stat_yrs, fhist = fhist)
+    ### load GA results
+    res <- readRDS(paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
+                          scenario, "/", fhist, "/", stock, "/", file_res))
+    runs <- readRDS(paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
+                           scenario, "/", fhist, "/", stock, "/", file_runs))
+    solution <- res@solution
+    ### if several equal best solutions, pick first
+    if (isTRUE(nrow(solution) > 1)) {
+      solution <- solution[1,, drop = FALSE]
+      
+    }
+    solution[c(1, 2, 5)] <- round(solution[c(1, 2, 5)])
+    solution[c(3, 4)] <- round(solution[c(3, 4)], 1)
+    solution[c(6, 7, 8)] <- round(solution[c(6, 7, 8)], 2)
+
+    ### default (non-optimised?)
+    if (isFALSE(optimised)) {
+      solution[] <- c(1, 1, 1, 1.4, 1, 1, Inf, 0)
+    }
+    df_res <- cbind(df_res, solution)
+    solution_c <- paste0(solution, collapse = "_")
+    ### replace NaN for upper_constraint with Inf
+    solution_c <- gsub(x = solution_c, pattern = "NaN", replacement = "Inf")
+    stats <- runs[[solution_c]]$stats
+    stats <- as.data.frame(t(data.frame(unlist(stats), 
+                                        row.names = rownames(stats))))
+    row.names(stats) <- NULL
+    df_res <- cbind(df_res, stats)
+    ### prepare risk penalty
+    penalty_tmp <- penalty(x = stats$risk_Blim, 
+                           negative = FALSE, max = 5, 
+                           inflection = 0.05 + 0.01, 
+                           steepness = 0.5e+3)
+    if (isTRUE(optimised)) {
+      df_res$fitness <- res@fitnessValue
+      df_res$iter <- res@iter
+    } else {
+      if (isTRUE(objective == "MSY")) {
+        df_res$fitness <- -sum(abs(stats$SSB_rel - 1), abs(stats$Catch_rel - 1), 
+                               stats$risk_Blim, stats$ICV)
+      } else if (isTRUE(objective == "MSY-PA")) {
+
+        df_res$fitness <- -sum(abs(stats$SSB_rel - 1), 
+                               abs(stats$Catch_rel - 1), 
+                               stats$ICV,
+                               penalty_tmp)
+      }
+      df_res$iter <- NA
+    }
+    df_res$risk_penalty <- ifelse(isTRUE(objective == "MSY-PA"),
+                                  penalty_tmp, NA)
+    return(df_res)
+}
+pol_GA %>% View()
+
+# pol_GA %>% 
+#   filter(optimised == TRUE) %>%
+#   bind_rows(pol_GA %>% 
+#               filter(optimised == FALSE & 
+#                        parameters == "all") %>%
+#               mutate(parameters = "not_optimised")) %>%
+#   mutate(parameters = factor(parameters,
+#     levels = c("not_optimised", "idx_lag", "idx_range", "b_multiplier", 
+#                "multiplier", "interval", "upper_cap", "lower_cap", "caps",
+#                "all_no_caps", "all"))) %>%
+#   ggplot(aes(x = as.factor(parameters), y = fitness, 
+#              fill = as.factor(parameters))) +
+#   geom_col(colour = "black") +
+#   #scale_fill_brewer("parameters", palette = "Dark2") +
+#   #brewer.pal(n = 8, name = "Dark2")
+#   scale_fill_manual("parameters", 
+#                     values = c("#D95F02", 
+#                                colorRampPalette(c("grey30", "grey90"))(9), 
+#                                "#1B9E77")) +
+#   facet_wrap(~ fhist) +
+#   labs(x = "optimised parameters", y = "fitness") +
+#   theme_bw() +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+
+### recreate fitness components
+pol_GA_plot <- pol_GA %>%
+  mutate(comp_Catch = Catch_rel - 1,
+         comp_SSB = SSB_rel - 1,
+         comp_ICV = ICV,
+         comp_risk = risk_Blim,
+         comp_risk_penalty = risk_penalty) %>%
+  mutate(comp_risk = ifelse(objective == "MSY-PA", NA, comp_risk)) %>%
+  pivot_longer(c(comp_Catch, comp_SSB, comp_ICV, comp_risk, comp_risk_penalty),
+               names_prefix = "comp_") 
+pol_GA_plot <- pol_GA_plot %>%
+  filter(optimised == TRUE) %>%
+  bind_rows(pol_GA_plot %>% 
+              filter(optimised == FALSE & 
+                       parameters == "all") %>%
+              mutate(parameters = "not_optimised")) %>%
+  mutate(parameters = factor(parameters,
+    levels = c("not_optimised", "idx_lag", "idx_range", "b_multiplier", 
+               "multiplier", "interval", "upper_cap", "lower_cap", "caps",
+               "all_no_caps", "all"),
+    labels = c("not optimised", "idx lag", "idx range", "b multiplier", 
+               "multiplier", "interval", "upper cap", "lower cap", "caps",
+               "all no caps", "all")
+    )) %>%
+  mutate(name = factor(name,
+                       levels = rev(c("SSB", "Catch", "ICV", "risk",
+                                      "risk_penalty")),
+                       labels = rev(c("SSB", "Catch", "ICV", "risk",
+                                   "risk penalty")))) %>%
+  mutate(objective = factor(objective, levels = c("MSY", "MSY-PA"))) 
+
+pol_GA_plot_dev <- pol_GA_plot %>%
+  filter(name %in% c("SSB", "Catch")) %>%
+  mutate(value_sign = ifelse(name == "SSB",
+                             -abs(SSB_rel - 1)/2,
+                             -abs(SSB_rel - 1) - abs(Catch_rel - 1)/2)) %>%
+  mutate(sign = ifelse(name == "SSB",
+                       ifelse(SSB_rel > 1, "+", "-"),
+                       ifelse(Catch_rel > 1, "+", "-"))) %>%
+  filter(abs(value) >= 0.02)
+
+
+pol_GA_plot %>%
+  mutate(value = -abs(value)) %>%
+  ggplot(aes(x = parameters, y = value, fill = name)) +
+  geom_col(colour = "black", size = 0.2) +
+  # scale_fill_brewer("fitness\nelements", palette = "Dark2") +
+  scale_fill_manual("fitness\nelements", 
+                    values = brewer.pal(n = 5, name = "Dark2"),
+                    breaks = rev(levels(pol_GA_plot$name))) +
+  geom_text(data = pol_GA_plot_dev,
+            aes(x = parameters, y = value_sign, label = sign), 
+            vjust = 0.5, colour = "grey20") +
+  facet_grid(objective ~ fhist) +
+  coord_cartesian(ylim = c(-1.25, 0)) + 
+  scale_y_continuous(breaks = c(0, -0.5, -1), 
+                     minor_breaks = c(-0.25, -0.75, -1.25)) +
+  labs(x = "optimised parameters", y = "fitness") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        panel.spacing.x = unit(-0.5, "pt"),
+        legend.key.width = unit(1, "lines"))
+ggsave(filename = "output/plots/hr_GA_pol_comps.png", type = "cairo",
+       width = 17, height = 12, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/hr_GA_pol_comps.pdf",
+       width = 17, height = 12, units = "cm")
+
+
+### ------------------------------------------------------------------------ ###
+### GA: load results for all stocks ####
+### ------------------------------------------------------------------------ ###
+n_yrs <- 50
+n_iter <- 500
+
+### get optimised parameterisation
+stocks_GA <- foreach(stock = stocks$stock, .combine = rbind) %:%
+  foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
+  foreach(parameters = c("all", "multiplier"), .combine = rbind) %:%
+  foreach(objective = c("MSY", "MSY-PA"), .combine = rbind) %:%
+  foreach(scenario = "GA", .combine = rbind) %:%
+  foreach(catch_rule = "hr", .combine = rbind) %:%
+  foreach(stat_yrs = "all", .combine = rbind) %:%
+  foreach(fhist = c("one-way", "random"), .combine = rbind) %do% {#browser()
+    
+    ### find files
+    file_prefix <- switch(parameters,
+      "all" = paste0("idxB_lag-idxB_range_3-comp_b_multiplier-interval-",
+                     "multiplier-upper_constraint-lower_constraint"),
+      "multiplier" = "multiplier",
+    )
+    file_suffix <- switch(objective,
+                          "MSY" = paste0("obj_SSB_C_risk_ICV"),
+                          "MSY-PA" = "obj_ICES_MSYPA")
+    file_res <- paste0(file_prefix, "--", file_suffix, "_res.rds")
+    file_runs <- paste0(file_prefix, "--", file_suffix, "_runs.rds")
+    
+    if (!file.exists(paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
+                            scenario, "/", fhist, "/", stock, "/", file_res))) { 
+      return(NULL)
+    }
+    
+    df_res <- data.frame(optimised = optimised, stock = stock, 
+                         parameters = parameters, objective = objective, 
+                         scenario = scenario, catch_rule = catch_rule, 
+                         stat_yrs = stat_yrs, fhist = fhist)
+    ### load GA results
+    res <- readRDS(paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
+                          scenario, "/", fhist, "/", stock, "/", file_res))
+    runs <- readRDS(paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
+                           scenario, "/", fhist, "/", stock, "/", file_runs))
+    solution <- res@solution
+    ### if several equal best solutions, pick first
+    if (isTRUE(nrow(solution) > 1)) {
+      solution <- solution[1,, drop = FALSE]
+      
+    }
+    solution[c(1, 2, 5)] <- round(solution[c(1, 2, 5)])
+    solution[c(3, 4)] <- round(solution[c(3, 4)], 1)
+    solution[c(6, 7, 8)] <- round(solution[c(6, 7, 8)], 2)
+    
+    ### default (non-optimised?)
+    if (isFALSE(optimised)) {
+      solution[] <- c(1, 1, 1, 1.4, 1, 1, Inf, 0)
+    }
+    df_res <- cbind(df_res, solution)
+    solution_c <- paste0(solution, collapse = "_")
+    ### replace NaN for upper_constraint with Inf
+    solution_c <- gsub(x = solution_c, pattern = "NaN", replacement = "Inf")
+    stats <- runs[[solution_c]]$stats
+    stats <- as.data.frame(t(data.frame(unlist(stats), 
+                                        row.names = rownames(stats))))
+    row.names(stats) <- NULL
+    df_res <- cbind(df_res, stats)
+    ### prepare risk penalty
+    penalty_tmp <- penalty(x = stats$risk_Blim, 
+                           negative = FALSE, max = 5, 
+                           inflection = 0.05 + 0.01, 
+                           steepness = 0.5e+3)
+    if (isTRUE(optimised)) {
+      df_res$fitness <- res@fitnessValue
+      df_res$iter <- res@iter
+    } else {
+      if (isTRUE(objective == "MSY")) {
+        df_res$fitness <- -sum(abs(stats$SSB_rel - 1), abs(stats$Catch_rel - 1), 
+                               stats$risk_Blim, stats$ICV)
+      } else if (isTRUE(objective == "MSY-PA")) {
+        
+        df_res$fitness <- -sum(abs(stats$SSB_rel - 1), 
+                               abs(stats$Catch_rel - 1), 
+                               stats$ICV,
+                               penalty_tmp)
+      }
+      df_res$iter <- NA
+    }
+    df_res$risk_penalty <- ifelse(isTRUE(objective == "MSY-PA"),
+                                  penalty_tmp, NA)
+    return(df_res)
+}
+saveRDS(stocks_GA, "output/hr_GA_all_stocks_stats.rds")
+stocks_GA <- readRDS("output/hr_GA_all_stocks_stats.rds")
+stocks_GA %>% View()
+
+### ------------------------------------------------------------------------ ###
+### default vs. optimised: 4 example stocks ####
+### ------------------------------------------------------------------------ ###
+
+stocks_GA <- readRDS("output/hr_GA_all_stocks_stats.rds")
+
+stocks_GA_plot <- stocks_GA %>%
+  filter(stock %in% c("ang3", "pol", "tur", "san")) %>%
+  mutate(parameters = as.character(parameters)) %>%
+  mutate(parameters = ifelse(optimised == TRUE, parameters, "not optimised")) %>%
+  unique() %>%
+  mutate(stock = factor(stock, levels = c("ang3", "pol", "tur", "san"))) %>%
+  mutate(objective = factor(objective, levels = c("MSY", "MSY-PA"))) %>%
+  mutate(fhist = factor(fhist, levels = c("one-way", "random"))) %>%
+  mutate(parameters = factor(parameters, 
+                             levels = c("not optimised", "multiplier", "all"),
+                             labels = c("not\noptimised", "multiplier", "all")))
+
+stocks_GA_plot %>%
+  ggplot(aes(x = stock, y = fitness, fill = parameters)) +
+  geom_col(colour = "black", size = 0.2,
+           position = "dodge") +
+  #scale_fill_brewer("optimised\nparameters", palette = "Dark2") +
+  scale_fill_manual("optimised\nparameters",
+                    values = brewer.pal(n = 4, name = "Set1")[c(1, 2, 4)]
+                    #breaks = rev(levels(pol_GA_plot$name))
+                    ) +
+  facet_grid(objective ~ fhist) +
+  #coord_cartesian(ylim = c(-1.25, 0)) + 
+  # scale_y_continuous(breaks = c(0, -0.5, -1), 
+  #                    minor_breaks = c(-0.25, -0.75, -1.25)) +
+  labs(x = "stocks", y = "fitness") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        panel.spacing.x = unit(-0.5, "pt"),
+        legend.key.width = unit(0.9, "lines"))
+ggsave(filename = "output/plots/hr_GA_stocks_optimised.png", type = "cairo",
+       width = 17, height = 10, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/hr_GA_stocks_optimised.pdf",
+       width = 17, height = 10, units = "cm")
+
+### ------------------------------------------------------------------------ ###
+### comparison: HR vs. rfb vs. 2over3 ####
+### ------------------------------------------------------------------------ ###
+
+### load results from previous simulations
+stats_rfb_PA <- readRDS("../wklife9_GA_tmp/output/all_stocks_PA_stats.rds")
+stats_rfb_MSY <- readRDS("../wklife9_GA_tmp/output/all_stocks_MSY_stats.rds")
+stats_2over3 <- readRDS("../wklife9_GA_tmp/output/all_stocks_MSY_stats.rds")
+### load HR results
+stats_hr <- readRDS("output/hr_GA_all_stocks_stats.rds")
+
+### combine all results
+stats_all_rules <- bind_rows(
+  stats_rfb_PA %>%
+    select(obj_fun, fhist, scenario, optimised, stock,
+           lag_idx, range_idx_1, range_idx_2, range_catch, exp_r, exp_f, exp_b,
+           interval, multiplier, upper_constraint, lower_constraint, 
+           fitness, iter, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV) %>% View()
+  
+  stats_rfb_MSY %>%
+    select(obj_fun, fhist, scenario, optimised, stock,
+           lag_idx, range_idx_1, range_idx_2, range_catch, exp_r, exp_f, exp_b,
+           interval, multiplier, upper_constraint, lower_constraint, 
+           fitness, iter, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV) %>%
+    mutate(rule = "rfb", obj_fun = "MSY")
+  
+  mutate()
+  
+)
+
+
+### ------------------------------------------------------------------------ ###
+### pure harvest rate - catch ~ depletion & HR ####
+### ------------------------------------------------------------------------ ###
+
+stocks_subset <- stocks$stock#"pol"
+### extract and "correct" time series (run on HPC)
+# res <- foreach(stock = stocks_subset, .errorhandling = "pass") %do% {
+#   #browser()
+#     tmp <- readRDS(paste0("output/hr/10000_100/concept/random/", stock, 
+#                           "/mp_uniform_1_FALSE_-1_1_1_Inf_0_0.2_0_0.6_0.rds"))
+#     ### stock metrics
+#     SSBs <- FLCore::ssb(tmp@stock)
+#     Fs <- FLCore::fbar(tmp@stock)
+#     Cs <- FLCore::catch(tmp@stock)
+#     yrs_check <- ac(100:200)
+#     yrs <- dim(tmp@stock[, yrs_check])[2]
+#     its <- dim(tmp@stock[, yrs_check])[6]
+#     ### collapse correction
+#     if (isTRUE(TRUE)) {
+#       ### find collapses
+#       cd <- sapply(seq(its), function(x) {
+#         min_yr <- min(which(SSBs[, yrs_check,,,, x] < 1))
+#         if (is.finite(min_yr)) {
+#           all_yrs <- min_yr:yrs
+#         } else {
+#           all_yrs <- NA
+#         }
+#         all_yrs + (x - 1)*yrs
+#       })
+#       cd <- unlist(cd)
+#       cd <- cd[which(!is.na(cd))]
+#       ### remove values
+#       SSBs[, yrs_check]@.Data[cd] <- 0
+#       Cs[, yrs_check]@.Data[cd] <- 0
+#       Fs[, yrs_check]@.Data[cd] <- 0
+#     }
+#     brp <- brps[[stock]]
+#     Bmsy <- c(refpts(brp)["msy", "ssb"])
+#     Fmsy <- c(refpts(brp)["msy", "harvest"])
+#     Cmsy <- c(refpts(brp)["msy", "yield"])
+#     ### summarise
+#     qnts <- FLQuants(SSB = SSBs/Bmsy, F = Fs/Fmsy, Catch = Cs/Cmsy)
+#     rm(stk); gc()
+#     return(qnts)
+# }
+# names(res) <- stocks_subset
+# saveRDS(res, paste0("output/hr/10000_100/concept/random/smry_corrected.rds"))
+# 
+# res <- readRDS("output/hr/10000_100/concept/random/smry_corrected.rds")
+# stocks_subset <- stocks$stock
+# ### harvest rates
+# set.seed(33)
+# hr_rates <- runif(n = 10000, min = 0, max = 1)
+# stats_yrs <- c(10, 50, 100)
+# 
+# ### uniform: extract stats
+# stats <- foreach(stock = stocks_subset, .combine = bind_rows) %:%
+#   foreach(years = stats_yrs, .combine = bind_rows) %do% {#browser()
+#     
+#     ### extract stats (median per iteration)
+#     # SSB_i <- c(apply(res[[stock]]$SSB[, ac(seq(from = 101, to = 100 + years))], 
+#     #                  6, median))
+#     Catch_i <- c(apply(res[[stock]]$Catch[, ac(seq(from = 101, to = 100 + years))], 
+#                      6, median))
+#     HR_i <- hr_rates
+#     Status_i <- c(res[[stock]]$SSB[, ac(100)])
+#     
+#     ### define steps for summary & interpolation
+#     Status_i_steps <- seq(from = 0.0, to = max(Status_i), by = 0.05)
+#     HR_i_steps <- seq(from = 0.025, to = 0.975, by = 0.05)
+#     
+#     ### interpolate 
+#     ### Cubic interpolation & extrapolate missing values around edges
+#     int_i <- interp(x = Status_i, y = HR_i, z = Catch_i,
+#                     xo = Status_i_steps, yo = HR_i_steps,
+#                     linear = TRUE, extrap = TRUE, duplicate = "median")
+#     
+#     ### format for plotting
+#     Catch_int <- data.frame(int_i$z)
+#     Catch_int[Catch_int < 0] <- 0
+#     colnames(Catch_int) <- HR_i_steps
+#     Catch_int$Status <- Status_i_steps
+#     Catch_int <- Catch_int %>%
+#       pivot_longer(-Status, values_to = "catch", names_to = "HR") %>%
+#       mutate(HR = as.numeric(as.character(HR))) %>%
+#       #filter(!is.na(catch)) %>%
+#       mutate(years = years, stock = stock)
+#     #str(Catch_int)
+#     # Catch_int %>%
+#     #   ggplot(aes(x = Status, y = HR, fill = catch)) +
+#     #   geom_raster(interpolate = FALSE) +
+#     #   scale_fill_gradientn(expression(catch/MSY),
+#     #                        colours = c("red", "orange", "yellow", "green",
+#     #                                    "darkgreen"),
+#     #                        values = c(0, 0.33, 0.66, 1, max_y)/max_y
+#     #   ) +
+#     #   theme_bw(base_size = 7) +
+#     #   labs(x = expression(initial~stock~status~(SSB/italic(B)[MSY])),
+#     #        y = "harvest rate")
+#     return(Catch_int)
+# }
+# 
+# saveRDS(stats, file = "output/hr_pure_catch_vs_hr-depl-period.rds")
+# write.csv(stats, file = "output/hr_pure_catch_vs_hr-depl-period.csv", 
+#           row.names = FALSE)
+stats <- readRDS("output/hr_pure_catch_vs_hr-depl-period.rds")
+
+### add von Bertalanffy k
+stats2 <- stats %>% 
+  left_join(stocks[, c("stock", "k")]) %>%
+  mutate(stock_k = paste0(stock, "~~(italic(k)==", k, ")"),
+         years_label = factor(years, levels = c(10, 50, 100),
+                              labels = paste0(c(10, 50, 100), "~years"))) %>%
+  mutate(stock_k = factor(stock_k, levels = unique(stock_k))) %>%
+  filter(!is.na(catch)) %>%
+  filter(Status <= 3)
+max_y_global <- max(stats2$catch, na.rm = TRUE)
+
+### plot (in groups)
+groups <- append(list(c(1, 12, 18, 22, 26, 29)), 
+                 split(seq_along(stocks$stock), rep(1:5, each = 6)))
+for (i in seq_along(groups)) {
+  stats3 <- stats2 %>%
+    filter(stock %in% stocks$stock[groups[[i]]])
+  max_y_local <- max(stats3$catch, na.rm = TRUE)
+  stats3 %>%
+    ggplot(aes(x = Status, y = HR, fill = catch)) +
+    facet_grid(years_label ~ stock_k, labeller = label_parsed) +
+    geom_raster(interpolate = FALSE) +
+    scale_fill_gradientn(expression(catch/MSY),
+                         colours = c("red", "orange", "yellow", "green",
+                                     "darkgreen"),
+                         values = c(0, 0.33, 0.66, 1, max_y_global)/max_y_local
+    ) +
+    theme_bw(base_size = 7) +
+    labs(x = expression(initial~stock~status~(SSB/B[MSY])),
+         y = "harvest rate") +
+    xlim(c(0, 3))
+  ggsave(filename = paste0("output/plots/HR_principle_catch_examples",
+                           names(groups)[i], ".png"), 
+         type = "cairo", width = 17, height = 8, units = "cm", dpi = 600)
+  ggsave(filename = paste0("output/plots/HR_principle_catch_examples", 
+                           names(groups)[i], ".pdf"), 
+         width = 17, height = 8, units = "cm")
+}
+
+
+
+
+
+
