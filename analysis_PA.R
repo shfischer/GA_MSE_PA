@@ -146,7 +146,7 @@ n_yrs <- 50
 n_iter <- 500
 
 ### get optimised parameterisation
-all_PA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
+all_GA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
   foreach(optimised = c("zero-fishing", "default", "mult", "all", "all_cap"),
           .combine = bind_rows) %:%
   foreach(scenario = c("PA", "MSY"), .combine = bind_rows) %:%
@@ -243,8 +243,8 @@ all_PA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
     }
     return(res_df)
 }
-saveRDS(all_PA, file = "output/all_stocks_GA_optimised_stats.rds")
-write.csv(all_PA, file = "output/all_stocks_GA_optimised_stats.csv",
+saveRDS(all_GA, file = "output/all_stocks_GA_optimised_stats.rds")
+write.csv(all_GA, file = "output/all_stocks_GA_optimised_stats.csv",
           row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
@@ -775,8 +775,7 @@ ggsave(filename = "output/plots/PA/all_stocks_stats.pdf",
 ### ------------------------------------------------------------------------ ###
 
 ### load data
-all_PA <- readRDS("output/all_stocks_PA_stats.rds")
-all_MSY <- readRDS("output/all_stocks_MSY_stats.rds")
+all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
 
 stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
   foreach(fhist = c("one-way", "random"), .combine = "rbind") %do% {
@@ -790,17 +789,17 @@ stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
     stats_i$group = "2 over 3"
     return(stats_i)
 }
-saveRDS(stats_2over3, "output_all_stocks_2over_stats.rds")
-stats_2over3 <- readRDS("output/output_all_stocks_2over_stats.rds")
+saveRDS(stats_2over3, "output/all_stocks_2over_stats.rds")
+stats_2over3 <- readRDS("output/all_stocks_2over_stats.rds")
 
 ### combine 
 stats_plot <- bind_rows(
-  all_MSY %>% 
-    filter(optimised == TRUE) %>%
+  all_GA %>% 
+    filter(optimised == "all" & scenario == "MSY") %>%
     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
     mutate(catch_rule = "rfb", group = "rfb: MSY"),
-  all_PA %>% 
-    filter(optimised == "all_cap") %>%
+  all_GA %>% 
+    filter(optimised == "all_cap" & scenario == "PA") %>%
     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
     mutate(catch_rule = "rfb", group = "rfb: MSY-PA"),
   stats_2over3 %>%
@@ -962,15 +961,16 @@ ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.pdf",
 ### table with rfb-rule parameters ####
 ### ------------------------------------------------------------------------ ###
 
-all_PA %>%
-  filter(optimised %in% c("mult", "all_cap")) %>%
+all_GA %>%
+  filter(optimised %in% c("mult", "all_cap") & scenario == "PA") %>%
   select("optimised", "fhist", "stock", "iter", "lag_idx", "range_idx_1", "range_idx_2",
          "exp_r", "exp_f", "exp_b", "interval", "multiplier", 
          "upper_constraint", "lower_constraint") %>%
   arrange(desc(optimised), fhist) %>%
   View()
 
-all_PA %>% 
+all_GA %>% 
+  filter(scenario == "PA") %>%
   filter(optimised == "default") %>%
   filter(risk_Blim <= 0.055)
 
