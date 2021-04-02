@@ -347,7 +347,9 @@ p_all_mult <- all_mult %>%
              aes(shape = point), size = 0.8) +
   scale_shape_manual("risk limit", values = 2:4, 
                      guide = guide_legend(order = 2)) + 
-  scale_colour_discrete("fishing\nhistory", guide = guide_legend(order = 1)) +
+  scale_colour_brewer("fishing\nhistory", guide = guide_legend(order = 1),
+                      palette = "Set1") +
+  #scale_colour_discrete("fishing\nhistory", guide = guide_legend(order = 1)) +
   scale_linetype("fishing\nhistory", guide = guide_legend(order = 1)) +
   facet_grid(stat ~ stock_label, 
              scales = "free", space = "free_x", switch = "y",
@@ -382,7 +384,8 @@ ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf",
                aes(shape = point), size = 0.8) +
     scale_shape_manual("risk limit", values = 2:4, 
                        guide = guide_legend(order = 2)) + 
-    scale_colour_discrete("fishing\nhistory", guide = guide_legend(order = 1)) +
+    scale_colour_brewer("fishing\nhistory", guide = guide_legend(order = 1),
+                        palette = "Set1") +
     scale_linetype("fishing\nhistory", guide = guide_legend(order = 1)) +
     facet_grid(stat ~ stock_label, 
                scales = "free", space = "free_x", switch = "y",
@@ -630,6 +633,14 @@ p_stats_SSB <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
+                               "not optimised" = "#1B9E77", 
+                               "GA: multiplier" =  "#D95F02", 
+                               "GA: all" = "#7570B3")) +
+  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
+                                 "not optimised" = "#1B9E77", 
+                                 "GA: multiplier" =  "#D95F02", 
+                                 "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -650,6 +661,14 @@ p_stats_F <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
+                               "not optimised" = "#1B9E77", 
+                               "GA: multiplier" =  "#D95F02", 
+                               "GA: all" = "#7570B3")) +
+  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
+                                 "not optimised" = "#1B9E77", 
+                                 "GA: multiplier" =  "#D95F02", 
+                                 "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -671,6 +690,14 @@ p_stats_C <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
+                               "not optimised" = "#1B9E77", 
+                               "GA: multiplier" =  "#D95F02", 
+                               "GA: all" = "#7570B3")) +
+  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
+                                 "not optimised" = "#1B9E77", 
+                                 "GA: multiplier" =  "#D95F02", 
+                                 "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -693,6 +720,14 @@ p_stats_risk <- stats_plot %>%
   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
+                               "not optimised" = "#1B9E77", 
+                               "GA: multiplier" =  "#D95F02", 
+                               "GA: all" = "#7570B3")) +
+  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
+                                 "not optimised" = "#1B9E77", 
+                                 "GA: multiplier" =  "#D95F02", 
+                                 "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -714,6 +749,14 @@ p_stats_ICV <- stats_plot %>%
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
+                               "not optimised" = "#1B9E77", 
+                               "GA: multiplier" =  "#D95F02", 
+                               "GA: all" = "#7570B3")) +
+  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
+                                 "not optimised" = "#1B9E77", 
+                                 "GA: multiplier" =  "#D95F02", 
+                                 "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -735,7 +778,14 @@ p_stats_fitness <- stats_plot %>%
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            size = 0.1, show.legend = TRUE) +
-  scale_fill_discrete("") + scale_colour_discrete("") +
+  scale_fill_manual("", values = c("zero fishing" = "#E7298A", 
+                               "not optimised" = "#1B9E77", 
+                               "GA: multiplier" =  "#D95F02", 
+                               "GA: all" = "#7570B3")) +
+  scale_colour_manual("", values = c("zero fishing" = "#E7298A", 
+                                 "not optimised" = "#1B9E77", 
+                                 "GA: multiplier" =  "#D95F02", 
+                                 "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -853,6 +903,12 @@ p_stats_SSB <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+                               "rfb: MSY" = "#66A61E", 
+                               "rfb: MSY-PA" =  "#7570B3")) +
+  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+                                 "rfb: MSY" = "#66A61E", 
+                                 "rfb: MSY-PA" =  "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -873,6 +929,12 @@ p_stats_F <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+                               "rfb: MSY" = "#66A61E", 
+                               "rfb: MSY-PA" =  "#7570B3")) +
+  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+                                 "rfb: MSY" = "#66A61E", 
+                                 "rfb: MSY-PA" =  "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -894,6 +956,12 @@ p_stats_C <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+                               "rfb: MSY" = "#66A61E", 
+                               "rfb: MSY-PA" =  "#7570B3")) +
+  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+                                 "rfb: MSY" = "#66A61E", 
+                                 "rfb: MSY-PA" =  "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -916,6 +984,12 @@ p_stats_risk <- stats_plot %>%
   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
+  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+                               "rfb: MSY" = "#66A61E", 
+                               "rfb: MSY-PA" =  "#7570B3")) +
+  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+                                 "rfb: MSY" = "#66A61E", 
+                                 "rfb: MSY-PA" =  "#7570B3")) +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -937,7 +1011,15 @@ p_stats_ICV <- stats_plot %>%
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = TRUE, size = 0.1) +
-  scale_fill_discrete("catch rule") + scale_colour_discrete("catch rule") +
+  scale_fill_manual("catch rule",
+                    values = c("2 over 3" = "#E6AB02", 
+                               "rfb: MSY" = "#66A61E", 
+                               "rfb: MSY-PA" =  "#7570B3")) +
+  scale_colour_manual("catch rule",
+                      values = c("2 over 3" = "#E6AB02", 
+                                 "rfb: MSY" = "#66A61E", 
+                                 "rfb: MSY-PA" =  "#7570B3")) +
+  # scale_fill_discrete("catch rule") + scale_colour_discrete("catch rule") +
   facet_grid(stat ~ fhist, 
              switch = "y", scales = "free", labeller = "label_parsed") +
   labs(x = "stock", y = "") +
@@ -952,7 +1034,7 @@ p_stats_ICV <- stats_plot %>%
         axis.title.y = element_blank(),
         legend.key.width = unit(0.2, units = "lines"),
         legend.key.height = unit(1, units = "lines")) +
-  scale_y_continuous(trans = trans_from(0), limits = c(NA, NA))
+  scale_y_continuous(trans = trans_from(0), limits = c(NA, 1))
 p_stats_combined <- plot_grid(
   plot_grid(p_stats_SSB, 
             #p_stats_F, 

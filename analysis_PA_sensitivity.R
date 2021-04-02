@@ -61,7 +61,7 @@ p_mult <- df_mult %>%
   geom_smooth(method = "loess", span = 0.1, n = 10000, colour = "black", 
               level = 0, size = 0.5) +
   geom_point(size = 0.0, stroke = 0) +
-  geom_vline(xintercept = 0.75, colour = "black", linetype = "dashed",
+  geom_vline(xintercept = 0.75, colour = "black", linetype = "dotted",
              size = 0.4) +
   geom_text(x = 0.77, y = 1, hjust = 0, size = 2, check_overlap = TRUE,
             label = expression(italic(x) == 0.75)) +
@@ -77,7 +77,7 @@ p_mult
 #               level = 0, size = 0.5) +
 #   geom_point(size = 0.5, stroke = 0) +
 #   geom_hline(yintercept = 0.05, colour = "red", size = 0.4) +
-#   geom_vline(xintercept = 0.705, colour = "black", linetype = "dashed",
+#   geom_vline(xintercept = 0.705, colour = "black", linetype = "dotted",
 #              size = 0.4) +
 #   theme_bw() +
 #   facet_wrap(~ paste0("CV = ", sigmaB), ncol = 1) +
@@ -138,7 +138,7 @@ p_mult
 #   facet_grid(name ~ paste0("CV==", sigmaB), scales = "free", labeller = label_parsed) +
 #   geom_hline(yintercept = 0.05, colour = "red", size = 0.4) +
 #   geom_vline(xintercept = 0.705, 
-#              colour = "black", linetype = "dashed", size = 0.4) +
+#              colour = "black", linetype = "dotted", size = 0.4) +
 #   theme_bw(base_size = 8) +
 #   labs(x = "catch rule multiplier", y = "") #+
 # p
@@ -256,7 +256,7 @@ p_years <- df_risk %>%
   scale_linetype("") +
   labs(x = "year", y = expression(italic(B)[lim]~risk)) +
   ylim(c(0, 0.5)) +
-  geom_vline(xintercept = 50, colour = "black", linetype = "dashed",
+  geom_vline(xintercept = 50, colour = "black", linetype = "dotted",
              size = 0.4) +
   geom_text(x = 52, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
             label = "default: 50 years") +
@@ -286,7 +286,7 @@ p_obs <- df_unc %>%
   geom_smooth(method = "loess", span = 0.1, n = 10000, colour = "black",
               level = 0, size = 0.5) +
   geom_point(size = 0.0, stroke = 0) +
-  geom_vline(xintercept = 0.2, colour = "black", linetype = "dashed",
+  geom_vline(xintercept = 0.2, colour = "black", linetype = "dotted",
              size = 0.4) +
   geom_text(x = 0.21, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
             label = "default: CV=0.2") +
@@ -315,7 +315,7 @@ p_rec <- df_rec %>%
               level = 0, size = 0.5, se = FALSE) +
   geom_point(size = 0.0, stroke = 0) +
   scale_linetype("multiplier") +
-  geom_vline(xintercept = 0.6, colour = "black", linetype = "dashed",
+  geom_vline(xintercept = 0.6, colour = "black", linetype = "dotted",
              size = 0.4) +
   geom_text(x = 0.61, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
             #label = ("default: 0.6")
@@ -380,7 +380,7 @@ p_Blim <- as.data.frame(SSBs) %>%
   # coord_cartesian(xlim = c(NA, 7)) +
   xlim(c(0, 7)) +
   geom_vline(xintercept = Blim/c(refpts["msy", "ssb"]),
-             colour = "black", linetype = "dashed",
+             colour = "black", linetype = "dotted",
              size = 0.4) +
   annotate(geom = "text",
            x = Blim/c(refpts["msy", "ssb"]) * 1.1, y = 1, 
@@ -407,7 +407,7 @@ p_Blim
 #   xlim(c(0, 7)) +
 #   geom_hline(yintercept = 0.05*0.02, colour = "red", size = 0.4) +
 #   geom_vline(xintercept = Blim/c(refpts["msy", "ssb"]),
-#              colour = "black", linetype = "dashed",
+#              colour = "black", linetype = "dotted",
 #              size = 0.4) +
 #   theme_bw(base_size = 8) +
 #   labs(x = expression(SSB/B[MSY]))
@@ -476,7 +476,7 @@ p <- plot_grid(p_mult, p_Blim, p_initial,
                labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)"), 
                hjust = 0, label_size = 10)
 p 
-ggsave(filename = "output/plots/pol_PA_sensitivity.png", plot = p,
+ggsave(filename = "output/plots/PA/pol_PA_sensitivity.png", plot = p,
        width = 17, height = 8, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/pol_PA_sensitivity.pdf", plot = p,
+ggsave(filename = "output/plots/PA/pol_PA_sensitivity.pdf", plot = p,
        width = 17, height = 8, units = "cm")
