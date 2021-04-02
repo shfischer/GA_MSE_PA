@@ -246,7 +246,7 @@ df_risk <- df_risk %>%
   pivot_longer(c(risk, annual))
 df_risk$name <- factor(df_risk$name, 
                        levels = c("annual", "risk"), 
-                       labels = c("annual risk", "cumulative risk"))
+                       labels = c("annual", "total"))
 
 p_years <- df_risk %>%
   ggplot(aes(x = year, y = value, linetype = name)) +
@@ -476,7 +476,7 @@ p <- plot_grid(p_mult, p_Blim, p_initial,
                labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)"), 
                hjust = 0, label_size = 10)
 p 
-ggsave(filename = "output/plots/sensitivity/pol_sensitivity.png", plot = p,
+ggsave(filename = "output/plots/pol_PA_sensitivity.png", plot = p,
        width = 17, height = 8, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/sensitivity/pol_sensitivity.pdf", plot = p,
+ggsave(filename = "output/plots/pol_PA_sensitivity.pdf", plot = p,
        width = 17, height = 8, units = "cm")
