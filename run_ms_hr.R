@@ -539,6 +539,9 @@ if (isFALSE(ga_search)) {
     avail <- strsplit(x = avail, split = "-")
     ### need to have fewer parameters
     avail <- avail[which(sapply(avail, length) < length(scn_pars))]
+    ### if some parameters fixed, remove suggestions without them
+    avail <- avail[which(sapply(avail, function(x) 
+      all(paste0(par_fixed, val_fixed) %in% x)))]
     ### skip parameters not used
     if (isTRUE(length(avail) > 0)) {
       avail <- avail[which(sapply(avail, function(x) all(x %in% scn_pars)))]
