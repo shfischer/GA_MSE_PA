@@ -364,6 +364,9 @@ if (isTRUE(catch_rule == "catch_rule") & isTRUE(ga_search)) {
     ### skip parameters not used
     if (isTRUE(length(avail) > 0)) {
       avail <- avail[which(sapply(avail, function(x) all(x %in% scn_pars)))]
+      ### if some parameters fixed, remove suggestions without them
+      avail <- avail[which(sapply(avail, function(x) 
+        all(paste0(par_fixed, val_fixed) %in% x)))]
       if (isTRUE(length(avail) > 0)) {
         ### load results
         res_add <- lapply(avail, function(x) {
