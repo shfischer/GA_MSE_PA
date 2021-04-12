@@ -276,6 +276,137 @@ write.csv(all_mult, file = "output/all_stocks_PA_multiplier_stats.csv",
           row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
+### collate results - all stocks - all scenarios ####
+### ------------------------------------------------------------------------ ###
+n_yrs <- 50
+n_iter <- 500
+
+### get optimised parameterisation
+all_GA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
+  foreach(optimised = c("zero-fishing", "default", "mult", "all", "all_cap"),
+          .combine = bind_rows) %:%
+  foreach(capped = c(TRUE, FALSE), .combine = bind_rows) %:%
+  foreach(scenario = c("PA", "MSY", "PA_capped"), .combine = bind_rows) %:%
+  foreach(stat_yrs = "more", .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
+    
+    ### objective function name
+    name_obj <- switch(scenario,
+                       "PA" = "ICES_MSYPA",
+                       "PA_capped" = "ICES_MSYPA",
+                       "MSY" = "SSB_C_risk_ICV")
+    ### parameters used in optimisation
+    name_pars <- switch(optimised,
+      "zero-fishing" = "multiplier",
+      "default" = "multiplier",
+      "mult" = "multiplier",
+      "cap" = "upper_constraint-lower_constraint",
+      "mult_cap" = paste0("multiplier-upper_constraint-lower_constraint--"),
+      "all" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
+                     "interval-multiplier"),
+      "all_cap" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
+                         "interval-multiplier-upper_constraint-lower_constraint"))
+    ### uncertainty cap fixed?
+    if (isTRUE(capped)) {
+      upper_cap <- 1.2
+      lower_cap <- 0.7
+      ### add caps if not part of file name
+      if (isFALSE(grepl(x = name_pars, 
+                       pattern = "upper_constraint-lower_constraint"))) {
+        name_pars <- paste0(name_pars, 
+                            "-upper_constraint", upper_cap, 
+                            "-lower_constraint", lower_cap)
+      ### if caps part of filename, add cap value
+      } else {
+        name_pars <- gsub(x = name_pars, pattern = "upper_constraint",
+                          replacement = paste0("upper_constraint", upper_cap))
+        name_pars <- gsub(x = name_pars, pattern = "lower_constraint",
+                          replacement = paste0("lower_constraint", lower_cap))
+      }
+    }
+
+    ### stats period
+    name_stats <- switch(scenario,
+                         "PA" = "_more",
+                         "PA_capped" = "_more",
+                         "MSY" = switch(optimised,
+                                        "mult" = "_more",
+                                        "zero-fishing" = "_more",
+                                        "default" = "_more", 
+                                        ""))
+    ### assemble file name
+    file_path <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, 
+                        "/", fhist, "/", stock, "/")
+    file_name <- paste0(name_pars, "--obj_", name_obj)
+    file_name_res <- paste0(file_name, "_res", name_stats, ".rds")
+    file_name_runs <- paste0(file_name, "_runs", ".rds")
+    if (isFALSE(file.exists(paste0(file_path, file_name_res)))) return(NULL)
+    res_df <- data.frame(file = file_name_res)
+    res_df$obj_fun <- scenario
+    res_df$fhist <- fhist
+    res_df$scenario <- scenario
+    res_df$optimised <- optimised
+    res_df$capped <- capped
+    res_df$stat_yrs <- stat_yrs
+    res_df$stock <- stock
+    ### load GA results
+    res <- readRDS(paste0(file_path, file_name_res))
+    ### get parameters
+    res_par <- res@solution[1, ]
+    res_par["lag_idx"] <- round(res_par["lag_idx"])
+    res_par["range_idx_1"] <- round(res_par["range_idx_1"])
+    res_par["range_idx_2"] <- round(res_par["range_idx_2"])
+    res_par["range_catch"] <- round(res_par["range_catch"])
+    res_par["exp_r"] <- round(res_par["exp_r"], 1)
+    res_par["exp_f"] <- round(res_par["exp_f"], 1)
+    res_par["exp_b"] <- round(res_par["exp_b"], 1)
+    res_par["interval"] <- round(res_par["interval"])
+    res_par["multiplier"] <- round(res_par["multiplier"], 2)
+    if ("upper_constraint" %in% names(res_par)) {
+      res_par["lower_constraint"] <- round(res_par["lower_constraint"], 2)
+      res_par["upper_constraint"] <- ifelse(!is.nan(res_par["upper_constraint"]),
+                                            round(res_par["upper_constraint"], 2),
+                                            Inf)
+    }
+    ### default or zero-fishing?
+    if (identical(optimised, "zero-fishing")) res_par["multiplier"] <- 0
+    if (identical(optimised, "default")) res_par["multiplier"] <- 1
+    ### combine
+    res_df <- cbind(as.data.frame(do.call(rbind, list(res_par))),
+                    as.data.frame(do.call(rbind, list(res_df))))
+    res_df$solution <- paste0(res_par, collapse = "_")
+    res_df$fitness <- res@fitnessValue
+    res_df$iter <- res@iter
+    
+    ### load stats of solution
+    res_runs <- readRDS(paste0(file_path, file_name_runs))
+    res_stats <- as.data.frame(
+      lapply(as.data.frame(t(res_runs[[res_df$solution]]$stats)), unlist))
+    res_df <- cbind(res_df, res_stats)
+    
+    ### calculate fitness value for non-optimised rule
+    if (isTRUE(optimised %in% c("default", "zero-fishing"))) {
+      if (isTRUE(scenario %in% c("PA", "PA_capped"))) {
+        res_df$fitness <- -sum(abs(res_df$SSB_rel - 1),
+                               abs(res_df$Catch_rel - 1),
+                               res_df$ICV,
+                               penalty(x = res_df$risk_Blim, negative = FALSE, 
+                                       max = 5, inflection = 0.06, 
+                                       steepness = 0.5e+3))
+      } else if (isTRUE(scenario == "MSY")) {
+        res_df$fitness <- -sum(abs(res_df$SSB_rel - 1),
+                               abs(res_df$Catch_rel - 1),
+                               res_df$ICV,
+                               res_df$risk_Blim)
+      }
+    }
+    return(res_df)
+}
+saveRDS(all_GA, file = "output/all_stocks_GA_optimised_stats.rds")
+write.csv(all_GA, file = "output/all_stocks_GA_optimised_stats.csv",
+          row.names = FALSE)
+
+### ------------------------------------------------------------------------ ###
 ### plot - all stocks multipliers ####
 ### ------------------------------------------------------------------------ ###
 
@@ -1234,5 +1365,222 @@ all_GA %>%
   filter(scenario == "PA") %>%
   filter(optimised == "default") %>%
   filter(risk_Blim <= 0.055)
+
+
+### ------------------------------------------------------------------------ ###
+### plot comparison of rules & optimisations ####
+### ------------------------------------------------------------------------ ###
+
+### stats from 2 over 3 rule
+stats_2over3 <- readRDS("output/all_stocks_2over_stats.rds")
+
+### stats from rfb-rule
+stats_rfb <- readRDS("output/all_stocks_GA_optimised_stats.rds")
+
+### combine 
+stats_plot <- bind_rows(
+  ### zero fishing
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "zero-fishing" & multiplier == 0 & 
+             scenario == "PA") %>%
+    mutate(catch_rule = "zero-fishing", group = "zero-fishing"),
+  ### 2 over 3 rule
+  stats_2over3 %>%
+    filter(scenario == "PA") %>%
+    mutate(catch_rule = "2 over 3", group = "2 over 3"),
+  ### rfb-rule, default
+  all_GA %>% 
+    filter(capped == FALSE, optimised == "default" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "none", group = "rfb: default"),
+  ### rfb-rule, optimisation with multiplier, target MSY
+  all_GA %>% 
+    filter(capped == FALSE, optimised == "mult" & scenario == "MSY") %>%
+    mutate(catch_rule = "rfb", target = "MSY", group = "rfb: MSY - mult"),
+  ### rfb-rule, optimisation with all parameters, target MSY
+  all_GA %>% 
+    filter(capped == FALSE, optimised == "all" & scenario == "MSY") %>%
+    mutate(catch_rule = "rfb", target = "MSY", group = "rfb: MSY - all"),
+  ### rfb-rule, optimisation with multiplier, target PA
+  all_GA %>% 
+    filter(capped == FALSE, optimised == "mult" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", group = "rfb: PA - mult"),
+  ### rfb-rule, optimisation with all parameters, target PA
+  all_GA %>% 
+    filter(capped == FALSE, optimised == "all_cap" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", group = "rfb: PA - all"),
+  ### rfb-rule, always capped, optimisation with multiplier, target PA
+  all_GA %>% 
+    filter(capped == TRUE, optimised == "mult" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb (capped):\nPA - mult"),
+  ### rfb-rule, capped below Itrigger, optimisation with multiplier, target PA
+  all_GA %>% 
+    filter(capped == TRUE, optimised == "mult" & scenario == "PA_capped") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb (cond. capped):\nPA - mult"),
+  ### rfb-rule, capped below Itrigger, optimisation with all, target PA
+  all_GA %>% 
+    filter(capped == TRUE, optimised == "all" & scenario == "PA_capped") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb (cond. capped):\nPA - all")
+)
+stats_plot <- stats_plot %>%
+  select(fhist, stock, catch_rule, target, group, 
+         SSB_rel, Catch_rel, ICV, risk_Blim) %>%
+  mutate(penalty = penalty(x = risk_Blim, 
+                           negative = FALSE, max = 5, 
+                           inflection = 0.06, 
+                           steepness = 0.5e+3)) %>%
+  mutate(comp_Catch = Catch_rel - 1,
+         comp_SSB = SSB_rel - 1,
+         comp_ICV = ICV,
+         comp_risk = risk_Blim, 
+         comp_risk_penalty =  penalty - risk_Blim) %>%
+  pivot_longer(c(comp_SSB, comp_Catch, comp_ICV, comp_risk, comp_risk_penalty),
+               names_prefix = "comp_") %>%
+  mutate(name = factor(name,
+                       levels = rev(c("SSB", "Catch", "ICV", "risk", 
+                                      "risk_penalty")),
+                       labels = rev(c("SSB", "Catch", "ICV", "risk", 
+                                      "risk\npenalty")))) %>% 
+  full_join(stocks %>%
+    select(stock, k) %>%
+    mutate(stock = factor(stock, levels = stock),
+           stock_k = paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
+                            "*year^-1)")) %>%
+    mutate(stock_k = factor(stock_k, levels = stock_k))) %>%
+  mutate(group = factor(group, levels = c("zero-fishing", "2 over 3", 
+                                          "rfb: default",
+                                          "rfb: MSY - mult", "rfb: MSY - all",
+                                          "rfb: PA - mult", "rfb: PA - all",
+                                          "rfb (capped):\nPA - mult",
+                                          "rfb (cond. capped):\nPA - mult",
+                                          "rfb (cond. capped):\nPA - all"))) %>%
+  mutate(group_numeric = factor(group, labels = c(1, 3, 5, 6.5, 7.5, 9, 10,
+                                                  11.5, 12.5, 13.5))) %>%
+  mutate(group_numeric = as.numeric(as.character(group_numeric)))
+stats_plot_dev <- stats_plot %>%
+  filter(name %in% c("SSB", "Catch")) %>%
+  mutate(value_sign = ifelse(name == "SSB",
+                             -abs(SSB_rel - 1)/2,
+                             -abs(SSB_rel - 1) - abs(Catch_rel - 1)/2)) %>%
+  mutate(sign = ifelse(name == "SSB",
+                       ifelse(SSB_rel > 1, "+", "-"),
+                       ifelse(Catch_rel > 1, "+", "-"))) %>%
+  filter(abs(value) >= 0.02)
+
+saveRDS(stats_plot, "output/plots/PA/data_all_comparison.rds")
+stats_plot <- readRDS("output/plots/PA/data_all_comparison.rds")
+saveRDS(stats_plot_dev, "output/plots/PA/data_all_comparison_dev.rds")
+stats_plot_dev <- readRDS("output/plots/PA/data_all_comparison_dev.rds")
+
+
+plot_comparison <- function(stock, data, data_dev, ylim) {
+  data %>% 
+    filter(stock %in% !!stock) %>%
+    mutate(value = -abs(value)) %>%
+    ggplot(aes(x = group_numeric, y = value, fill = name)) +
+    geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+    geom_col(position = "stack", width = 1, 
+             colour = "black", size = 0.1) +
+    ### for reversing order in legend (not in plot)
+    scale_fill_discrete("fitness\nelements",
+                        breaks = rev(levels(stats_plot$name))) +
+    geom_text(data = data_dev %>%
+                filter(stock %in% !!stock),
+              aes(x = group_numeric, y = value_sign, label = sign),
+              vjust = 0.5, colour = "grey20") +
+    facet_grid(fhist ~ stock_k, scales = "free", space = "free_x", 
+               labeller = label_parsed) +
+    labs(y = "fitness", x = "") +
+    scale_x_continuous(breaks = c(1, 3, 5, 6.5, 7.5, 9, 10, 11.5, 12.5, 13.5), 
+                       labels = levels(data$group), 
+                       minor_breaks = NULL) +
+    ylim(ylim) +
+    theme_bw(base_size = 8, base_family = "sans") +
+    theme(panel.spacing.x = unit(0, units = "cm"),
+          axis.title.x = element_blank(),
+          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
+                                     lineheight = 0.7),
+          #plot.margin = unit(x = c(1, 3, 3, 3), units = "pt"),
+          legend.key.width = unit(1, "lines"),
+          legend.key.height = unit(1, "lines"))
+}
+
+plot_comparison_six <- function(stocks, data, data_dev, ylim) {
+  #browser()
+  if (isTRUE(length(stocks) == 5)) {
+    p1 <- NULL
+    stocks <- c(NA, stocks)
+  } else {
+    p1 <- plot_comparison(stock = stocks[1], data = data, 
+                          data_dev = data_dev, ylim = ylim) + 
+      theme(strip.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            legend.position = "none",) +
+      labs(y = "")
+  }
+  p2 <- plot_comparison(stock = stocks[2], data = data, 
+                        data_dev = data_dev, ylim = ylim) + 
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.title.y = element_blank())
+  p3 <- plot_comparison(stock = stocks[3], data = data, 
+                        data_dev = data_dev, ylim = ylim) + 
+    theme(strip.text.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          legend.position = "none") +
+    labs(y = "fitness")
+  p4 <- plot_comparison(stock = stocks[4], data = data, 
+                        data_dev = data_dev, ylim = ylim) + 
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          legend.position = "none",
+          axis.title.y = element_blank())
+  p5 <- plot_comparison(stock = stocks[5], data = data, 
+                        data_dev = data_dev, ylim = ylim) + 
+    theme(strip.text.y = element_blank(),
+          legend.position = "none") +
+    labs(y = "")
+  p6 <- plot_comparison(stock = stocks[6], data = data, 
+                        data_dev = data_dev, ylim = ylim) + 
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),legend.position = "none",
+          axis.title.y = element_blank())
+  ### combine all plots
+  p <- plot_grid(p1, p2 + theme(legend.position = "none"), get_legend(p2),
+            p3, p4, NULL,
+            p5, p6, NULL,
+            ncol = 3, rel_heights = c(1, 1, 1.25), rel_widths = c(1, 1, 0.3))
+  return(p)
+}
+
+### plot for manuscript
+plot_comparison_six(stocks = c("ang3", "pol", "ple", "tur", "jnd", "her"),
+                    data = stats_plot, data_dev = stats_plot_dev, 
+                    ylim = c(-8.5, 0))
+ggsave(filename = "output/plots/PA/all_comparison.png",
+       width = 17, height = 18, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/all_comparison.pdf",
+       width = 17, height = 18, units = "cm", dpi = 600)
+
+### plot all stocks for supplementary material
+for (i in seq_along(split(stocks$stock, 1:5))) {
+  #browser()
+  plot_comparison_six(stocks = split(stocks$stock, 1:5)[[i]],
+                      data = stats_plot, data_dev = stats_plot_dev, 
+                      ylim = c(-8.5, 0))
+  ggsave(filename = paste0("output/plots/PA/all_comparison", i , ".png"),
+         width = 17, height = 18, units = "cm", dpi = 600, type = "cairo")
+  ggsave(filename = paste0("output/plots/PA/all_comparison", i , ".pdf"),
+         width = 17, height = 18, units = "cm", dpi = 600)
+}
+  
 
 
