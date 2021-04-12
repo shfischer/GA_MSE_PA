@@ -407,52 +407,270 @@ ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf",
          width = 17, height = 13, units = "cm", dpi = 600)
 }
 
+### ------------------------------------------------------------------------ ###
+### plot - pollack rfb-rule component explorations - first attempt ####
+### ------------------------------------------------------------------------ ###
 
+# pol <- readRDS("output/pol_PA_components_stats.rds")
+# 
+# pol$label <- as.character(pol$optimised)
+# pol$label[pol$label == "default"] <- "not\noptimised"
+# pol$label[pol$label == "mult"] <- "GA: multi-\nplier"
+# pol$label[pol$label == "cap"] <- "GA: uncer-\ntainty cap"
+# pol$label[pol$label == "mult_cap"] <- "GA: multi-\nplier and cap"
+# pol$label[pol$label == "all"] <- "GA: all with-\nout cap"
+# pol$label[pol$label == "all_cap"] <- "GA: all"
+# pol$label <- as.factor(pol$label)
+# pol$label <- factor(pol$label, 
+#                     levels = levels(pol$label)[c(6, 3, 5, 4, 2, 1)])
+# 
+# 
+# pol_plot <- pol %>%
+#   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, fitness), 
+#                names_to = "key", values_to = "value") %>%
+#   mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel", "risk_Blim", 
+#                                        "ICV", "fitness"), 
+#                        labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+#                                   "B[lim]~risk", "ICV", "fitness~value")))
+# stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
+#                                      "B[lim]~risk", "ICV", "fitness~value"),
+#                             target = c(1, 1, 1, 0, 0, NA))
+# 
+# saveRDS(pol_plot, file = "output/plots/PA/data_pol_components_stats.rds")
+# pol_plot <- readRDS("output/plots/PA/data_pol_components_stats.rds")
+# saveRDS(stats_targets, file = "output/plots/PA/data_pol_components_targets.rds")
+# stats_targets <- readRDS("output/plots/PA/data_pol_components_targets.rds")
+# 
+# ### individual plots
+# y_max <- 3.25
+# p_pol_stats_SSB <- pol_plot %>% 
+#   filter(stat %in% c("SSB/B[MSY]")) %>%
+#   ggplot(aes(x = label, y = value, fill = label,
+#              colour = label)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
+#            show.legend = FALSE, colour = "black", size = 0.1) +
+#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+#              labeller = "label_parsed") +
+#   labs(y = "", x = "fitness function") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(panel.spacing.x = unit(0, units = "cm"),
+#         strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+# p_pol_stats_F <- pol_plot %>% 
+#   filter(stat %in% c("F/F[MSY]")) %>%
+#   ggplot(aes(x = label, y = value, fill = label,
+#              colour = label)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+#            colour = "black", size = 0.1) +
+#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+#              labeller = "label_parsed") +
+#   labs(y = "", x = "fitness function") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+# p_pol_stats_C <- pol_plot %>% 
+#   filter(stat %in% c("Catch/MSY")) %>%
+#   ggplot(aes(x = label, y = value, fill = label,
+#              colour = label)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+#            colour = "black", size = 0.1) +
+#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+#              labeller = "label_parsed") +
+#   labs(y = "", x = "fitness function") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+# p_pol_stats_risk <- pol_plot %>% 
+#   filter(stat %in% c("B[lim]~risk")) %>%
+#   ggplot(aes(x = label, y = value, fill = label,
+#              colour = label)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
+#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+#            colour = "black", size = 0.1) +
+#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+#              labeller = "label_parsed") +
+#   labs(y = "", x = "fitness function") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank()) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+# p_pol_stats_ICV <- pol_plot %>% 
+#   filter(stat %in% c("ICV")) %>%
+#   ggplot(aes(x = label, y = value, fill = label,
+#              colour = label)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+#            colour = "black", size = 0.1) +
+#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+#              labeller = "label_parsed") +
+#   labs(y = "", x = "fitness function") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank()) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+# p_pol_stats_fitness <- pol_plot %>% 
+#   filter(stat %in% c("fitness~value")) %>%
+#   ggplot(aes(x = label, y = value, fill = label,
+#              colour = label)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
+#            colour = "black", size = 0.1) +
+#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+#              labeller = "label_parsed") +
+#   labs(y = "", x = "\nrfb-rule components") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
+#                                    lineheight = 0.7),
+#         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
+#         axis.title.y = element_blank()) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(-NA, NA))#,
+# #breaks = c(0, -0.5, -1), 
+# #minor_breaks = c(-0.25, -0.75, -1.25))
+# p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, 
+#                               #p_pol_stats_F, 
+#                               p_pol_stats_C,
+#                               p_pol_stats_risk, 
+#                               p_pol_stats_ICV,
+#                               p_pol_stats_fitness,
+#                               ncol = 1, align = "v",
+#                               rel_heights = c(1.25, 1, 1, 1, 2.15))
+# ggsave(filename = "output/plots/PA/pol_components_stats.png", 
+#        plot = p_pol_stats_comb,
+#        width = 8.5, height = 11, units = "cm", dpi = 600, type = "cairo")
+# ggsave(filename = "output/plots/PA/pol_components_stats.pdf", 
+#        plot = p_pol_stats_comb,
+#        width = 8.5, height = 11, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
-### plot - pollack rfb-rule component explorations ####
+### plot - pollack rfb-rule component explorations - for manuscript ####
 ### ------------------------------------------------------------------------ ###
 
 pol <- readRDS("output/pol_PA_components_stats.rds")
-
-pol$label <- as.character(pol$optimised)
-pol$label[pol$label == "default"] <- "not\noptimised"
-pol$label[pol$label == "mult"] <- "GA: multi-\nplier"
-pol$label[pol$label == "cap"] <- "GA: uncer-\ntainty cap"
-pol$label[pol$label == "mult_cap"] <- "GA: multi-\nplier and cap"
-pol$label[pol$label == "all"] <- "GA: all with-\nout cap"
-pol$label[pol$label == "all_cap"] <- "GA: all"
-pol$label <- as.factor(pol$label)
-pol$label <- factor(pol$label, 
-                              levels = levels(pol$label)[c(6, 3, 5, 4, 2, 1)])
-
-
 pol_plot <- pol %>%
-  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, fitness), 
-               names_to = "key", values_to = "value") %>%
-  mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel", "risk_Blim", 
-                                       "ICV", "fitness"), 
-                       labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
-                                  "B[lim]~risk", "ICV", "fitness~value")))
-stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
-                                     "B[lim]~risk", "ICV", "fitness~value"),
-                            target = c(1, 1, 1, 0, 0, NA))
+  mutate(label = factor(pol$optimised,
+                        levels = c("default", "mult", "cap", "mult_cap", "all",
+                                   "all_cap"),
+                        labels = c("not\noptimised", "GA: multi-\nplier", 
+                                   "GA: uncer-\ntainty cap", 
+                                   "GA: multi-\nplier and cap",
+                                   "GA: all with-\nout cap",
+                                   "GA: all"))) %>%
+  select(fhist, label, SSB_rel, Catch_rel, risk_Blim, ICV, fitness)
 
-saveRDS(pol_plot, file = "output/plots/PA/data_pol_components_stats.rds")
-pol_plot <- readRDS("output/plots/PA/data_pol_components_stats.rds")
-saveRDS(stats_targets, file = "output/plots/PA/data_pol_components_targets.rds")
-stats_targets <- readRDS("output/plots/PA/data_pol_components_targets.rds")
+### recreate fitness elements
+pol_fitness <- pol_plot %>%
+  mutate(comp_Catch = Catch_rel - 1,
+         comp_SSB = SSB_rel - 1,
+         comp_ICV = ICV,
+         comp_risk = risk_Blim, 
+         comp_risk_penalty = penalty(x = risk_Blim, 
+                                     negative = FALSE, max = 5, 
+                                     inflection = 0.05 + 0.01, 
+                                     steepness = 0.5e+3) - risk_Blim) %>%
+  #mutate(Catch_rel = NULL, SSB_rel = NULL, ICV = NULL, risk_Blim = NULL) %>%
+  pivot_longer(c(comp_Catch, comp_SSB, comp_ICV, comp_risk, comp_risk_penalty),
+               names_prefix = "comp_") %>%
+  mutate(name = factor(name,
+                       levels = rev(c("SSB", "Catch", "ICV", "risk", 
+                                      "risk_penalty")),
+                       labels = rev(c("SSB", "Catch", "ICV", "risk", 
+                                      "risk penalty"))))
+pol_fitness_dev <- pol_fitness %>%
+  filter(name %in% c("SSB", "Catch")) %>%
+  mutate(value_sign = ifelse(name == "SSB",
+                             -abs(SSB_rel - 1)/2,
+                             -abs(SSB_rel - 1) - abs(Catch_rel - 1)/2)) %>%
+  mutate(sign = ifelse(name == "SSB",
+                       ifelse(SSB_rel > 1, "+", "-"),
+                       ifelse(Catch_rel > 1, "+", "-"))) %>%
+  filter(abs(value) >= 0.02)
 
-### individual plots
-y_max <- 3.25
+### plot fitness function, split into elements
+p_pol_fitness <- pol_fitness %>% 
+  mutate(value = -abs(value)) %>%
+  ggplot(aes(x = label, y = value, fill = name)) +
+  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(position = "stack", width = 0.8, 
+           colour = "black", size = 0.1) +
+  ### for reversing order in legend (not in plot)
+  scale_fill_discrete("fitness elements",
+                      breaks = rev(levels(pol_fitness$name))) +
+  geom_text(data = pol_fitness_dev,
+            aes(x = label, y = value_sign, label = sign), 
+            vjust = 0.5, colour = "grey20") +
+  facet_grid("fitness" ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(panel.spacing.x = unit(0, units = "cm"),
+        strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
+                                   lineheight = 0.7),
+        plot.margin = unit(x = c(1, 3, 3, 3), units = "pt"),
+        axis.title.y = element_blank(),
+        legend.key.width = unit(1, "lines"),
+        legend.key.height = unit(1, "lines"))
+
+### plot stats individually
 p_pol_stats_SSB <- pol_plot %>% 
-  filter(stat %in% c("SSB/B[MSY]")) %>%
-  ggplot(aes(x = label, y = value, fill = label,
-             colour = label)) +
+  ggplot(aes(x = label, y = SSB_rel, fill = label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
            show.legend = FALSE, colour = "black", size = 0.1) +
-  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+  scale_fill_grey() +
+  facet_grid("SSB/B[MSY]" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
   theme_bw(base_size = 8, base_family = "sans") +
@@ -465,37 +683,14 @@ p_pol_stats_SSB <- pol_plot %>%
         axis.ticks.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
-p_pol_stats_F <- pol_plot %>% 
-  filter(stat %in% c("F/F[MSY]")) %>%
-  ggplot(aes(x = label, y = value, fill = label,
-             colour = label)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-           colour = "black", size = 0.1) +
-  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-             labeller = "label_parsed") +
-  labs(y = "", x = "fitness function") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.placement.y = "outside",
-        strip.background.y = element_blank(),
-        strip.text.y = element_text(size = 8),
-        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+  scale_y_continuous(trans = trans_from(), limits = c(0, 3.25))
 p_pol_stats_C <- pol_plot %>% 
-  filter(stat %in% c("Catch/MSY")) %>%
-  ggplot(aes(x = label, y = value, fill = label,
-             colour = label)) +
+  ggplot(aes(x = label, y = Catch_rel, fill = label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
            colour = "black", size = 0.1) +
-  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+  scale_fill_grey() +
+  facet_grid("Catch/MSY" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
   theme_bw(base_size = 8, base_family = "sans") +
@@ -509,16 +704,15 @@ p_pol_stats_C <- pol_plot %>%
         axis.ticks.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
+  scale_y_continuous(trans = trans_from(), limits = c(0, 3.25))
 p_pol_stats_risk <- pol_plot %>% 
-  filter(stat %in% c("B[lim]~risk")) %>%
-  ggplot(aes(x = label, y = value, fill = label,
-             colour = label)) +
+  ggplot(aes(x = label, y = risk_Blim, fill = label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
            colour = "black", size = 0.1) +
-  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+  scale_fill_grey() +
+  facet_grid("B[lim]~risk" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
   theme_bw(base_size = 8, base_family = "sans") +
@@ -534,37 +728,14 @@ p_pol_stats_risk <- pol_plot %>%
         axis.title.y = element_blank()) +
   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
 p_pol_stats_ICV <- pol_plot %>% 
-  filter(stat %in% c("ICV")) %>%
-  ggplot(aes(x = label, y = value, fill = label,
-             colour = label)) +
+  ggplot(aes(x = label, y = ICV, fill = label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
            colour = "black", size = 0.1) +
-  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
+  scale_fill_grey() +
+  facet_grid("ICV" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
-  labs(y = "", x = "fitness function") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.placement.y = "outside",
-        strip.background.y = element_blank(),
-        strip.text.y = element_text(size = 8),
-        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-p_pol_stats_fitness <- pol_plot %>% 
-  filter(stat %in% c("fitness~value")) %>%
-  ggplot(aes(x = label, y = value, fill = label,
-             colour = label)) +
-  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-           colour = "black", size = 0.1) +
-  facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-             labeller = "label_parsed") +
-  labs(y = "", x = "\nrfb-rule components") +
+  labs(y = "", x = "rfb-rule components") +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -575,23 +746,25 @@ p_pol_stats_fitness <- pol_plot %>%
                                    lineheight = 0.7),
         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
         axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(-NA, NA))#,
-                     #breaks = c(0, -0.5, -1), 
-                     #minor_breaks = c(-0.25, -0.75, -1.25))
-p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, 
-                              #p_pol_stats_F, 
-                              p_pol_stats_C,
-                              p_pol_stats_risk, 
-                              p_pol_stats_ICV,
-                              p_pol_stats_fitness,
-                              ncol = 1, align = "v",
-                              rel_heights = c(1.25, 1, 1, 1, 2.15))
+  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+p_pol_stats_comb <- 
+  plot_grid(plot_grid(p_pol_stats_SSB, p_pol_stats_C,
+                      p_pol_stats_risk, p_pol_stats_ICV,
+                      ncol = 1, align = "v",
+                      rel_heights = c(1.25, 1, 1, 2)), 
+            plot_grid(p_pol_fitness + theme(legend.position = "none"), 
+                      plot_grid(NULL, get_legend(p_pol_fitness), 
+                                ncol = 2, rel_widths = c(1, 0.45)),
+                      ncol = 1, 
+                      rel_heights = c(1, 0.4)),
+            ncol = 2, labels = c("(a)", "(b)"), label_size = 10)
+
 ggsave(filename = "output/plots/PA/pol_components_stats.png", 
        plot = p_pol_stats_comb,
-       width = 8.5, height = 11, units = "cm", dpi = 600, type = "cairo")
+       width = 17, height = 11, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/PA/pol_components_stats.pdf", 
        plot = p_pol_stats_comb,
-       width = 8.5, height = 11, units = "cm", dpi = 600)
+       width = 17, height = 11, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
 ### plot - all stocks stats PA - default vs. optimised ####
@@ -626,6 +799,9 @@ stats_plot <- all_GA %>%
 saveRDS(stats_plot, file = "output/plots/PA/data_stocks_stats.rds")
 stats_plot <- readRDS("output/plots/PA/data_stocks_stats.rds")
 
+### remove zero fishing
+stats_plot <- stats_plot %>%
+  filter(rule != "zero fishing")
 ### individual plots
 p_stats_SSB <- stats_plot %>%
   filter(stat %in% c("SSB/B[MSY]")) %>%
@@ -633,12 +809,10 @@ p_stats_SSB <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
-                               "not optimised" = "#1B9E77", 
+  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
                                "GA: multiplier" =  "#D95F02", 
                                "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
-                                 "not optimised" = "#1B9E77", 
+  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
                                  "GA: multiplier" =  "#D95F02", 
                                  "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
@@ -661,12 +835,10 @@ p_stats_F <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
-                               "not optimised" = "#1B9E77", 
+  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
                                "GA: multiplier" =  "#D95F02", 
                                "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
-                                 "not optimised" = "#1B9E77", 
+  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
                                  "GA: multiplier" =  "#D95F02", 
                                  "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
@@ -690,12 +862,10 @@ p_stats_C <- stats_plot %>%
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
-                               "not optimised" = "#1B9E77", 
+  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
                                "GA: multiplier" =  "#D95F02", 
                                "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
-                                 "not optimised" = "#1B9E77", 
+  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
                                  "GA: multiplier" =  "#D95F02", 
                                  "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
@@ -720,12 +890,10 @@ p_stats_risk <- stats_plot %>%
   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
-                               "not optimised" = "#1B9E77", 
+  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
                                "GA: multiplier" =  "#D95F02", 
                                "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
-                                 "not optimised" = "#1B9E77", 
+  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
                                  "GA: multiplier" =  "#D95F02", 
                                  "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
@@ -749,12 +917,10 @@ p_stats_ICV <- stats_plot %>%
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("zero fishing" = "#E7298A", 
-                               "not optimised" = "#1B9E77", 
+  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
                                "GA: multiplier" =  "#D95F02", 
                                "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("zero fishing" = "#E7298A", 
-                                 "not optimised" = "#1B9E77", 
+  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
                                  "GA: multiplier" =  "#D95F02", 
                                  "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
@@ -778,12 +944,10 @@ p_stats_fitness <- stats_plot %>%
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(), width = 0.8, 
            size = 0.1, show.legend = TRUE) +
-  scale_fill_manual("", values = c("zero fishing" = "#E7298A", 
-                               "not optimised" = "#1B9E77", 
+  scale_fill_manual("", values = c("not optimised" = "#1B9E77", 
                                "GA: multiplier" =  "#D95F02", 
                                "GA: all" = "#7570B3")) +
-  scale_colour_manual("", values = c("zero fishing" = "#E7298A", 
-                                 "not optimised" = "#1B9E77", 
+  scale_colour_manual("", values = c("not optimised" = "#1B9E77", 
                                  "GA: multiplier" =  "#D95F02", 
                                  "GA: all" = "#7570B3")) +
   facet_grid(stat ~ fhist, 
