@@ -475,7 +475,7 @@ p_all_mult <- all_mult %>%
   geom_point(data = all_mult_refs %>%
                filter(stock %in% c("ang3", "pol", "tur", "san") &
                         stat != "F/F[MSY]"),
-             aes(shape = point), size = 0.8) +
+             aes(shape = point), size = 1, stroke = 1) +
   scale_shape_manual("risk limit", values = 2:4, 
                      guide = guide_legend(order = 2)) + 
   scale_colour_brewer("fishing\nhistory", guide = guide_legend(order = 1),
@@ -512,7 +512,7 @@ ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf",
     geom_line(size = 0.4) +
     geom_point(data = all_mult_refs %>%
                  filter(stock %in% subset & stat != "F/F[MSY]"),
-               aes(shape = point), size = 0.8) +
+               aes(shape = point), size = 1, stroke = 1) +
     scale_shape_manual("risk limit", values = 2:4, 
                        guide = guide_legend(order = 2)) + 
     scale_colour_brewer("fishing\nhistory", guide = guide_legend(order = 1),
@@ -1571,9 +1571,10 @@ ggsave(filename = "output/plots/PA/all_comparison.pdf",
        width = 17, height = 18, units = "cm", dpi = 600)
 
 ### plot all stocks for supplementary material
-for (i in seq_along(split(stocks$stock, 1:5))) {
+for (i in seq_along(split(stocks$stock, ceiling(seq_along(stocks$stock)/6)))) {
   #browser()
-  plot_comparison_six(stocks = split(stocks$stock, 1:5)[[i]],
+  plot_comparison_six(stocks = split(stocks$stock, 
+                                     ceiling(seq_along(stocks$stock)/6))[[i]],
                       data = stats_plot, data_dev = stats_plot_dev, 
                       ylim = c(-8.5, 0))
   ggsave(filename = paste0("output/plots/PA/all_comparison", i , ".png"),
