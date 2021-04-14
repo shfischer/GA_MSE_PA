@@ -25,6 +25,8 @@ pol_ow <- readRDS("input/500_50/OM_1_hist/one-way/pol.rds")$stk
 pol_rnd <- readRDS("input/500_50/OM_1_hist/random/pol.rds")$stk
 pol_brp <- readRDS("input/brps.rds")$pol
 refpts <- pol_brp@refpts
+F_crash_msy <- c(refpts["crash", "harvest"]/refpts["msy", "harvest"])
+B_0_msy <- c(refpts["virgin", "ssb"]/refpts["msy", "ssb"])
 
 df_hist <- rbind(
     cbind(
@@ -54,6 +56,15 @@ df_hist <- df_hist %>% full_join(
     mutate(type = "median")
 ) %>%
   mutate(type = factor(type, levels = c("replicate", "median")))
+
+attr(df_hist, "F_crash_msy") <- F_crash_msy
+attr(df_hist, "B_0_msy") <- B_0_msy
+saveRDS(df_hist, file = "output/plots/data_pol_fhist.rds")
+
+df_hist <- readRDS("output/plots/data_pol_fhist.rds")
+F_crash_msy <- attr(df_hist, "F_crash_msy")
+B_0_msy <- attr(df_hist, "B_0_msy")
+
 p_f <- df_hist %>%
   #filter(iter %in% c(1:50)) %>%
   filter(qname == "F/F[MSY]") %>%
@@ -69,8 +80,7 @@ p_f <- df_hist %>%
   theme_bw(base_size = 8) +
   facet_grid(~ fhist, scales = "free_y") +
   scale_y_continuous(
-    sec.axis = dup_axis(trans = ~ . / 
-                          c(refpts["crash", "harvest"]/refpts["msy", "harvest"]),
+    sec.axis = dup_axis(trans = ~ . / F_crash_msy,
                         name = expression(F/F[crash])), 
     name = expression(F/F[MSY])) +
   theme(axis.title.x = element_blank(), 
@@ -95,10 +105,21 @@ p_ssb <- df_hist %>%
   theme_bw(base_size = 8) +
   facet_grid(~ fhist, scales = "free_y") +
   scale_y_continuous(
-    sec.axis = dup_axis(trans = ~ . / 
-                          c(refpts["virgin", "ssb"]/refpts["msy", "ssb"]),
+    sec.axis = dup_axis(trans = ~ . / B_0_msy,
                         name = expression(SSB/B[0])), 
     name = expression(SSB/B[MSY])) +
+  # scale_x_continuous(breaks = c(-100, -75, -50, -25, 0), 
+  #                    #labels = function(x) sub('^-', '\U2212', format(x))) +
+  #                    labels = c("\U2212\U0031\U0030\U0030", # -100 
+  #                               "\U2212\U0037\U0035",  # -75
+  #                               "\U2212\U0035\U0030",  # -50
+  #                               "\U2212\U0032\U0035",  # -25
+  #                               "\U0030"           # 0
+  #                               )) + 
+  scale_x_continuous(breaks = c(-100, -75, -50, -25, 0), 
+                     #labels = function(x) sub('^-', '\U2212', format(x))) +
+                     labels = c("−100", "−75", "−50", "−25", "0"
+                     )) + 
   theme(strip.text.x = element_blank(),
         plot.margin = unit(x = c(1, 3, 1, 3), units = "pt"))
 p_both <- plot_grid(p_f, p_ssb, ncol = 1, align = "v")
@@ -108,6 +129,28 @@ ggsave(filename = "output/plots/pol_fhist.png", plot = p_both,
        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/pol_fhist.pdf", plot = p_both,
        width = 8.5, height = 6, units = "cm")
+### Figure contains transparency
+### for proper reproduction in journal, save as eps and convert transparent
+### parts into raster graphic but keep rest as vector graphic
+ggsave(filename = "output/plots/pol_fhist_600.eps", plot = p_both,
+       width = 8.5, height = 6, units = "cm",
+       device = cairo_ps, fallback_resolution = 600)
+### convert with
+###  gs -sOutputFile=pol_fhist_600.pdf -dNOPAUSE -sDEVICE=pdfwrite -dEPSCrop -dSAFER -dColorImageDownsampleType=/Bicubic -dColorImageResolution=600 -dColorImageDepth=4 -dDownsampleColorImages=true -dUseFlatCompression=true -dBATCH pol_fhist_600.eps
+### embed fonts in Linux
+# gs \
+# -sOutputFile=pol_fhist_600_fonts.pdf \
+# -dNOPAUSE -sDEVICE=pdfwrite -dEPSCrop \
+# -dSAFER \
+# -dColorImageDownsampleType=/Bicubic \
+# -dColorImageResolution=600 \
+# -dColorImageDepth=4 \
+# -dDownsampleColorImages=true \
+# -dUseFlatCompression=true -dBATCH \
+# -c ".setpdfwrite <</NeverEmbed [ ]>> setdistillerparams" \
+# -dSubsetFonts=true \
+# -dCompatibilityLevel=1.4 \
+# -f "pol_fhist_600.eps"
 
 ### ------------------------------------------------------------------------ ###
 ### collate results - pollack objective function explorations ####
@@ -932,7 +975,14 @@ ggsave(filename = "output/plots/pol_combined.png", plot = p,
        width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/pol_combined.pdf", plot = p,
        width = 17, height = 13, units = "cm", dpi = 600)
-
+### Figure contains transparency
+### for proper reproduction in journal, save as eps and convert transparent
+### parts into raster graphic but keep rest as vector graphic
+ggsave(filename = "output/plots/pol_combined_2400.eps", plot = p,
+       width = 17, height = 13, units = "cm",
+       device = cairo_ps, fallback_resolution = 2400)
+### convert with
+###  gs -sOutputFile=pol_combined_2400.pdf -dNOPAUSE -sDEVICE=pdfwrite -dEPSCrop -dSAFER -dColorImageDownsampleType=/Bicubic -dColorImageResolution=2400 -dColorImageDepth=4 -dDownsampleColorImages=true -dUseFlatCompression=true -dBATCH pol_combined_2400.eps
 
 ### ------------------------------------------------------------------------ ###
 ### pollack: check impact of fixing TAC interval ####
