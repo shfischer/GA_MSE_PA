@@ -19,12 +19,12 @@ al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-
 The master branch contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
-> (in press). Using a genetic algorithm to optimise a data-limited catch
+> (2021). Using a genetic algorithm to optimise a data-limited catch
 > rule. ICES Journal of Marine Science.
 > <https://dx.doi.org/10.1093/icesjms/fsab018>.
 
-This is the **`PA` branch** which includes the optimisation with
-specific risk limits for the ICES precautionary approach (PA).
+This is the **PA branch** which includes the optimisation with specific
+risk limits for the ICES precautionary approach (PA).
 
 ## Repository structure
 
@@ -32,7 +32,7 @@ The code, input and output files from the master branch are retained:
 
 > The root folder contains the following R scripts:
 > 
->   - `OM.R`: This script creates the operating models,
+>   - `OM.R`: This script creates the operating models (OMs),
 >   - `funs.R` contains functions and methods used for the creation of
 >     the operating models and for running the MSE,
 >   - `funs_GA.R` contains the function used in the optimisation
@@ -62,7 +62,7 @@ The code, input and output files from the master branch are retained:
 >   - `output/groups_MSY_stats.csv` optimisation results for stock
 >     groups
 
-The following additional files are provided:
+The following additional files specific to the PA are provided:
 
   - `OM_sensitivity.R`, `run_ms_sensitivity.R`, and
     `analysis_sensitivity.R` for the sensitivity analysis (for creating
@@ -79,8 +79,10 @@ Also, the following summary tables are provided:
     elements of the rfb-rule into the optimisation
   - `all_stocks_PA_multiplier_stats.csv`: optimisation towards the PA
     with only the multiplier of the rfb-rule for all stocks
-  - `all_stocks_PA_stats.csv`: optimisation with all rfb-rule parameters
-    and all stocks
+  - `all_stocks_GA_optimised_stats.csv`: combined optimisation results
+    of the rfb-rule for the PA and MSY fitness functions
+  - `PA_summary_table_parameters.csv`: optimised rfb-rule
+    parameterisations
 
 ## R, R packages and version info
 
@@ -137,7 +139,7 @@ remotes::install_github(repo = "shfischer/FLash", ref = "d1fb86fa081aaa5b6980d74
 remotes::install_github(repo = "flr/FLBRP", ref = "3a4d6390abc56870575fbaba3637091036468217")
 ```
 
-Furthermore, a data-limited fork of the `mse/flr` package is required
+Furthermore, a data-limited fork of the `flr/mse` package is required:
 
 ``` r
 remotes::install_github(repo = "shfischer/mse", ref = "mseDL2.0")
