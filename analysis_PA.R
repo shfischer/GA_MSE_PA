@@ -1584,4 +1584,75 @@ for (i in seq_along(split(stocks$stock, ceiling(seq_along(stocks$stock)/6)))) {
 }
   
 
+### ------------------------------------------------------------------------ ###
+### table for Supplementary Material ####
+### ------------------------------------------------------------------------ ###
+
+all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
+pol_PA <- readRDS("output/pol_PA_components_stats.rds")
+
+### default fitness
+fitness_default <- all_GA %>% 
+  filter(optimised == "default" & capped == FALSE & scenario == "PA") %>%
+  group_by(stock, fhist) %>%
+  mutate(fitness_default = -sum(abs(SSB_rel - 1),
+                        abs(Catch_rel - 1),
+                        ICV,
+                        penalty(x = risk_Blim, negative = FALSE, 
+                                max = 5, inflection = 0.06, 
+                                steepness = 0.5e+3))) %>%
+  select(fhist, stock, fitness_default) %>%
+  ungroup() %>%
+  arrange(fhist)
+
+res <- bind_rows(
+  ### default
+  all_GA %>% 
+    filter(optimised == "default" & capped == FALSE & scenario == "PA" &
+             stock == "pol" & fhist == "one-way") %>%
+    mutate(stock = NA, fhist = NA) %>%
+    mutate(scenario_name = "default", scenario_no = 1),
+  ### Pollack parameter exploration
+  pol_PA %>%
+    filter(optimised != "default") %>%
+    mutate(optimised = factor(optimised, 
+                                 levels = c("mult", "cap", "mult_cap",
+                                            "all", "all_cap"))) %>%
+    arrange(as.numeric(optimised)) %>% 
+    mutate(scenario_name = "parameter explorations", scenario_no = 2),
+  ### multiplier
+  all_GA %>% 
+    filter(optimised == "mult" & capped == FALSE & scenario == "PA") %>%
+    mutate(scenario_name = "rfb: PA - mult", scenario_no = 3),
+  ### all parameters
+  all_GA %>% 
+    filter(optimised == "all_cap" & capped == FALSE & scenario == "PA") %>%
+    mutate(scenario_name = "rfb: PA - all", scenario_no = 4),
+  ### cap & multiplier
+  all_GA %>% 
+    filter(optimised == "mult" & capped == TRUE & scenario == "PA") %>%
+    mutate(scenario_name = "rfb (capped): PA - mult", scenario_no = 5),
+  ### conditional cap & multiplier
+  all_GA %>% 
+    filter(optimised == "mult" & capped == TRUE & scenario == "PA_capped") %>%
+    mutate(scenario_name = "rfb (cond. capped): PA - mult", scenario_no = 6),
+  ### all parameters
+  all_GA %>% 
+    filter(optimised == "all_cap" & capped == TRUE & scenario == "PA_capped") %>%
+    mutate(scenario_name = "rfb (cond. capped): PA - all", scenario_no = 7)
+) %>%
+  full_join(fitness_default) %>%
+  mutate(fitness_improvement = round((1 - fitness/fitness_default)*100)) %>%
+  select(scenario_name, scenario_no, fhist, stock, iter, 
+         lag_idx, range_idx_1, range_idx_2, exp_r, exp_f, 
+         exp_b, interval, multiplier, upper_constraint, lower_constraint, 
+         fitness_improvement) %>% 
+  arrange(scenario_no, fhist) %>%
+  select(-scenario_no)
+
+write.csv(res, file = "output/PA_summary_table_parameters.csv", 
+          row.names = FALSE)
+
+
+
 
