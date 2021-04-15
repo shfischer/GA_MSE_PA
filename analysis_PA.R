@@ -140,114 +140,6 @@ saveRDS(pol_PA, file = "output/pol_PA_components_stats.rds")
 write.csv(pol_PA, file = "output/pol_PA_components_stats.csv", row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
-### collate results - all stocks - PA & MSY ####
-### ------------------------------------------------------------------------ ###
-n_yrs <- 50
-n_iter <- 500
-
-### get optimised parameterisation
-all_GA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
-  foreach(optimised = c("zero-fishing", "default", "mult", "all", "all_cap"),
-          .combine = bind_rows) %:%
-  foreach(scenario = c("PA", "MSY"), .combine = bind_rows) %:%
-  foreach(stat_yrs = "more", .combine = bind_rows) %:%
-  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
-    
-    ### objective function name
-    name_obj <- switch(scenario,
-                       "PA" = "ICES_MSYPA",
-                       "MSY" = "SSB_C_risk_ICV")
-    ### parameters
-    name_pars <- switch(optimised,
-      "zero-fishing" = "multiplier",
-      "default" = "multiplier",
-      "mult" = "multiplier",
-      "cap" = "upper_constraint-lower_constraint",
-      "mult_cap" = paste0("multiplier-upper_constraint-lower_constraint--"),
-      "all" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
-                     "interval-multiplier"),
-      "all_cap" = paste0("lag_idx-range_idx_1-range_idx_2-exp_r-exp_f-exp_b-",
-                         "interval-multiplier-upper_constraint-lower_constraint"))
-    ### stats period
-    name_stats <- switch(scenario,
-                         "PA" = "_more",
-                         "MSY" = switch(optimised,
-                                      "mult" = "_more",
-                                      "zero-fishing" = "_more",
-                                      "default" = "_more", 
-                                      ""))
-    ### assemble file name
-    file_path <- paste0("output/", n_iter, "_", n_yrs, "/", scenario, 
-                        "/", fhist, "/", stock, "/")
-    file_name <- paste0(name_pars, "--obj_", name_obj)
-    file_name_res <- paste0(file_name, "_res", name_stats, ".rds")
-    file_name_runs <- paste0(file_name, "_runs", ".rds")
-    if (isFALSE(file.exists(paste0(file_path, file_name_res)))) return(NULL)
-    res_df <- data.frame(file = file_name_res)
-    res_df$obj_fun <- scenario
-    res_df$fhist <- fhist
-    res_df$scenario <- scenario
-    res_df$optimised <- optimised
-    res_df$stat_yrs <- stat_yrs
-    res_df$stock <- stock
-    ### load GA results
-    res <- readRDS(paste0(file_path, file_name_res))
-    ### get parameters
-    res_par <- res@solution[1, ]
-    res_par["lag_idx"] <- round(res_par["lag_idx"])
-    res_par["range_idx_1"] <- round(res_par["range_idx_1"])
-    res_par["range_idx_2"] <- round(res_par["range_idx_2"])
-    res_par["range_catch"] <- round(res_par["range_catch"])
-    res_par["exp_r"] <- round(res_par["exp_r"], 1)
-    res_par["exp_f"] <- round(res_par["exp_f"], 1)
-    res_par["exp_b"] <- round(res_par["exp_b"], 1)
-    res_par["interval"] <- round(res_par["interval"])
-    res_par["multiplier"] <- round(res_par["multiplier"], 2)
-    if ("upper_constraint" %in% names(res_par)) {
-      res_par["lower_constraint"] <- round(res_par["lower_constraint"], 2)
-      res_par["upper_constraint"] <- ifelse(!is.nan(res_par["upper_constraint"]),
-                                            round(res_par["upper_constraint"], 2),
-                                            Inf)
-    }
-    ### default or zero-fishing?
-    if (identical(optimised, "zero-fishing")) res_par["multiplier"] <- 0
-    if (identical(optimised, "default")) res_par["multiplier"] <- 1
-    ### combine
-    res_df <- cbind(as.data.frame(do.call(rbind, list(res_par))),
-                    as.data.frame(do.call(rbind, list(res_df))))
-    res_df$solution <- paste0(res_par, collapse = "_")
-    res_df$fitness <- res@fitnessValue
-    res_df$iter <- res@iter
-
-    ### load stats of solution
-    res_runs <- readRDS(paste0(file_path, file_name_runs))
-    res_stats <- as.data.frame(
-      lapply(as.data.frame(t(res_runs[[res_df$solution]]$stats)), unlist))
-    res_df <- cbind(res_df, res_stats)
-    
-    ### calculate fitness value for non-optimised rule
-    if (isTRUE(optimised %in% c("default", "zero-fishing"))) {
-      if (isTRUE(scenario == "PA")) {
-        res_df$fitness <- -sum(abs(res_df$SSB_rel - 1),
-                               abs(res_df$Catch_rel - 1),
-                               res_df$ICV,
-                               penalty(x = res_df$risk_Blim, negative = FALSE, 
-                                       max = 5, inflection = 0.06, 
-                                       steepness = 0.5e+3))
-      } else if (isTRUE(scenario == "MSY")) {
-        res_df$fitness <- -sum(abs(res_df$SSB_rel - 1),
-                               abs(res_df$Catch_rel - 1),
-                               res_df$ICV,
-                               res_df$risk_Blim)
-      }
-    }
-    return(res_df)
-}
-saveRDS(all_GA, file = "output/all_stocks_GA_optimised_stats.rds")
-write.csv(all_GA, file = "output/all_stocks_GA_optimised_stats.csv",
-          row.names = FALSE)
-
-### ------------------------------------------------------------------------ ###
 ### collate results - all stocks with multiplier ####
 ### ------------------------------------------------------------------------ ###
 
@@ -464,7 +356,6 @@ saveRDS(all_mult_refs,
         file = "output/plots/PA/data_all_stocks_multiplier_stats_refs.rds")
 all_mult_refs <- readRDS("output/plots/PA/data_all_stocks_multiplier_stats_refs.rds")
 
-
 ### plot some example stocks
 p_all_mult <- all_mult %>%
   filter(stock %in% c("ang3", "pol", "tur", "san") &
@@ -539,191 +430,7 @@ ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf",
 }
 
 ### ------------------------------------------------------------------------ ###
-### plot - pollack rfb-rule component explorations - first attempt ####
-### ------------------------------------------------------------------------ ###
-
-# pol <- readRDS("output/pol_PA_components_stats.rds")
-# 
-# pol$label <- as.character(pol$optimised)
-# pol$label[pol$label == "default"] <- "not\noptimised"
-# pol$label[pol$label == "mult"] <- "GA: multi-\nplier"
-# pol$label[pol$label == "cap"] <- "GA: uncer-\ntainty cap"
-# pol$label[pol$label == "mult_cap"] <- "GA: multi-\nplier and cap"
-# pol$label[pol$label == "all"] <- "GA: all with-\nout cap"
-# pol$label[pol$label == "all_cap"] <- "GA: all"
-# pol$label <- as.factor(pol$label)
-# pol$label <- factor(pol$label, 
-#                     levels = levels(pol$label)[c(6, 3, 5, 4, 2, 1)])
-# 
-# 
-# pol_plot <- pol %>%
-#   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, fitness), 
-#                names_to = "key", values_to = "value") %>%
-#   mutate(stat = factor(key, levels = c("SSB_rel", "Fbar_rel", "Catch_rel", "risk_Blim", 
-#                                        "ICV", "fitness"), 
-#                        labels = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
-#                                   "B[lim]~risk", "ICV", "fitness~value")))
-# stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
-#                                      "B[lim]~risk", "ICV", "fitness~value"),
-#                             target = c(1, 1, 1, 0, 0, NA))
-# 
-# saveRDS(pol_plot, file = "output/plots/PA/data_pol_components_stats.rds")
-# pol_plot <- readRDS("output/plots/PA/data_pol_components_stats.rds")
-# saveRDS(stats_targets, file = "output/plots/PA/data_pol_components_targets.rds")
-# stats_targets <- readRDS("output/plots/PA/data_pol_components_targets.rds")
-# 
-# ### individual plots
-# y_max <- 3.25
-# p_pol_stats_SSB <- pol_plot %>% 
-#   filter(stat %in% c("SSB/B[MSY]")) %>%
-#   ggplot(aes(x = label, y = value, fill = label,
-#              colour = label)) +
-#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-#   geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
-#            show.legend = FALSE, colour = "black", size = 0.1) +
-#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-#              labeller = "label_parsed") +
-#   labs(y = "", x = "fitness function") +
-#   theme_bw(base_size = 8, base_family = "sans") +
-#   theme(panel.spacing.x = unit(0, units = "cm"),
-#         strip.placement.y = "outside",
-#         strip.background.y = element_blank(),
-#         strip.text.y = element_text(size = 8),
-#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-#         axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         axis.title.x = element_blank(),
-#         axis.title.y = element_blank()) +
-#   scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
-# p_pol_stats_F <- pol_plot %>% 
-#   filter(stat %in% c("F/F[MSY]")) %>%
-#   ggplot(aes(x = label, y = value, fill = label,
-#              colour = label)) +
-#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-#            colour = "black", size = 0.1) +
-#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-#              labeller = "label_parsed") +
-#   labs(y = "", x = "fitness function") +
-#   theme_bw(base_size = 8, base_family = "sans") +
-#   theme(panel.spacing.x = unit(0, units = "cm"),
-#         strip.text.x = element_blank(),
-#         strip.placement.y = "outside",
-#         strip.background.y = element_blank(),
-#         strip.text.y = element_text(size = 8),
-#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
-#         axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         axis.title.x = element_blank(),
-#         axis.title.y = element_blank()) +
-#   scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
-# p_pol_stats_C <- pol_plot %>% 
-#   filter(stat %in% c("Catch/MSY")) %>%
-#   ggplot(aes(x = label, y = value, fill = label,
-#              colour = label)) +
-#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-#            colour = "black", size = 0.1) +
-#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-#              labeller = "label_parsed") +
-#   labs(y = "", x = "fitness function") +
-#   theme_bw(base_size = 8, base_family = "sans") +
-#   theme(panel.spacing.x = unit(0, units = "cm"),
-#         strip.text.x = element_blank(),
-#         strip.placement.y = "outside",
-#         strip.background.y = element_blank(),
-#         strip.text.y = element_text(size = 8),
-#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
-#         axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         axis.title.x = element_blank(),
-#         axis.title.y = element_blank()) +
-#   scale_y_continuous(trans = trans_from(), limits = c(0, y_max))
-# p_pol_stats_risk <- pol_plot %>% 
-#   filter(stat %in% c("B[lim]~risk")) %>%
-#   ggplot(aes(x = label, y = value, fill = label,
-#              colour = label)) +
-#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-#   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
-#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-#            colour = "black", size = 0.1) +
-#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-#              labeller = "label_parsed") +
-#   labs(y = "", x = "fitness function") +
-#   theme_bw(base_size = 8, base_family = "sans") +
-#   theme(panel.spacing.x = unit(0, units = "cm"),
-#         strip.text.x = element_blank(),
-#         strip.placement.y = "outside",
-#         strip.background.y = element_blank(),
-#         strip.text.y = element_text(size = 8),
-#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
-#         axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         axis.title.x = element_blank(),
-#         axis.title.y = element_blank()) +
-#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-# p_pol_stats_ICV <- pol_plot %>% 
-#   filter(stat %in% c("ICV")) %>%
-#   ggplot(aes(x = label, y = value, fill = label,
-#              colour = label)) +
-#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-#            colour = "black", size = 0.1) +
-#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-#              labeller = "label_parsed") +
-#   labs(y = "", x = "fitness function") +
-#   theme_bw(base_size = 8, base_family = "sans") +
-#   theme(panel.spacing.x = unit(0, units = "cm"),
-#         strip.text.x = element_blank(),
-#         strip.placement.y = "outside",
-#         strip.background.y = element_blank(),
-#         strip.text.y = element_text(size = 8),
-#         plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
-#         axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         axis.title.x = element_blank(),
-#         axis.title.y = element_blank()) +
-#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-# p_pol_stats_fitness <- pol_plot %>% 
-#   filter(stat %in% c("fitness~value")) %>%
-#   ggplot(aes(x = label, y = value, fill = label,
-#              colour = label)) +
-#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-#   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
-#            colour = "black", size = 0.1) +
-#   facet_grid(stat ~ fhist, scales = "free", space = "free_x", switch = "y",
-#              labeller = "label_parsed") +
-#   labs(y = "", x = "\nrfb-rule components") +
-#   theme_bw(base_size = 8, base_family = "sans") +
-#   theme(panel.spacing.x = unit(0, units = "cm"),
-#         strip.text.x = element_blank(),
-#         strip.placement.y = "outside",
-#         strip.background.y = element_blank(),
-#         strip.text.y = element_text(size = 8),
-#         axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
-#                                    lineheight = 0.7),
-#         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
-#         axis.title.y = element_blank()) +
-#   scale_y_continuous(trans = trans_from(0), limits = c(-NA, NA))#,
-# #breaks = c(0, -0.5, -1), 
-# #minor_breaks = c(-0.25, -0.75, -1.25))
-# p_pol_stats_comb <- plot_grid(p_pol_stats_SSB, 
-#                               #p_pol_stats_F, 
-#                               p_pol_stats_C,
-#                               p_pol_stats_risk, 
-#                               p_pol_stats_ICV,
-#                               p_pol_stats_fitness,
-#                               ncol = 1, align = "v",
-#                               rel_heights = c(1.25, 1, 1, 1, 2.15))
-# ggsave(filename = "output/plots/PA/pol_components_stats.png", 
-#        plot = p_pol_stats_comb,
-#        width = 8.5, height = 11, units = "cm", dpi = 600, type = "cairo")
-# ggsave(filename = "output/plots/PA/pol_components_stats.pdf", 
-#        plot = p_pol_stats_comb,
-#        width = 8.5, height = 11, units = "cm", dpi = 600)
-
-### ------------------------------------------------------------------------ ###
-### plot - pollack rfb-rule component explorations - for manuscript ####
+### plot - pollack rfb-rule component explorations ####
 ### ------------------------------------------------------------------------ ###
 
 pol <- readRDS("output/pol_PA_components_stats.rds")
@@ -889,7 +596,7 @@ p_pol_stats_comb <-
                       ncol = 1, 
                       rel_heights = c(1, 0.4)),
             ncol = 2, labels = c("(a)", "(b)"), label_size = 10)
-
+p_pol_stats_comb
 ggsave(filename = "output/plots/PA/pol_components_stats.png", 
        plot = p_pol_stats_comb,
        width = 17, height = 11, units = "cm", dpi = 600, type = "cairo")
@@ -898,7 +605,7 @@ ggsave(filename = "output/plots/PA/pol_components_stats.pdf",
        width = 17, height = 11, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
-### plot - all stocks stats PA - default vs. optimised ####
+### plot - all stocks stats PA - default vs. optimised - not used ####
 ### ------------------------------------------------------------------------ ###
 
 ### load data
@@ -1105,8 +812,7 @@ p_stats_combined <- plot_grid(
             ncol = 1, align = "v",
             rel_heights = c(1.25, 1, 1, 1, 1.5)),
   get_legend(p_stats_fitness), rel_widths = c(1, 0.15))
-
-
+p_stats_combined
 ggsave(filename = "output/plots/PA/all_stocks_stats.png", 
        plot = p_stats_combined,
        width = 17, height = 10, units = "cm", dpi = 600, type = "cairo")
@@ -1114,9 +820,8 @@ ggsave(filename = "output/plots/PA/all_stocks_stats.pdf",
        plot = p_stats_combined,
        width = 17, height = 10, units = "cm", dpi = 600)
 
-
 ### ------------------------------------------------------------------------ ###
-### plot - all stocks stats PA vs. 2 over 3 ####
+### plot - all stocks stats PA vs. 2 over 3 - not used ####
 ### ------------------------------------------------------------------------ ###
 
 ### load data
@@ -1166,9 +871,6 @@ stats_plot <- bind_rows(
     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
     mutate(catch_rule = "2 over 3", group = "2 over 3")
 )
-saveRDS(stats_plot, "output/all_stocks_rfb_opt_stats.rds")
-stats_plot <- readRDS("output/all_stocks_rfb_opt_stats.rds")
-
 
 stocks_sorted <- stocks %>%
   select(stock, k) %>%
@@ -1339,33 +1041,13 @@ p_stats_combined <- plot_grid(
             ncol = 1, align = "v",
             rel_heights = c(1.25, 1, 1, 1.5)),
   get_legend(p_stats_ICV), rel_widths = c(1, 0.15))
-
-
+p_stats_combined
 ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.png", 
        plot = p_stats_combined,
        width = 17, height = 10, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.pdf", 
        plot = p_stats_combined,
        width = 17, height = 10, units = "cm", dpi = 600)
-
-
-### ------------------------------------------------------------------------ ###
-### table with rfb-rule parameters ####
-### ------------------------------------------------------------------------ ###
-
-all_GA %>%
-  filter(optimised %in% c("mult", "all_cap") & scenario == "PA") %>%
-  select("optimised", "fhist", "stock", "iter", "lag_idx", "range_idx_1", "range_idx_2",
-         "exp_r", "exp_f", "exp_b", "interval", "multiplier", 
-         "upper_constraint", "lower_constraint") %>%
-  arrange(desc(optimised), fhist) %>%
-  View()
-
-all_GA %>% 
-  filter(scenario == "PA") %>%
-  filter(optimised == "default") %>%
-  filter(risk_Blim <= 0.055)
-
 
 ### ------------------------------------------------------------------------ ###
 ### plot comparison of rules & optimisations ####
