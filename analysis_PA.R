@@ -434,35 +434,48 @@ ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf",
 ### ------------------------------------------------------------------------ ###
 
 pol <- readRDS("output/pol_PA_components_stats.rds")
-pol_plot <- pol %>%
+### create labels for figure
+pol_plot_stats <- pol %>%
   mutate(label = factor(pol$optimised,
                         levels = c("default", "mult", "cap", "mult_cap", "all",
                                    "all_cap"),
-                        labels = c("not\noptimised", "GA: multi-\nplier", 
-                                   "GA: uncer-\ntainty cap", 
-                                   "GA: multi-\nplier and cap",
-                                   "GA: all with-\nout cap",
-                                   "GA: all"))) %>%
+                        labels = c("default\n(not optimised)", 
+                                   "multiplier", 
+                                   "uncertainty\ncap", 
+                                   "multiplier\nand cap",
+                                   "all without\ncap",
+                                   "all"))) %>%
+  select(fhist, label, SSB_rel, Catch_rel, risk_Blim, ICV, fitness)
+### repeat, but add annotations to labels
+pol_plot_fitness <- pol %>%
+  mutate(label = factor(pol$optimised,
+                        levels = c("default", "mult", "cap", "mult_cap", "all",
+                                   "all_cap"),
+                        labels = c("default\n(not optimised)*", 
+                                   "multiplier*", 
+                                   "uncertainty\ncap", 
+                                   "multiplier\nand cap",
+                                   "all without\ncap",
+                                   "all*"))) %>%
   select(fhist, label, SSB_rel, Catch_rel, risk_Blim, ICV, fitness)
 
 ### recreate fitness elements
-pol_fitness <- pol_plot %>%
+pol_fitness <- pol_plot_fitness %>%
   mutate(comp_Catch = Catch_rel - 1,
          comp_SSB = SSB_rel - 1,
-         comp_ICV = ICV,
-         comp_risk = risk_Blim, 
+         comp_ICV = ICV, 
          comp_risk_penalty = penalty(x = risk_Blim, 
                                      negative = FALSE, max = 5, 
                                      inflection = 0.05 + 0.01, 
-                                     steepness = 0.5e+3) - risk_Blim) %>%
+                                     steepness = 0.5e+3)) %>%
   #mutate(Catch_rel = NULL, SSB_rel = NULL, ICV = NULL, risk_Blim = NULL) %>%
-  pivot_longer(c(comp_Catch, comp_SSB, comp_ICV, comp_risk, comp_risk_penalty),
+  pivot_longer(c(comp_Catch, comp_SSB, comp_ICV, comp_risk_penalty),
                names_prefix = "comp_") %>%
   mutate(name = factor(name,
-                       levels = rev(c("SSB", "Catch", "ICV", "risk", 
+                       levels = rev(c("SSB", "Catch", "ICV", 
                                       "risk_penalty")),
-                       labels = rev(c("SSB", "Catch", "ICV", "risk", 
-                                      "risk penalty"))))
+                       labels = rev(c("SSB", "Catch", "ICV", 
+                                      "risk-PA\n(penalty)"))))
 pol_fitness_dev <- pol_fitness %>%
   filter(name %in% c("SSB", "Catch")) %>%
   mutate(value_sign = ifelse(name == "SSB",
@@ -502,7 +515,7 @@ p_pol_fitness <- pol_fitness %>%
         legend.key.height = unit(1, "lines"))
 
 ### plot stats individually
-p_pol_stats_SSB <- pol_plot %>% 
+p_pol_stats_SSB <- pol_plot_stats %>% 
   ggplot(aes(x = label, y = SSB_rel, fill = label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
@@ -522,7 +535,7 @@ p_pol_stats_SSB <- pol_plot %>%
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
   scale_y_continuous(trans = trans_from(), limits = c(0, 3.25))
-p_pol_stats_C <- pol_plot %>% 
+p_pol_stats_C <- pol_plot_stats %>% 
   ggplot(aes(x = label, y = Catch_rel, fill = label)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
@@ -543,7 +556,7 @@ p_pol_stats_C <- pol_plot %>%
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
   scale_y_continuous(trans = trans_from(), limits = c(0, 3.25))
-p_pol_stats_risk <- pol_plot %>% 
+p_pol_stats_risk <- pol_plot_stats %>% 
   ggplot(aes(x = label, y = risk_Blim, fill = label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
@@ -565,7 +578,7 @@ p_pol_stats_risk <- pol_plot %>%
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-p_pol_stats_ICV <- pol_plot %>% 
+p_pol_stats_ICV <- pol_plot_stats %>% 
   ggplot(aes(x = label, y = ICV, fill = label)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
@@ -573,7 +586,7 @@ p_pol_stats_ICV <- pol_plot %>%
   scale_fill_grey() +
   facet_grid("ICV" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
-  labs(y = "", x = "rfb-rule components") +
+  labs(y = "", x = "\nrfb-rule parameters included in optimisation") +
   theme_bw(base_size = 8, base_family = "sans") +
   theme(panel.spacing.x = unit(0, units = "cm"),
         strip.text.x = element_blank(),
@@ -1071,37 +1084,37 @@ stats_plot <- bind_rows(
     filter(scenario == "PA") %>%
     mutate(catch_rule = "2 over 3", group = "2 over 3"),
   ### rfb-rule, default
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == FALSE, optimised == "default" & scenario == "PA") %>%
     mutate(catch_rule = "rfb", target = "none", group = "rfb: default"),
   ### rfb-rule, optimisation with multiplier, target MSY
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == FALSE, optimised == "mult" & scenario == "MSY") %>%
     mutate(catch_rule = "rfb", target = "MSY", group = "rfb: MSY - mult"),
   ### rfb-rule, optimisation with all parameters, target MSY
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == FALSE, optimised == "all" & scenario == "MSY") %>%
     mutate(catch_rule = "rfb", target = "MSY", group = "rfb: MSY - all"),
   ### rfb-rule, optimisation with multiplier, target PA
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == FALSE, optimised == "mult" & scenario == "PA") %>%
     mutate(catch_rule = "rfb", target = "PA", group = "rfb: PA - mult"),
   ### rfb-rule, optimisation with all parameters, target PA
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == FALSE, optimised == "all_cap" & scenario == "PA") %>%
     mutate(catch_rule = "rfb", target = "PA", group = "rfb: PA - all"),
   ### rfb-rule, always capped, optimisation with multiplier, target PA
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == TRUE, optimised == "mult" & scenario == "PA") %>%
     mutate(catch_rule = "rfb", target = "PA", 
            group = "rfb (capped):\nPA - mult"),
   ### rfb-rule, capped below Itrigger, optimisation with multiplier, target PA
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == TRUE, optimised == "mult" & scenario == "PA_capped") %>%
     mutate(catch_rule = "rfb", target = "PA", 
            group = "rfb (cond. capped):\nPA - mult"),
   ### rfb-rule, capped below Itrigger, optimisation with all, target PA
-  all_GA %>% 
+  stats_rfb %>% 
     filter(capped == TRUE, optimised == "all" & scenario == "PA_capped") %>%
     mutate(catch_rule = "rfb", target = "PA", 
            group = "rfb (cond. capped):\nPA - all")
@@ -1116,30 +1129,38 @@ stats_plot <- stats_plot %>%
   mutate(comp_Catch = Catch_rel - 1,
          comp_SSB = SSB_rel - 1,
          comp_ICV = ICV,
-         comp_risk = risk_Blim, 
-         comp_risk_penalty =  penalty - risk_Blim) %>%
-  pivot_longer(c(comp_SSB, comp_Catch, comp_ICV, comp_risk, comp_risk_penalty),
+         comp_risk_penalty =  penalty) %>%
+  pivot_longer(c(comp_SSB, comp_Catch, comp_ICV, comp_risk_penalty),
                names_prefix = "comp_") %>%
   mutate(name = factor(name,
-                       levels = rev(c("SSB", "Catch", "ICV", "risk", 
+                       levels = rev(c("SSB", "Catch", "ICV",
                                       "risk_penalty")),
-                       labels = rev(c("SSB", "Catch", "ICV", "risk", 
-                                      "risk\npenalty")))) %>% 
+                       labels = rev(c("SSB", "Catch", "ICV",
+                                      "risk-PA\n(penalty)")))) %>% 
   full_join(stocks %>%
     select(stock, k) %>%
     mutate(stock = factor(stock, levels = stock),
            stock_k = paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
                             "*year^-1)")) %>%
     mutate(stock_k = factor(stock_k, levels = stock_k))) %>%
-  mutate(group = factor(group, levels = c("zero-fishing", "2 over 3", 
-                                          "rfb: default",
-                                          "rfb: MSY - mult", "rfb: MSY - all",
-                                          "rfb: PA - mult", "rfb: PA - all",
-                                          "rfb (capped):\nPA - mult",
-                                          "rfb (cond. capped):\nPA - mult",
-                                          "rfb (cond. capped):\nPA - all"))) %>%
-  mutate(group_numeric = factor(group, labels = c(1, 3, 5, 6.5, 7.5, 9, 10,
-                                                  11.5, 12.5, 13.5))) %>%
+  mutate(group = factor(group, 
+    levels = c("zero-fishing", "2 over 3", 
+               "rfb: default",
+               "rfb: MSY - mult", "rfb: MSY - all",
+               "rfb: PA - mult", "rfb: PA - all",
+               "rfb (capped):\nPA - mult",
+               "rfb (cond. capped):\nPA - mult",
+               "rfb (cond. capped):\nPA - all"),
+    labels = c("(a) zero-fishing", "(b) 2 over 3", 
+               "(c) rfb: default*",
+               "(d) rfb: MSY - mult", "(e) rfb: MSY - all",
+               "(f) rfb: MSY-PA - mult*", 
+               "(g) rfb: MSY-PA - all*",
+               "(h) rfb (capped):\n     MSY-PA - mult",
+               "(i) rfb (cond. capped):\n     MSY-PA - mult",
+               "(j) rfb (cond. capped):\n     MSY-PA - all"))) %>%
+  mutate(group_numeric = factor(group, labels = c(1, 2.5, 4, 5.5, 6.5, 8, 9,
+                                                  10.5, 11.5, 12.5))) %>%
   mutate(group_numeric = as.numeric(as.character(group_numeric)))
 stats_plot_dev <- stats_plot %>%
   filter(name %in% c("SSB", "Catch")) %>%
@@ -1175,7 +1196,7 @@ plot_comparison <- function(stock, data, data_dev, ylim) {
     facet_grid(fhist ~ stock_k, scales = "free", space = "free_x", 
                labeller = label_parsed) +
     labs(y = "fitness", x = "") +
-    scale_x_continuous(breaks = c(1, 3, 5, 6.5, 7.5, 9, 10, 11.5, 12.5, 13.5), 
+    scale_x_continuous(breaks = c(1, 2.5, 4, 5.5, 6.5, 8, 9, 10.5, 11.5, 12.5), 
                        labels = levels(data$group), 
                        minor_breaks = NULL) +
     ylim(ylim) +
