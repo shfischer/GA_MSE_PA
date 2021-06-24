@@ -39,6 +39,8 @@ if (length(args) > 0) {
   ### recruitment variability
   if (!exists("sigmaR")) sigmaR <- 0.6
   if (!exists("sigmaR_rho")) sigmaR_rho <- 0.0 ### auto-correlation
+  ### recruitment steepness
+  if (!exists("steepness")) steepness <- 0.75
   ### what to save
   if (!exists("saveMP")) saveMP <- FALSE
   if (!exists("cut_hist")) cut_hist <- TRUE
@@ -187,14 +189,16 @@ rfb_names <- c("lag_idx", "range_idx_1", "range_idx_2", "range_catch",
              "exp_r", "exp_f", "exp_b", "interval", "multiplier",
              "upper_constraint", "lower_constraint")
 rfb_pars <- c(1, 2, 3, 1, 1, 1, 1, 2, 1, Inf, 0)
-### observation uncertainty and recruitment variability parameters
-unc_names <- c("sigmaL", "sigmaB")
-unc_pars <- c(0.2, 0.2)
-var_names <- c("sigmaR", "sigmaR_rho")
-var_pars <- c(0.6, 0)
+### sensitivity analysis: parameters
+sens_names <- c("sigmaL", "sigmaB", ### observation uncertainty
+                "sigmaR", "sigmaR_rho", ### recruitment variability
+                "steepness" ### recruitment steepness
+                )
+### default values
+sens_def <- c(0.2, 0.2, 0.6, 0, 0.75)
 ### combine
-pars_names <- c(rfb_names, unc_names, var_names)
-pars_def <- as.list(c(rfb_pars, unc_pars, var_pars))
+pars_names <- c(rfb_names, sens_names)
+pars_def <- as.list(c(rfb_pars, sens_def))
 names(pars_def) <- pars_names
 ### load parameter values, if provided
 pars <- mget(pars_names, ifnotfound = FALSE)
@@ -351,6 +355,26 @@ dir.create(path_out, recursive = TRUE)
       return(x)
       
     })
+    
+  }
+  
+  ### ---------------------------------------------------------------------- ###
+  ### recruitment steepness ####
+  ### ---------------------------------------------------------------------- ###
+  steepness_i <- par_i$steepness
+  if (steepness_i != 0.75) {
+    
+    ### load brp
+    brps <- readRDS("input/brps.rds")
+    brp <- brps[[stock]]
+    
+    ### calculate new recruitment model parameters with new steepness
+    alpha <- (4*steepness_i*c(refpts(brp)["virgin", "rec"]))/(5*steepness_i - 1)
+    beta <- (c(refpts(brp)["virgin", "ssb"]) * (1 - steepness_i))/
+      (5*steepness_i - 1)
+    
+    ### insert values
+    params(input_i[[1]]$om@sr)[] <- c(alpha, beta)
     
   }
   
