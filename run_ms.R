@@ -30,7 +30,7 @@ if (length(args) > 0) {
   if (!exists("comp_r")) comp_r <- TRUE
   if (!exists("comp_f")) comp_f <- TRUE
   if (!exists("comp_b")) comp_b <- TRUE
-  if (!exists("scenario")) scenario <- "uncertainty_cap"
+  if (!exists("scenario")) scenario <- "PA"
   if (!exists("cap_below_b")) cap_below_b <- TRUE
   ### GA search
   if (!exists("ga_search")) ga_search <- TRUE

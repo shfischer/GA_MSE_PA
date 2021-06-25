@@ -153,7 +153,8 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     }
     
     ### calculate stats
-    stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs,
+    stat_yrs_calc <- "more" ### always calculate all periods
+    stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs_calc,
                       collapse_correction = collapse_correction)
     
     ### add existing results for stock groups
@@ -186,6 +187,14 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     Fbar_rel <- stats["Fbar_rel", ]
     risk_Blim <- stats["risk_Blim", ]
     ICV <- stats["ICV", ]
+  } else if (stat_yrs %in% c("first10", "41to50", "last10", "firsthalf",
+                             "lastfhalf", "11to50")) {
+    SSB_rel <- stats[paste0("SSB_rel_", stat_yrs), ]
+    Catch_rel <- stats[paste0("Catch_rel_", stat_yrs), ]
+    Fbar_rel <- stats[paste0("Fbar_rel_", stat_yrs), ]
+    risk_Blim <- stats[paste0("risk_Blim_", stat_yrs), ]
+    ICV <- stats[paste0("ICV_", stat_yrs), ]
+    
   } else if (identical(stat_yrs, "last10")) {
     SSB_rel <- stats["SSB_rel_last10", ]
     Catch_rel <- stats["Catch_rel_last10", ]
@@ -218,7 +227,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                              steepness = 0.5e+3))
   }
   ### MSY target but replace risk with PA objective
-    if (isTRUE(obj_ICES_MSYPA)) {
+  if (isTRUE(obj_ICES_MSYPA)) {
     obj <- obj - sum(abs(unlist(SSB_rel) - 1)) -
       sum(abs(unlist(Catch_rel) - 1)) -
       sum(unlist(ICV)) -
