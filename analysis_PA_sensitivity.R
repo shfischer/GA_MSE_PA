@@ -31,6 +31,11 @@ runs2df <- function(x) {
 ### get results
 runs <- readRDS("output/500_50/risk/random/pol/all_runs.rds")
 runs_df <- runs2df(runs)
+### recruitment steepness
+runs_steepness <- readRDS("output/500_50/PA_steepness/random/pol/all_runs.rds")
+runs_steepness <- runs2df(runs_steepness)
+### combine
+runs_df <- bind_rows(runs_df, runs_steepness)
 
 ### save
 saveRDS(runs_df, file = "output/pol_PA_sensitivity.rds")
@@ -43,13 +48,15 @@ write.csv(runs_df, file = "output/pol_PA_sensitivity.csv", row.names = FALSE)
 ### ------------------------------------------------------------------------ ###
 
 df_mult <- readRDS("output/pol_PA_sensitivity.rds")
+# df_mult <- runs_df
 df_mult <- df_mult %>%
   filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
          exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
          upper_constraint == Inf & lower_constraint == 0 &
          sigmaL %in% c(0.2, 0.4, 0.6) & sigmaB %in% c(0.2, 0.4, 0.6) &
          (sigmaR == 0.6 | is.na(sigmaR)) & 
-         (sigmaR_rho == 0.6 | is.na(sigmaR)))
+         (sigmaR_rho == 0 | is.na(sigmaR)) &
+           is.na(steepness))
 
 ### plot Blim risk vs multiplier
 # plot(df_mult$risk_Blim ~ df_mult$multiplier)
@@ -272,13 +279,15 @@ p_years
 ### ------------------------------------------------------------------------ ###
 
 df_unc <- readRDS("output/pol_PA_sensitivity.rds")
+# df_unc <- runs_df
 df_unc <- df_unc %>%
   filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
          exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
          multiplier == 0.75 &
          upper_constraint == Inf & lower_constraint == 0 &
          (is.na(sigmaR) | sigmaR == 0.6) &
-         (is.na(sigmaR_rho) | sigmaR_rho == 0.6))
+         (is.na(sigmaR_rho) | sigmaR_rho == 0.6) &
+           is.na(steepness))
 
 p_obs <- df_unc %>%
   ggplot(aes(x = sigmaB, y = risk_Blim)) +
@@ -301,12 +310,14 @@ p_obs
 ### ------------------------------------------------------------------------ ###
 
 df_rec <- readRDS("output/pol_PA_sensitivity.rds")
+# df_rec <- runs_df
 df_rec <- df_rec %>%
   filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
          exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
            multiplier %in% c(0.75, 1) &
          upper_constraint == Inf & lower_constraint == 0 &
-           sigmaL == 0.2 & sigmaB == 0.2 & sigmaR_rho == 0)
+           sigmaL == 0.2 & sigmaB == 0.2 & sigmaR_rho == 0 &
+           is.na(steepness))
 
 p_rec <- df_rec %>%
   ggplot(aes(x = sigmaR, y = risk_Blim, linetype = as.factor(multiplier))) +
@@ -322,7 +333,7 @@ p_rec <- df_rec %>%
             label = expression("default:"~sigma[R]==0.6)) +
   ylim(c(0, 0.5)) + 
   theme_bw(base_size = 8) +
-  labs(x = expression(recruitment~variability~"("*sigma[R]*")"), 
+  labs(x = expression(recruitment~variability~"("*italic(sigma)[R]*")"), 
        y = "") +
   theme(legend.position = c(0.2, 0.8),
         legend.background = element_blank(),
@@ -467,16 +478,48 @@ p_initial <- df_risk %>%
 p_initial
 
 ### ------------------------------------------------------------------------ ###
+### recruitment steepness ####
+### ------------------------------------------------------------------------ ###
+df_h <- readRDS("output/pol_PA_sensitivity.rds")
+# df_h <- runs_df
+df_h <- df_h %>%
+  filter(lag_idx == 1 & range_idx_1 == 2 & range_idx_2 == 3 & range_catch == 1 &
+           exp_r == 1 & exp_f == 1 & exp_b == 1 & interval == 2 &
+           multiplier == 0.75 &
+           upper_constraint == Inf & lower_constraint == 0 &
+           sigmaL == 0.2 & sigmaB == 0.2 & 
+           sigmaR == 0.6 & sigmaR_rho == 0 &
+           !is.na(steepness))
+
+p_h <- df_h %>%
+  ggplot(aes(x = steepness, y = risk_Blim)) +
+  geom_hline(yintercept = 0.055, colour = "red", size = 0.4) +
+  geom_smooth(method = "loess", span = 0.5, n = 10000, colour = "black",
+              level = 0, size = 0.5, se = FALSE) +
+  geom_point(size = 0.0, stroke = 0) +
+  geom_vline(xintercept = 0.75, colour = "black", linetype = "dotted",
+             size = 0.4) +
+  geom_text(x = 0.38, y = 1.0, hjust = 0, size = 2, check_overlap = TRUE,
+            #label = ("default: 0.6")
+            label = expression("default:"~italic(h)==0.75)) +
+  ylim(c(0, 1)) +
+  theme_bw(base_size = 8) +
+  labs(x = expression(recruitment~steepness~"("*italic(h)*")"), 
+       y = expression(italic(B)[lim]~risk))
+p_h
+
+### ------------------------------------------------------------------------ ###
 ### combine sensitivity plots ####
 ### ------------------------------------------------------------------------ ###
 
 p <- plot_grid(p_mult, p_Blim, p_initial, 
                p_years, p_obs, p_rec, 
-               nrow = 2, ncol = 3, align = "hv", 
-               labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)"), 
+               p_h,
+               nrow = 3, ncol = 3, align = "hv", 
+               labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)"), 
                hjust = 0, label_size = 10)
 p 
 ggsave(filename = "output/plots/PA/pol_PA_sensitivity.png", plot = p,
-       width = 17, height = 8, units = "cm", dpi = 600, type = "cairo")
+       width = 17, height = 12, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/PA/pol_PA_sensitivity.pdf", plot = p,
-       width = 17, height = 8, units = "cm")
+       width = 17, height = 12, units = "cm")
