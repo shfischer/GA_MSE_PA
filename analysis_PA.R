@@ -1587,7 +1587,134 @@ for (i in seq_along(split(stocks$stock, ceiling(seq_along(stocks$stock)/6)))) {
   ggsave(filename = paste0("output/plots/PA/all_comparison", i , ".pdf"),
          width = 17, height = 18, units = "cm", dpi = 600)
 }
-  
+
+### ------------------------------------------------------------------------ ###
+### plot comparison of rules & optimisations - table like presentation ####
+### ------------------------------------------------------------------------ ###
+### stats from 2 over 3 rule
+stats_2over3 <- readRDS("output/all_stocks_2over_stats.rds")
+
+### stats from rfb-rule
+stats_rfb <- readRDS("output/all_stocks_GA_optimised_stats.rds")
+
+### combine 
+stats_plot <- bind_rows(
+  ### zero fishing
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "zero-fishing" & multiplier == 0 & 
+             scenario == "PA") %>%
+    mutate(catch_rule = "zero-fishing", group = "zero-fishing"),
+  ### 2 over 3 rule
+  stats_2over3 %>%
+    filter(scenario == "PA") %>%
+    mutate(catch_rule = "2 over 3", group = "2 over 3"),
+  ### rfb-rule, default
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "default" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "none", group = "rfb: default"),
+  ### rfb-rule, optimisation with multiplier, target MSY
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "mult" & scenario == "MSY") %>%
+    mutate(catch_rule = "rfb", target = "MSY", group = "rfb: MSY - mult"),
+  ### rfb-rule, optimisation with all parameters, target MSY
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "all" & scenario == "MSY") %>%
+    mutate(catch_rule = "rfb", target = "MSY", group = "rfb: MSY - all"),
+  ### rfb-rule, optimisation with multiplier, target PA
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "mult" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", group = "rfb: PA - mult"),
+  ### rfb-rule, optimisation with all parameters, target PA
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "all_cap" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", group = "rfb: PA - all"),
+  ### rfb-rule, always capped, optimisation with multiplier, target PA
+  stats_rfb %>% 
+    filter(capped == TRUE, optimised == "mult" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb (capped):\nPA - mult"),
+  ### rfb-rule, capped below Itrigger, optimisation with multiplier, target PA
+  stats_rfb %>% 
+    filter(capped == TRUE, optimised == "mult" & scenario == "PA_capped") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb (cond. capped):\nPA - mult"),
+  ### rfb-rule, capped below Itrigger, optimisation with all, target PA
+  stats_rfb %>% 
+    filter(capped == TRUE, optimised == "all" & scenario == "PA_capped") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb (cond. capped):\nPA - all")
+)
+stats_plot <- stats_plot %>%
+  select(fhist, stock, catch_rule, target, group, 
+         SSB_rel, Catch_rel, ICV, risk_Blim) %>%
+  mutate(penalty = penalty(x = risk_Blim, 
+                           negative = FALSE, max = 5, 
+                           inflection = 0.06, 
+                           steepness = 0.5e+3)) %>%
+  mutate(fitness = -abs(SSB_rel - 1) - abs(Catch_rel - 1) - ICV - penalty) %>%
+  mutate(fitness_colour = ifelse(risk_Blim >= 0.055, NA, fitness)) %>%
+  full_join(stocks %>%
+    select(stock, k) %>%
+    mutate(stock = factor(stock, levels = stock),
+           stock_k = paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
+                            "*year^-1)")) %>%
+    mutate(stock_k = factor(stock_k, levels = rev(stock_k)))) %>%
+  mutate(
+    group = factor(group, 
+    levels = c("zero-fishing", "2 over 3", 
+               "rfb: default",
+               "rfb: MSY - mult", "rfb: MSY - all",
+               "rfb: PA - mult", "rfb: PA - all",
+               "rfb (capped):\nPA - mult",
+               "rfb (cond. capped):\nPA - mult",
+               "rfb (cond. capped):\nPA - all"),
+    labels = c("(a) zero-fishing", "(b) 2 over 3", 
+               "(c) rfb: default*",
+               "(d) rfb: MSY - mult", "(e) rfb: MSY - all",
+               "(f) rfb: MSY-PA - mult*", 
+               "(g) rfb: MSY-PA - all*",
+               "(h) rfb (capped):\n     MSY-PA - mult",
+               "(i) rfb (cond. capped):\n     MSY-PA - mult",
+               "(j) rfb (cond. capped):\n     MSY-PA - all")))
+
+saveRDS(stats_plot, "output/plots/PA/data_all_comparison_table.rds")
+stats_plot <- readRDS("output/plots/PA/data_all_comparison_table.rds")
+
+### plot 
+p_all_table <- stats_plot %>%
+  ggplot(aes(x = group, y = stock_k, fill = fitness_colour)) +
+  geom_raster(aes(alpha = "")) +
+  geom_text(aes(label = sprintf(fitness, fmt =  "%.1f")),
+            colour = "grey40", size = 2) + 
+  scale_fill_gradient("fitness",
+                      high = "white", low = "#2222ff", na.value = "#ff6666",
+                      limits = c(-7, 0), 
+                      breaks = c(-6, -3, 0), 
+                      labels = c("-6 (worst)", -3, "0 (best)")) +
+  scale_alpha_manual(values = 1, labels = expression("risk" > 5*"%"),
+                     guide = guide_legend(order = 2)) +
+  guides(alpha = guide_legend("", 
+                              override.aes = list(colour = "#ff6666",
+                                                  fill = "#ff6666"), 
+                              order = 2)) +
+  facet_grid(~ fhist) +
+  scale_y_discrete(labels = scales::parse_format()) +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(axis.title = element_blank(),
+        panel.spacing.x = unit(-0.01, units = "cm"),
+        legend.key.width = unit(0.7, "lines"),
+        legend.key.height = unit(0.5, "lines"),
+        legend.title = element_text(size = 7),
+        axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
+                                   lineheight = 0.7),
+        axis.text.y = element_text(hjust = 0)
+        )
+ggsave(filename = "output/plots/PA/all_comparison_table.png", 
+       plot = p_all_table,
+       width = 17, height = 16, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/all_comparison_table.pdf",
+       plot = p_all_table,
+       width = 17, height = 16, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
 ### table for Supplementary Material ####
