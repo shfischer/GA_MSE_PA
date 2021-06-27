@@ -683,12 +683,12 @@ pol_plot_stats <- pol %>%
   mutate(label = factor(pol$optimised,
                         levels = c("default", "mult", "cap", "mult_cap", "all",
                                    "all_cap"),
-                        labels = c("default\n(not optimised)", 
-                                   "multiplier", 
+                        labels = c("default\n(not optimised)*", 
+                                   "multiplier*", 
                                    "uncertainty\ncap", 
                                    "multiplier\nand cap",
                                    "all without\ncap",
-                                   "all"))) %>%
+                                   "all*"))) %>%
   select(fhist, label, SSB_rel, Catch_rel, risk_Blim, ICV, fitness)
 ### repeat, but add annotations to labels
 pol_plot_fitness <- pol %>%
@@ -760,16 +760,15 @@ p_pol_fitness <- pol_fitness %>%
 
 ### plot stats individually
 p_pol_stats_SSB <- pol_plot_stats %>% 
-  ggplot(aes(x = label, y = SSB_rel, fill = label)) +
+  ggplot(aes(x = label, y = SSB_rel)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = position_dodge2(preserve = "single"), width = 0.8, 
            show.legend = FALSE, colour = "black", size = 0.1) +
-  scale_fill_grey() +
   facet_grid("SSB/B[MSY]" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
   theme_bw(base_size = 8, base_family = "sans") +
-  theme(panel.spacing.x = unit(0, units = "cm"),
+  theme(panel.spacing.x = unit(-0.01, units = "cm"),
         strip.placement.y = "outside",
         strip.background.y = element_blank(),
         strip.text.y = element_text(size = 8),
@@ -780,16 +779,15 @@ p_pol_stats_SSB <- pol_plot_stats %>%
         axis.title.y = element_blank()) +
   scale_y_continuous(trans = trans_from(), limits = c(0, 3.25))
 p_pol_stats_C <- pol_plot_stats %>% 
-  ggplot(aes(x = label, y = Catch_rel, fill = label)) +
+  ggplot(aes(x = label, y = Catch_rel)) +
   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
            colour = "black", size = 0.1) +
-  scale_fill_grey() +
-  facet_grid("Catch/MSY" ~ fhist, scales = "free", space = "free_x", switch = "y",
-             labeller = "label_parsed") +
+  facet_grid("Catch/MSY" ~ fhist, scales = "free", space = "free_x", 
+             switch = "y", labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
   theme_bw(base_size = 8, base_family = "sans") +
-  theme(panel.spacing.x = unit(0, units = "cm"),
+  theme(panel.spacing.x = unit(-0.01, units = "cm"),
         strip.text.x = element_blank(),
         strip.placement.y = "outside",
         strip.background.y = element_blank(),
@@ -799,19 +797,20 @@ p_pol_stats_C <- pol_plot_stats %>%
         axis.ticks.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, 3.25))
+  scale_y_continuous(trans = trans_from(), limits = c(0, 1.05),
+                     breaks = c(0, 0.5, 1))
 p_pol_stats_risk <- pol_plot_stats %>% 
-  ggplot(aes(x = label, y = risk_Blim, fill = label)) +
+  ggplot(aes(x = label, y = risk_Blim)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
+  geom_hline(yintercept = 0.055, linetype = "solid", size = 0.5, 
+             colour = "red") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
            colour = "black", size = 0.1) +
-  scale_fill_grey() +
-  facet_grid("B[lim]~risk" ~ fhist, scales = "free", space = "free_x", switch = "y",
-             labeller = "label_parsed") +
+  facet_grid("B[lim]~risk" ~ fhist, scales = "free", space = "free_x", 
+             switch = "y", labeller = "label_parsed") +
   labs(y = "", x = "fitness function") +
   theme_bw(base_size = 8, base_family = "sans") +
-  theme(panel.spacing.x = unit(0, units = "cm"),
+  theme(panel.spacing.x = unit(-0.01, units = "cm"),
         strip.text.x = element_blank(),
         strip.placement.y = "outside",
         strip.background.y = element_blank(),
@@ -821,18 +820,54 @@ p_pol_stats_risk <- pol_plot_stats %>%
         axis.ticks.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+  scale_y_continuous(trans = trans_from(0), limits = c(0, 0.5), 
+                     breaks = c(0, 0.2, 0.4))
 p_pol_stats_ICV <- pol_plot_stats %>% 
-  ggplot(aes(x = label, y = ICV, fill = label)) +
+  ggplot(aes(x = label, y = ICV)) +
   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
   geom_col(position = "dodge", show.legend = FALSE, width = 0.8, 
            colour = "black", size = 0.1) +
-  scale_fill_grey() +
   facet_grid("ICV" ~ fhist, scales = "free", space = "free_x", switch = "y",
              labeller = "label_parsed") +
   labs(y = "", x = "\nrfb-rule parameters included in optimisation") +
   theme_bw(base_size = 8, base_family = "sans") +
-  theme(panel.spacing.x = unit(0, units = "cm"),
+  theme(panel.spacing.x = unit(-0.01, units = "cm"),
+        strip.text.x = element_blank(),
+        strip.placement.y = "outside",
+        strip.background.y = element_blank(),
+        strip.text.y = element_text(size = 8),
+        plot.margin = unit(x = c(0, 3, 0, 3), units = "pt"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) +
+  scale_y_continuous(trans = trans_from(0), limits = c(0, 0.5),
+                     breaks = c(0, 0.2, 0.4))
+p_pol_stats_fitness <- pol_plot_stats %>% 
+  mutate(fitness_colour = ifelse(risk_Blim >= 0.055, NA, fitness)) %>% 
+  ggplot(aes(x = label, y = fitness)) +
+  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+  geom_col(aes(fill = fitness_colour, 
+               alpha = ""), ### dummy to separate legend
+           position = "dodge", show.legend = TRUE, width = 0.8, 
+           colour = "black", 
+           size = 0.1) +
+  scale_fill_gradient("fitness",
+                      high = "white", low = "#2222ff", na.value = "#ff6666",
+                      limits = c(-7, 0), 
+                      breaks = c(-6, -3, 0), 
+                      labels = c("-6 (worst)", -3, "0 (best)")) +
+  scale_alpha_manual(values = 1, labels = expression("risk" > 5*"%"),
+                     guide = guide_legend(order = 2)) +
+  guides(alpha = guide_legend("", 
+                               override.aes = list(colour = "#ff6666",
+                                                   fill = "#ff6666"), 
+                              order = 2)) +
+  facet_grid("fitness" ~ fhist, scales = "free", space = "free_x", switch = "y",
+             labeller = "label_parsed") +
+  labs(y = "", x = "\nrfb-rule parameters included in optimisation") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  theme(panel.spacing.x = unit(-0.01, units = "cm"),
         strip.text.x = element_blank(),
         strip.placement.y = "outside",
         strip.background.y = element_blank(),
@@ -840,26 +875,49 @@ p_pol_stats_ICV <- pol_plot_stats %>%
         axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
                                    lineheight = 0.7),
         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
-        axis.title.y = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-p_pol_stats_comb <- 
-  plot_grid(plot_grid(p_pol_stats_SSB, p_pol_stats_C,
-                      p_pol_stats_risk, p_pol_stats_ICV,
-                      ncol = 1, align = "v",
-                      rel_heights = c(1.25, 1, 1, 2)), 
-            plot_grid(p_pol_fitness + theme(legend.position = "none"), 
-                      plot_grid(NULL, get_legend(p_pol_fitness), 
-                                ncol = 2, rel_widths = c(1, 0.45)),
-                      ncol = 1, 
-                      rel_heights = c(1, 0.4)),
-            ncol = 2, labels = c("(a)", "(b)"), label_size = 10)
+        axis.title.y = element_blank(),
+        legend.key.width = unit(0.7, "lines"),
+        legend.key.height = unit(0.5, "lines"),
+        legend.title = element_text(size = 7)) +
+  scale_y_continuous(limits = c(-6, 0), breaks = c(0, -3, -6))
+
+### combine stats (including fitness)
+p_pol_stats_comb <- plot_grid(
+  plot_grid(p_pol_stats_SSB, p_pol_stats_C, p_pol_stats_risk, p_pol_stats_ICV, 
+            p_pol_stats_fitness + theme(legend.position = "none"),
+            ncol = 1, rel_heights = c(1.25, 1, 1, 1, 2.35), align = "v"),
+  plot_grid(NULL, get_legend(p_pol_stats_fitness),
+            ncol = 1, rel_heights = c(1, 1.1)),
+  ncol = 2,
+  rel_widths = c(1, 0.25))
 p_pol_stats_comb
-ggsave(filename = "output/plots/PA/pol_components_stats.png", 
+ggsave(filename = "output/plots/PA/pol_components_stats_all.png", 
        plot = p_pol_stats_comb,
-       width = 17, height = 11, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/PA/pol_components_stats.pdf", 
+       width = 8.5, height = 11, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/pol_components_stats_all.pdf", 
        plot = p_pol_stats_comb,
-       width = 17, height = 11, units = "cm", dpi = 600)
+       width = 8.5, height = 11, units = "cm", dpi = 600)
+
+
+### first attempt, fitness separate
+# p_pol_stats_comb <- 
+#   plot_grid(plot_grid(p_pol_stats_SSB, p_pol_stats_C,
+#                       p_pol_stats_risk, p_pol_stats_ICV,
+#                       ncol = 1, align = "v",
+#                       rel_heights = c(1.25, 1, 1, 2)), 
+#             plot_grid(p_pol_fitness + theme(legend.position = "none"), 
+#                       plot_grid(NULL, get_legend(p_pol_fitness), 
+#                                 ncol = 2, rel_widths = c(1, 0.45)),
+#                       ncol = 1, 
+#                       rel_heights = c(1, 0.4)),
+#             ncol = 2, labels = c("(a)", "(b)"), label_size = 10)
+# p_pol_stats_comb
+# ggsave(filename = "output/plots/PA/pol_components_stats.png", 
+#        plot = p_pol_stats_comb,
+#        width = 17, height = 11, units = "cm", dpi = 600, type = "cairo")
+# ggsave(filename = "output/plots/PA/pol_components_stats.pdf", 
+#        plot = p_pol_stats_comb,
+#        width = 17, height = 11, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
 ### plot - all stocks stats PA - default vs. optimised - not used ####
