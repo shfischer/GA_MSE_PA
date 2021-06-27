@@ -5,6 +5,7 @@
 req_pckgs <- c("doParallel", "doRNG", "mse", "GA", "ggplot2", "cowplot", 
                "scales", "Cairo", "tidyr", "dplyr", "FLCore", "FLash", "FLBRP")
 for (i in req_pckgs) library(package = i, character.only = TRUE)
+library(RColorBrewer)
 
 ### function for transforming y-axis origin in plots
 trans_from <- function(from = 1) {
@@ -158,10 +159,25 @@ all_mult <- foreach(stock = stocks$stock, .combine = rbind) %:%
     row.names(runs) <- NULL
     return(runs)
 }
-### correct ICV when multiplier = 0
-all_mult <- all_mult %>% 
-  mutate(ICV = ifelse(multiplier == 0, 0, ICV)) %>%
-  select(1:22, stock, fhist)
+names(all_mult)[12:22] <- paste0(names(all_mult)[12:22], "_all")
+names(all_mult)[12:89] <- sapply(names(all_mult)[12:89], function(x) {
+  x <- gsub(x = x, pattern = "_all", replacement = "-all")
+  x <- gsub(x = x, pattern = "_first10", replacement = "-first10")
+  x <- gsub(x = x, pattern = "_41to50", replacement = "-41to50")
+  x <- gsub(x = x, pattern = "_last10", replacement = "-last10")
+  x <- gsub(x = x, pattern = "_firsthalf", replacement = "-firsthalf")
+  x <- gsub(x = x, pattern = "_lastfhalf", replacement = "-lastfhalf")
+  x <- gsub(x = x, pattern = "_11to50", replacement = "-11to50")
+  x
+})
+all_mult <- all_mult %>%
+  pivot_longer(cols = "risk_Blim-all":"ICV-11to50",
+               names_to = c("stat", "period"),
+               names_pattern = "(.*)-(.*)",
+               values_to = "value") %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  ### correct ICV when multiplier = 0
+  mutate(ICV = ifelse(multiplier == 0, 0, ICV))
 
 saveRDS(all_mult, file = "output/all_stocks_PA_multiplier_stats.rds")
 write.csv(all_mult, file = "output/all_stocks_PA_multiplier_stats.csv", 
@@ -306,6 +322,7 @@ all_mult <- readRDS("output/all_stocks_PA_multiplier_stats.rds")
 
 ### format for plotting
 all_mult <- all_mult %>%
+  filter(period == "all") %>%
   select(multiplier, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV, stock, 
          fhist) %>%
   mutate(ICV = ifelse(multiplier == 0, NA, ICV)) %>%
@@ -428,6 +445,233 @@ ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf",
          plot = p_tmp,
          width = 17, height = 13, units = "cm", dpi = 600)
 }
+
+### ------------------------------------------------------------------------ ###
+### plot - all stocks multipliers - time periods ####
+### ------------------------------------------------------------------------ ###
+
+mult_periods <- readRDS("output/all_stocks_PA_multiplier_stats.rds")
+brps <- readRDS("input/brps.rds")
+
+### format for plotting
+mult_periods <- mult_periods %>%
+  filter(period %in% c("all", "first10", "last10")) %>%
+  select(stock, fhist, period, multiplier, risk_Blim, Catch_rel) %>%
+  pivot_longer(c(Catch_rel, risk_Blim), 
+               names_to = "key", values_to = "value") %>%
+  mutate(stat = factor(key, 
+                       levels = c("risk_Blim", "Catch_rel"), 
+                       labels = c("B[lim]~risk", "Catch/MSY")),
+         period = factor(period,
+                         levels = c("first10", "last10", "all"),
+                         labels = c("first 10 years", 
+                                    "last 10 years", 
+                                    "all years")))
+mult_periods <- mult_periods %>% 
+  full_join(stocks[, c("stock", "k")]) %>%
+  mutate(k = round(k, 2)) %>%
+  mutate(stock_label = paste0(stock, "~(k==", k, ")")) %>%
+  mutate(stock_label = factor(stock_label, levels = unique(stock_label)))
+
+### risk reference values
+mult_periods_5 <- mult_periods %>%
+    group_by(fhist, stock, period) %>%
+    filter(key == "risk_Blim" & value < 0.055) %>%
+    filter(multiplier == max(multiplier)) %>%
+    mutate(point = "5%", key = NULL, value = NULL, stat = NULL)
+
+### plot example: pollack & herring
+p_period <- mult_periods %>%
+  filter(stock %in% c("pol", "her") & 
+           fhist == "one-way") %>%
+  ggplot(aes(x = multiplier, y = value,
+             colour = period, linetype = period)) +
+  geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.055),
+             aes(yintercept = y), colour = "red", size = 0.4) +
+  geom_line(size = 0.4) +
+  scale_colour_manual("", 
+                      values = brewer.pal(4, name = "Set1")[-1],
+                      guide = guide_legend(order = 1)) +
+  scale_linetype("", guide = guide_legend(order = 1)) +
+  labs(y = "", 
+       x = expression(multiplier~"("*italic(x)*")")) +
+  facet_grid(stat ~ stock_label, scales = "free_y", labeller = label_parsed,
+             switch = "y") +
+  theme_bw(base_size = 8, base_family = "sans") +
+  xlim(0, 2) + ylim(0, 1) +
+  theme(legend.position = c(0.7, 0.4),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.key.height = unit(0.5, "lines"),
+        strip.background.y = element_blank(),
+        strip.placement.y = "outside",
+        strip.text = element_text(size = 8),
+        axis.title.y = element_blank())
+ggsave(filename = "output/plots/PA/period_example.png",
+       plot = p_period, width = 8.5, height = 7, units = "cm", dpi = 600, 
+       type = "cairo")
+ggsave(filename = "output/plots/PA/period_example.pdf",
+       plot = p_period, width = 8.5, height = 7, units = "cm", dpi = 600)
+
+### plot for all stocks
+p_period_all <- foreach(stock = stocks$stock) %do% {
+  p_tmp <- mult_periods %>%
+    filter(stock == !!stock) %>%
+    ggplot(aes(x = multiplier, y = value,
+               colour = period, linetype = period)) +
+    geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.055),
+               aes(yintercept = y), colour = "red", size = 0.4) +
+    geom_blank(data = data.frame(value = 0:1, multiplier = c(0, 2),
+                                 period = NA, fhist = NA)) +
+    geom_line(size = 0.4) +
+    scale_colour_manual("", 
+                        values = brewer.pal(4, name = "Set1")[-1],
+                        guide = guide_legend(order = 1)) +
+    scale_linetype("", guide = guide_legend(order = 1)) +
+    labs(y = "", 
+         x = expression(multiplier~"("*italic(x)*")")) +
+    # facet_grid(stat ~ stock_label + fhist, scales = "free_y", 
+    #            labeller = label_parsed, switch = "y") +
+    facet_grid(stat ~ paste0(stock_label, "~'|'~", fhist), 
+               scales = "free_y", labeller = label_parsed, switch = "y") +
+    theme_bw(base_size = 8, base_family = "sans") +
+    xlim(0, 2) + #ylim(0, 1) +
+    theme(legend.position = c(0.7, 0.4),
+          legend.background = element_blank(),
+          legend.key = element_blank(),
+          legend.key.height = unit(0.5, "lines"),
+          strip.background.y = element_blank(),
+          strip.placement.y = "outside",
+          strip.text = element_text(size = 8),
+          axis.title.y = element_blank())
+  p_tmp
+}
+plot_grid(p_period_all[[1]], p_period_all[[2]], p_period_all[[3]],
+          p_period_all[[4]], p_period_all[[5]], p_period_all[[6]],
+          ncol = 2)
+ggsave(filename = "output/plots/PA/period_example_1.png",
+       width = 17, height = 21, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/period_example_1.pdf",
+       width = 17, height = 21, units = "cm", dpi = 600)
+plot_grid(p_period_all[[7]], p_period_all[[8]], p_period_all[[9]],
+          p_period_all[[10]], p_period_all[[11]], p_period_all[[12]],
+          ncol = 2)
+ggsave(filename = "output/plots/PA/period_example_2.png",
+       width = 17, height = 21, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/period_example_2.pdf",
+       width = 17, height = 21, units = "cm", dpi = 600)
+plot_grid(p_period_all[[13]], p_period_all[[14]], p_period_all[[15]],
+          p_period_all[[16]], p_period_all[[17]], p_period_all[[18]],
+          ncol = 2)
+ggsave(filename = "output/plots/PA/period_example_3.png",
+       width = 17, height = 21, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/period_example_3.pdf",
+       width = 17, height = 21, units = "cm", dpi = 600)
+plot_grid(p_period_all[[19]], p_period_all[[20]], p_period_all[[21]],
+          p_period_all[[22]], p_period_all[[23]], p_period_all[[24]],
+          ncol = 2)
+ggsave(filename = "output/plots/PA/period_example_4.png",
+       width = 17, height = 21, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/period_example_4.pdf",
+       width = 17, height = 21, units = "cm", dpi = 600)
+plot_grid(p_period_all[[25]], p_period_all[[26]], p_period_all[[28]],
+          p_period_all[[29]],
+          ncol = 2)
+ggsave(filename = "output/plots/PA/period_example_5.png",
+       width = 17, height = 14, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/PA/period_example_5.pdf",
+       width = 17, height = 14, units = "cm", dpi = 600)
+
+
+### run MSE projections to get time series
+# req_pckgs <- c("FLCore", "FLash", "mse", "GA", "doParallel", "doRNG", "FLBRP")
+# for (i in req_pckgs) library(package = i, character.only = TRUE)
+# source("funs.R")
+# cl1 <- makeCluster(5)
+# registerDoParallel(cl1)
+# cl_length_1 <- length(cl1)
+# . <- foreach(i = seq(cl_length_1)) %dopar% {
+#   for (i in req_pckgs) library(package = i, character.only = TRUE,
+#                                warn.conflicts = FALSE, verbose = FALSE,
+#                                quietly = TRUE)
+#   source("funs.R", echo = FALSE)
+# }
+# . <- foreach(scn = split(mult_periods_5, seq(nrow(mult_periods_5)))) %dopar% {
+#   input <- readRDS(paste0("input/500_50/OM_2_mp_input/", scn$fhist, "/",
+#                           scn$stock, ".rds"))
+#   input$ctrl$est@args$comp_m <- scn$multiplier
+#   res <- do.call(mp, input)
+#   saveRDS(res, file = paste0("output/500_50/PA/", scn$fhist, "/", scn$stock, 
+#                              "/mp_1_2_3_1_1_1_1_2_", scn$multiplier, 
+#                              "_Inf_0.rds" ))
+#   qnts <- collapse_correction(res@stock, yrs = 100:150)
+#   saveRDS(qnts, file = paste0("output/500_50/PA/", scn$fhist, "/", scn$stock, 
+#                               "/qnts_1_2_3_1_1_1_1_2_", scn$multiplier, 
+#                               "_Inf_0.rds" ))
+#   return(NULL)
+# }
+
+### plot SSB trajectories for multipliers where risk = 5%
+# fhist <- "one-way"
+# stock <- "pol"
+# 
+# qnts_def <- mult_periods_5 %>%
+#   filter(stock == !!stock & fhist == !!fhist)
+# qnts <- foreach(i = split(qnts_def, seq(nrow(qnts_def))),
+#                 .combine = bind_rows) %do% {
+#   tmp <- readRDS(paste0("output/500_50/PA/", i$fhist, "/",
+#                         i$stock, "/qnts_1_2_3_1_1_1_1_2_", i$multiplier,
+#                         "_Inf_0.rds"))$ssb
+#   brp <- brps[[i$stock]]
+#   tmp <- tmp/c(refpts(brp)["msy", "ssb"])
+#   tmp <- quantile(tmp, probs = c(0.05, 0.5, 0.95))
+#   tmp <- as.data.frame(tmp) %>%
+#     select(year, iter, data) %>%
+#     mutate(stock = i$stock, fhist = i$fhist, multiplier = i$multiplier)
+#   tmp <- tmp %>% full_join(qnts_def)
+#   tmp <- tmp %>%
+#     pivot_wider(names_from = iter, values_from = data)
+#   return(tmp)
+# }
+# BlimBmsy <- c(refpts(brp)["virgin", "ssb"]/refpts(brp)["msy", "ssb"]) * 0.1628
+# 
+# p_pol_ssb <- qnts %>%
+#   ggplot(aes(x = year - 100)) +
+#   geom_line(aes(y = `50%`, colour = period, linetype = period), 
+#             size = 0.4, show.legend = FALSE) +
+#   geom_line(aes(y = `5%`, colour = period, linetype = period), 
+#             size = 0.05, show.legend = FALSE) +
+#   geom_line(aes(y = `95%`, colour = period, linetype = period), 
+#             size = 0.05, show.legend = FALSE) +
+#   geom_ribbon(aes(ymin = `5%`, ymax = `95%`, fill = period), alpha = 0.1,
+#               show.legend = FALSE) +
+#   geom_vline(xintercept = 0, size = 0.3) +
+#   geom_vline(xintercept = 10, size = 0.3) +
+#   geom_vline(xintercept = 40, size = 0.3) +
+#   geom_vline(xintercept = 50, size = 0.3) +
+#   geom_hline(yintercept = BlimBmsy, colour = "red", size = 0.4) +
+#   scale_colour_manual("",
+#     values = c("first 10 years" = brewer.pal(4, name = "Set1")[2],
+#                "last 10 years" = brewer.pal(4, name = "Set1")[3],
+#                "all years" = brewer.pal(4, name = "Set1")[4]),
+#     guide = guide_legend(order = 1)) +
+#   scale_fill_manual("",
+#     values = c("first 10 years" = brewer.pal(4, name = "Set1")[2],
+#                "last 10 years" = brewer.pal(4, name = "Set1")[3],
+#                "all years" = brewer.pal(4, name = "Set1")[4]),
+#     guide = guide_legend(order = 1)) +
+#   scale_linetype_manual("", 
+#     values = c("first 10 years" = "solid",
+#                "last 10 years" = "dotted",
+#                "all years" = "dashed"),
+#     guide = guide_legend(order = 1)) +
+#   facet_wrap(~ stock_label, strip.position = "right", labeller = label_parsed) +
+#   labs(y = expression(SSB/italic(B)[MSY]), 
+#        x = "year") +
+#   xlim(0, 50) + #ylim(0, 1)
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme()
+# p_pol_ssb
 
 ### ------------------------------------------------------------------------ ###
 ### plot - pollack rfb-rule component explorations ####
