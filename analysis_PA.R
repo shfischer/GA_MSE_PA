@@ -464,9 +464,9 @@ mult_periods <- mult_periods %>%
                        labels = c("B[lim]~risk", "Catch/MSY")),
          period = factor(period,
                          levels = c("first10", "last10", "all"),
-                         labels = c("first 10 years", 
-                                    "last 10 years", 
-                                    "all years")))
+                         labels = c("first 10 years (1-10)", 
+                                    "last 10 years (41-50)", 
+                                    "all years (1-50)")))
 mult_periods <- mult_periods %>% 
   full_join(stocks[, c("stock", "k")]) %>%
   mutate(k = round(k, 2)) %>%
