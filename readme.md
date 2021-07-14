@@ -79,7 +79,11 @@ The following additional files specific to the PA are provided:
 
 Also, the following summary tables are provided:
 
--   `pol_PA_sensitivity.csv`: results from the sensitivity analysis
+-   `pol_PA_sensitivity.csv`: summarised results from the sensitivity
+    analysis for pollack
+-   `pol_PA_sensitivity_SSBs_10000.rds`,
+    `pol_PA_sensitivity_risk_100yrs.csv`: further results from the
+    sensitivity analysis for pollack
 -   `pol_PA_components_stats.csv`: exploration of including/excluding
     elements of the rfb-rule into the optimisation for pollack
 -   `all_stocks_PA_multiplier_stats.csv`: optimisation towards the PA
