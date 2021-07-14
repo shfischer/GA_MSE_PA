@@ -1,3 +1,7 @@
+### ------------------------------------------------------------------------ ###
+### analyse sensitivity runs with PA fitness function ####
+### ------------------------------------------------------------------------ ###
+
 library(mse)
 library(ggplot2)
 library(tidyr)
@@ -41,8 +45,6 @@ runs_df <- bind_rows(runs_df, runs_steepness)
 saveRDS(runs_df, file = "output/pol_PA_sensitivity.rds")
 write.csv(runs_df, file = "output/pol_PA_sensitivity.csv", row.names = FALSE)
 
-
-
 ### ------------------------------------------------------------------------ ###
 ### pollack: multiplier vs risk ####
 ### ------------------------------------------------------------------------ ###
@@ -76,7 +78,7 @@ p_mult <- df_mult %>%
   labs(x = expression(multiplier~(italic(x))), y = expression(italic(B)[lim]~risk)) +
   ylim(c(0, 1))
 p_mult
-# ### for different levels of observation uncertainty
+# ### for different levels of observation uncertainty -- not used
 # df_mult %>%
 #   filter(sigmaB %in% c(0.2, 0.4, 0.6)) %>%
 #   ggplot(aes(x = multiplier, y = risk_Blim)) +
@@ -94,7 +96,7 @@ p_mult
 #   scale_x_continuous(expand = expansion(mult = 0, add = 0))
 
 ### ------------------------------------------------------------------------ ###
-### numerical approximation of risk slope ####
+### numerical approximation of risk slope -- not used ####
 ### ------------------------------------------------------------------------ ###
 
 # NumDiffTable <- function(par, val, method = "central") {
@@ -155,67 +157,13 @@ p_mult
 # ggsave(filename = "output/plots/pol_risk_mult_obs-levels_diff_zoom.pdf",
 #        width = 17, height = 7, units = "cm")
 
-
-
-### ------------------------------------------------------------------------ ###
-### default rfb-rule risk over time - 100 years ####
-### ------------------------------------------------------------------------ ###
-
-# input <- readRDS("input/500_100/OM_2_mp_input/random/pol.rds")
-# res <- readRDS("output/500_100/risk/random/pol/mp_1_2_3_1_1_1_1_2_1_Inf_0_0.2_0.2.rds")
-# 
-# ### collapse correction
-# ### stock metrics
-# SSBs <- FLCore::window(ssb(res$pol@stock), start = 101)
-# Fs <- FLCore::window(fbar(res$pol@stock), start = 101)
-# Cs <- FLCore::window(catch(res$pol@stock), start = 101)
-# yrs <- dim(SSBs)[2]
-# its <- dim(SSBs)[6]
-# ### collapse correction
-# ### find collapses
-# cd <- sapply(seq(its), function(x) {
-#   min_yr <- min(which(SSBs[,,,,, x] < 1))
-#   if (is.finite(min_yr)) {
-#     all_yrs <- min_yr:yrs
-#   } else {
-#     all_yrs <- NA
-#   }
-#   all_yrs + (x - 1)*yrs
-# })
-# cd <- unlist(cd)
-# cd <- cd[which(!is.na(cd))]
-# ### remove values
-# SSBs@.Data[cd] <- 0
-# Cs@.Data[cd] <- 0
-# Fs@.Data[cd] <- 0
-# 
-# ### Blim risk
-# df_risk <- data.frame(year = 1:100)
-# df_risk$first <- sapply(1:100, function(x) {
-#   mean(c(SSBs[, ac(seq(from = 101, length.out = x))] < Blim), na.rm = TRUE)
-# })
-# df_risk$last <- sapply(1:100, function(x) {
-#   mean(c(SSBs[, ac(seq(from = 100 + x, to = 200))] < Blim), na.rm = TRUE)
-# })
-# df_risk <- df_risk %>%
-#   pivot_longer(c(first, last))
-# 
-# df_risk %>%
-#   ggplot(aes(x = year, y = value)) +
-#   geom_line() +
-#   facet_wrap(~ name) +
-#   theme_bw(base_size = 8) +
-#   labs(x = "year", y = expression(italic(B)[lim]~risk)) +
-#   ylim(c(0, NA))
-# ggsave(filename = "output/plots/pol_risk_time.pdf",
-#        width = 17, height = 6, units = "cm")
-
 ### ------------------------------------------------------------------------ ###
 ### risk over time of optimised rfb-rule with 0.75 multiplier ####
 ### ------------------------------------------------------------------------ ###
 
 input <- readRDS("input/sensitivity/500_100/OM_2_mp_input/random/pol.rds")
-res <- readRDS("output/500_100/risk/random/pol/mp_1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds")
+res <- readRDS(paste0("output/500_100/risk/random/pol/",
+                      "mp_1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds"))
 
 ### collapse correction
 ### stock metrics
@@ -239,8 +187,6 @@ cd <- unlist(cd)
 cd <- cd[which(!is.na(cd))]
 ### remove values
 SSBs@.Data[cd] <- 0
-Cs@.Data[cd] <- 0
-Fs@.Data[cd] <- 0
 
 ### Blim risk
 df_risk <- data.frame(year = 1:100)
@@ -251,6 +197,13 @@ df_risk$risk <- sapply(1:100, function(x) {
 df_risk$annual <- c(apply(SSBs < Blim, 2, mean, na.rm = TRUE))
 df_risk <- df_risk %>%
   pivot_longer(c(risk, annual))
+
+
+saveRDS(df_risk, file = "output/pol_PA_sensitivity_risk_100yrs.rds")
+write.csv(df_risk, file = "output/pol_PA_sensitivity_risk_100yrs.csv", 
+          row.names = FALSE)
+df_risk <- readRDS("output/pol_PA_sensitivity_risk_100yrs.rds")
+
 df_risk$name <- factor(df_risk$name, 
                        levels = c("annual", "risk"), 
                        labels = c("annual", "total"))
@@ -349,13 +302,12 @@ p_rec
 ### ------------------------------------------------------------------------ ###
 ### use 10,000 replicates to split into groups
 
-input <- readRDS("input/sensitivity/10000_50/OM_2_mp_input/random/pol.rds")
-res_stats <- readRDS("output/10000_50/risk/random/pol/1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds")
-res <- readRDS("output/10000_50/risk/random/pol/mp_1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds")
+res <- readRDS(paste0("output/10000_50/risk/random/pol/",
+                      "mp_1_2_3_1_1_1_1_2_0.75_Inf_0_0.2_0.2.rds"))
 
 ### collapse correction
 ### stock metrics
-SSBs <- FLCore::window(ssb(res$pol@stock), start = 101)
+SSBs <- FLCore::window(ssb(res$pol@stock), start = 100)
 yrs <- dim(SSBs)[2]
 its <- dim(SSBs)[6]
 ### find collapses
@@ -373,8 +325,11 @@ cd <- cd[which(!is.na(cd))]
 ### remove values
 SSBs@.Data[cd] <- 0
 
+saveRDS(SSBs, file = "output/pol_PA_sensitivity_SSBs_10000.rds")
+SSBs <- readRDS("output/pol_PA_sensitivity_SSBs_10000.rds")
+
 ### plot
-p_Blim <- as.data.frame(SSBs) %>%
+p_Blim <- as.data.frame(window(SSBs, start = 101)) %>%
   ggplot(aes(x = data/c(refpts["msy", "ssb"]))) +
   geom_histogram(aes(y = (stat(count)/sum(count))*50),
                  binwidth = 0.05, colour = "grey", fill = "white",
@@ -401,32 +356,6 @@ p_Blim <- as.data.frame(SSBs) %>%
   labs(x = expression(italic(B)[lim]~"["*SSB/italic(B)[MSY]*"]"),
        y = "")
 p_Blim
-# p_Blim <- as.data.frame(SSBs) %>%
-#   ggplot(aes(x = data/c(refpts["msy", "ssb"]))) +
-#   geom_histogram(aes(y = stat(count)/sum(count)),
-#                  binwidth = 0.05, colour = "grey", fill = "white",
-#                  show.legend = TRUE, size = 0.1) +
-#   stat_ecdf(aes(y = ..y.. * 0.02),
-#             pad = FALSE, geom = "step", size = 0.5) +
-#   scale_y_continuous(labels = scales::percent, name = "frequency",
-#   sec.axis = sec_axis(trans = ~ . / 0.02,
-#                       name = expression(cumulative~B[lim]~risk),
-#                       labels = scales::percent),
-#                       expand = expansion(mult = c(0, 0.05), add = 0)) +
-#   # scale_x_continuous(expand = c(0, 0), breaks = 0:6) +
-#   # coord_cartesian(xlim = c(NA, 7)) +
-#   xlim(c(0, 7)) +
-#   geom_hline(yintercept = 0.05*0.02, colour = "red", size = 0.4) +
-#   geom_vline(xintercept = Blim/c(refpts["msy", "ssb"]),
-#              colour = "black", linetype = "dotted",
-#              size = 0.4) +
-#   theme_bw(base_size = 8) +
-#   labs(x = expression(SSB/B[MSY]))
-# p_Blim
-# ggsave(filename = "output/plots/pol_risk_SSB_Blim.pdf",
-#        width = 8.5, height = 6, units = "cm")
-# ggsave(filename = "output/plots/pol_risk_SSB_Blim.png",
-#        width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
 
 ### ------------------------------------------------------------------------ ###
 ### risk vs. starting condition ####
@@ -434,7 +363,7 @@ p_Blim
 ### use results from previous section
 
 ### starting condition
-SSBs0 <- ssb(res$pol@stock)[, ac(100)]
+SSBs0 <- SSBs[, ac(100)]
 SSBs0 <- SSBs0/c(refpts["msy", "ssb"])
 SSBs0 <- c(SSBs0)
 SSB_breaks <- seq(from = 0, to = max(SSBs0), by = 0.1)
@@ -448,9 +377,9 @@ risk_group_n <- sapply(SSB_levels, function(x) {
 })
 
 ### Blim risk per group
-### SSB is on absolut scale 
+### SSB is on absolute scale 
 risk_group <- sapply(SSB_levels, function(x) {
-  tmp <- SSBs[,,,,, which(SSB_groups %in% x)]
+  tmp <- SSBs[, ac(101:150),,,, which(SSB_groups %in% x)]
   mean(tmp < (Blim))
 })
 ### get starting conditions
@@ -519,7 +448,7 @@ p <- plot_grid(p_mult, p_Blim, p_initial,
                labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)"), 
                hjust = 0, label_size = 10)
 p 
-ggsave(filename = "output/plots/PA/pol_PA_sensitivity.png", plot = p,
+ggsave(filename = "output/plots/PA/pol_PA_sensitivity2.png", plot = p,
        width = 17, height = 12, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/PA/pol_PA_sensitivity.pdf", plot = p,
        width = 17, height = 12, units = "cm")
