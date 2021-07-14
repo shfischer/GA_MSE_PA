@@ -1,20 +1,24 @@
-Using a genetic algorithm to optimise a data-limited catch rule – PA
-branch
+Using a genetic algorithm to optimise a data-limited catch rule –
+including precautionary risk limits
 ================
+
+This repository ([GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA))
+is a mirror of [GA\_MSE](https://github.com/shfischer/GA_MSE) with the
+PA branch displayed as default branch.
 
 ## Introduction
 
 This repository contains the code for optimising the data-limited
 empirical rfb-rule ([ICES
 WKMSYCat34](http://www.ices.dk/sites/pub/Publication%20Reports/Expert%20Group%20Report/acom/2017/WKMSYCAT34/01.%20WKMSYCAT34%20REPORT%202017.pdf)
-catch rule 3.2.1, [Fischer et
-al., 2020](https://doi.org/10.1093/icesjms/fsaa054)) with a genetic
+catch rule 3.2.1, [Fischer et al.,
+2020](https://doi.org/10.1093/icesjms/fsaa054)) with a genetic
 algorithm. The simulation is based on the Fisheries Library in R
 ([FLR](http://www.flr-project.org/)) and the Assessment for All (a4a)
 standard MSE framework ([`FLR/mse`](github.com/FLR/mse)) developed
 during the Workshop on development of MSE algorithms with R/FLR/a4a
-([Jardim et
-al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
+([Jardim et al.,
+2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
 The master branch contains the code for the publication:
 
@@ -28,60 +32,63 @@ risk limits for the ICES precautionary approach (PA).
 
 ## Repository structure
 
-The code, input and output files from the master branch are retained:
+The code, input and output files from the master branch
+([GA\_MSE](https://github.com/shfischer/GA_MSE)) are retained:
 
 > The root folder contains the following R scripts:
-> 
->   - `OM.R`: This script creates the operating models (OMs),
->   - `funs.R` contains functions and methods used for the creation of
+>
+> -   `OM.R`: This script creates the operating models (OMs),
+> -   `funs.R` contains functions and methods used for the creation of
 >     the operating models and for running the MSE,
->   - `funs_GA.R` contains the function used in the optimisation
+> -   `funs_GA.R` contains the function used in the optimisation
 >     procedure,
->   - `run_ms.R` is an R script for running MSE projections and is
+> -   `run_ms.R` is an R script for running MSE projections and is
 >     called from a job submission script
->   - `run*.pbs` are job submission scripts which are used on a high
+> -   `run*.pbs` are job submission scripts which are used on a high
 >     performance computing cluster and call `run_ms.R`
->   - `analysis.R` is for analysing the results
-> 
+> -   `analysis.R` is for analysing the results
+>
 > The following input files are provided:
-> 
->   - `input/stocks.csv` contains the stock definitions and life-history
+>
+> -   `input/stocks.csv` contains the stock definitions and life-history
 >     parameters
->   - `input/brps.rds` contains the FLBRP objects which are the basis
+> -   `input/brps.rds` contains the FLBRP objects which are the basis
 >     for the OMs
-> 
+>
 > The following outputs summarising the results from running the
 > optimisation are provided:
-> 
->   - `output/pol_obj_fun_explorations_stats.csv` exploration of fitness
+>
+> -   `output/pol_obj_fun_explorations_stats.csv` exploration of fitness
 >     functions for pollack
->   - `output/pol_interval_MSY_stats.csv` impact of fixing the catch
+> -   `output/pol_interval_MSY_stats.csv` impact of fixing the catch
 >     advice interval for pollack
->   - `output/all_stocks_MSY_stats.csv` optimisation results for all 29
+> -   `output/all_stocks_MSY_stats.csv` optimisation results for all 29
 >     simulated stocks
->   - `output/groups_MSY_stats.csv` optimisation results for stock
+> -   `output/groups_MSY_stats.csv` optimisation results for stock
 >     groups
 
 The following additional files specific to the PA are provided:
 
-  - `OM_sensitivity.R`, `run_ms_sensitivity.R`, and
-    `analysis_sensitivity.R` for the sensitivity analysis (for creating
-    the operating models, running simulations and analysing the results
-    for pollack)
-  - `run_PA*.pbs` are job submission scripts for the optimisation
+-   `OM_sensitivity.R`, `run_ms_sensitivity.R`, and
+    `analysis_PA_sensitivity.R` for the sensitivity analysis (for
+    creating the operating models, running simulations and analysing the
+    results for pollack)
+-   `run_PA*.pbs` are job submission scripts for the optimisation
     towards the precautionary approach
-  - `analysis_PA.R` contains the analysis of the optimisation results
+-   `analysis_PA.R` contains the analysis of the optimisation results
 
 Also, the following summary tables are provided:
 
-  - `pol_PA_sensitivity.csv`: results from the sensitivity analysis
-  - `pol_PA_components_stats.csv`: exploration of including/excluding
-    elements of the rfb-rule into the optimisation
-  - `all_stocks_PA_multiplier_stats.csv`: optimisation towards the PA
+-   `pol_PA_sensitivity.csv`: results from the sensitivity analysis
+-   `pol_PA_components_stats.csv`: exploration of including/excluding
+    elements of the rfb-rule into the optimisation for pollack
+-   `all_stocks_PA_multiplier_stats.csv`: optimisation towards the PA
     with only the multiplier of the rfb-rule for all stocks
-  - `all_stocks_GA_optimised_stats.csv`: combined optimisation results
+-   `all_stocks_GA_optimised_stats.csv`: combined optimisation results
     of the rfb-rule for the PA and MSY fitness functions
-  - `PA_summary_table_parameters.csv`: optimised rfb-rule
+-   `all_stocks_2over_stats.csv`: results of the 2 over 3 rule for all
+    stocks
+-   `PA_summary_table_parameters.csv`: optimised rfb-rule
     parameterisations
 
 ## R, R packages and version info

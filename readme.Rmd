@@ -1,11 +1,13 @@
 ---
-title: "Using a genetic algorithm to optimise a data-limited catch rule -- PA branch"
+title: "Using a genetic algorithm to optimise a data-limited catch rule -- including precautionary risk limits"
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+This repository ([GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA)) is a mirror of [GA_MSE](https://github.com/shfischer/GA_MSE) with the PA branch displayed as default branch.
 
 ## Introduction
 
@@ -22,7 +24,7 @@ This is the **PA branch** which includes the optimisation with specific risk lim
 
 
 
-The code, input and output files from the master branch are retained:
+The code, input and output files from the master branch ([GA_MSE](https://github.com/shfischer/GA_MSE)) are retained:
 
 > The root folder contains the following R scripts:
 > 
@@ -47,17 +49,19 @@ The code, input and output files from the master branch are retained:
 
 The following additional files specific to the PA are provided:
 
-* `OM_sensitivity.R`, `run_ms_sensitivity.R`, and `analysis_sensitivity.R` for the sensitivity analysis (for creating the operating models, running simulations and analysing the results for pollack)
+* `OM_sensitivity.R`, `run_ms_sensitivity.R`, and `analysis_PA_sensitivity.R` for the sensitivity analysis (for creating the operating models, running simulations and analysing the results for pollack)
 * `run_PA*.pbs` are job submission scripts for the optimisation towards the precautionary approach
 * `analysis_PA.R` contains the analysis of the optimisation results
 
 Also, the following summary tables are provided:
 
 * `pol_PA_sensitivity.csv`: results from the sensitivity analysis
-* `pol_PA_components_stats.csv`: exploration of including/excluding elements of the rfb-rule into the optimisation
+* `pol_PA_components_stats.csv`: exploration of including/excluding elements of the rfb-rule into the optimisation for pollack
 * `all_stocks_PA_multiplier_stats.csv`: optimisation towards the PA with only the multiplier of the rfb-rule for all stocks
 * `all_stocks_GA_optimised_stats.csv`: combined optimisation results of the rfb-rule for the PA and MSY fitness functions
+* `all_stocks_2over_stats.csv`: results of the 2 over 3 rule for all stocks
 * `PA_summary_table_parameters.csv`: optimised rfb-rule parameterisations
+
 
 
 ## R, R packages and version info
