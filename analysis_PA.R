@@ -583,7 +583,7 @@ ggsave(filename = "output/plots/PA/period_example_5.pdf",
        width = 17, height = 14, units = "cm", dpi = 600)
 
 
-### run MSE projections to get time series
+### run MSE projections to get time series -- not used
 # req_pckgs <- c("FLCore", "FLash", "mse", "GA", "doParallel", "doRNG", "FLBRP")
 # for (i in req_pckgs) library(package = i, character.only = TRUE)
 # source("funs.R")
@@ -611,7 +611,7 @@ ggsave(filename = "output/plots/PA/period_example_5.pdf",
 #   return(NULL)
 # }
 
-### plot SSB trajectories for multipliers where risk = 5%
+### plot SSB trajectories for multipliers where risk = 5% -- not used
 # fhist <- "one-way"
 # stock <- "pol"
 # 
@@ -899,7 +899,7 @@ ggsave(filename = "output/plots/PA/pol_components_stats_all.pdf",
        width = 8.5, height = 11, units = "cm", dpi = 600)
 
 
-### first attempt, fitness separate
+### first plotting attempt, fitness split into elements -- not used
 # p_pol_stats_comb <- 
 #   plot_grid(plot_grid(p_pol_stats_SSB, p_pol_stats_C,
 #                       p_pol_stats_risk, p_pol_stats_ICV,
@@ -920,231 +920,231 @@ ggsave(filename = "output/plots/PA/pol_components_stats_all.pdf",
 #        width = 17, height = 11, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
-### plot - all stocks stats PA - default vs. optimised - not used ####
+### plot - all stocks stats PA - default vs. optimised -- not used ####
 ### ------------------------------------------------------------------------ ###
 
-### load data
-all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
-stocks_sorted <- stocks %>%
-  select(stock, k) %>%
-  arrange(k)
-
-### format for plotting
-stats_plot <- all_GA %>% 
-  filter(scenario == "PA" & optimised != "all") %>%
-  mutate(ICV = ifelse(optimised == "zero-fishing", 0, ICV)) %>%
-  mutate(stock = factor(stock, levels = stocks_sorted$stock)) %>%
-  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
-                 fitness)) %>%
-  mutate(stat = name) %>%
-  mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
-         stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
-         stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
-         stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
-         stat = ifelse(stat == "ICV", "ICV", stat),
-         stat = ifelse(stat == "fitness", "fitness~value", 
-                       stat)) %>%
-  mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5, 6)]),
-         rule = factor(optimised, 
-                       levels = c("zero-fishing", "default", "mult", "all_cap"),
-                       labels = c("zero fishing", "not optimised", 
-                                  "GA: multiplier", "GA: all")))
-saveRDS(stats_plot, file = "output/plots/PA/data_stocks_stats.rds")
-stats_plot <- readRDS("output/plots/PA/data_stocks_stats.rds")
-
-### remove zero fishing
-stats_plot <- stats_plot %>%
-  filter(rule != "zero fishing")
-### individual plots
-p_stats_SSB <- stats_plot %>%
-  filter(stat %in% c("SSB/B[MSY]")) %>%
-  ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
-                               "GA: multiplier" =  "#D95F02", 
-                               "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
-                                 "GA: multiplier" =  "#D95F02", 
-                                 "GA: all" = "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, NA))
-p_stats_F <- stats_plot %>%
-  filter(stat %in% c("F/F[MSY]")) %>%
-  ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
-                               "GA: multiplier" =  "#D95F02", 
-                               "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
-                                 "GA: multiplier" =  "#D95F02", 
-                                 "GA: all" = "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, NA))
-p_stats_C <- stats_plot %>%
-  filter(stat %in% c("Catch/MSY")) %>%
-  ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
-                               "GA: multiplier" =  "#D95F02", 
-                               "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
-                                 "GA: multiplier" =  "#D95F02", 
-                                 "GA: all" = "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, NA))
-p_stats_risk <- stats_plot %>%
-  filter(stat %in% c("B[lim]~risk")) %>%
-  ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
-  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
-                               "GA: multiplier" =  "#D95F02", 
-                               "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
-                                 "GA: multiplier" =  "#D95F02", 
-                                 "GA: all" = "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-p_stats_ICV <- stats_plot %>%
-  filter(stat %in% c("ICV")) %>%
-  ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
-  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("not optimised" = "#1B9E77", 
-                               "GA: multiplier" =  "#D95F02", 
-                               "GA: all" = "#7570B3")) +
-  scale_colour_manual(values = c("not optimised" = "#1B9E77", 
-                                 "GA: multiplier" =  "#D95F02", 
-                                 "GA: all" = "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-p_stats_fitness <- stats_plot %>%
-  filter(stat %in% c("fitness~value")) %>%
-  ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
-  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           size = 0.1, show.legend = TRUE) +
-  scale_fill_manual("", values = c("not optimised" = "#1B9E77", 
-                               "GA: multiplier" =  "#D95F02", 
-                               "GA: all" = "#7570B3")) +
-  scale_colour_manual("", values = c("not optimised" = "#1B9E77", 
-                                 "GA: multiplier" =  "#D95F02", 
-                                 "GA: all" = "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
-        axis.title.y = element_blank(),
-        legend.key.width = unit(0.2, units = "lines"),
-        legend.key.height = unit(1, units = "lines")) +
-  scale_y_continuous(trans = trans_from(0), limits = c(NA, NA))
-p_stats_combined <- plot_grid(
-  plot_grid(p_stats_SSB, 
-            #p_stats_F, 
-            p_stats_C,
-            p_stats_risk, p_stats_ICV,
-            p_stats_fitness + theme(legend.position = "none"),
-            ncol = 1, align = "v",
-            rel_heights = c(1.25, 1, 1, 1, 1.5)),
-  get_legend(p_stats_fitness), rel_widths = c(1, 0.15))
-p_stats_combined
-ggsave(filename = "output/plots/PA/all_stocks_stats.png", 
-       plot = p_stats_combined,
-       width = 17, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/PA/all_stocks_stats.pdf", 
-       plot = p_stats_combined,
-       width = 17, height = 10, units = "cm", dpi = 600)
+# ### load data
+# all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
+# stocks_sorted <- stocks %>%
+#   select(stock, k) %>%
+#   arrange(k)
+# 
+# ### format for plotting
+# stats_plot <- all_GA %>% 
+#   filter(scenario == "PA" & optimised != "all") %>%
+#   mutate(ICV = ifelse(optimised == "zero-fishing", 0, ICV)) %>%
+#   mutate(stock = factor(stock, levels = stocks_sorted$stock)) %>%
+#   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV, 
+#                  fitness)) %>%
+#   mutate(stat = name) %>%
+#   mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
+#          stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
+#          stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
+#          stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
+#          stat = ifelse(stat == "ICV", "ICV", stat),
+#          stat = ifelse(stat == "fitness", "fitness~value", 
+#                        stat)) %>%
+#   mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5, 6)]),
+#          rule = factor(optimised, 
+#                        levels = c("zero-fishing", "default", "mult", "all_cap"),
+#                        labels = c("zero fishing", "not optimised", 
+#                                   "GA: multiplier", "GA: all")))
+# saveRDS(stats_plot, file = "output/plots/PA/data_stocks_stats.rds")
+# stats_plot <- readRDS("output/plots/PA/data_stocks_stats.rds")
+# 
+# ### remove zero fishing
+# stats_plot <- stats_plot %>%
+#   filter(rule != "zero fishing")
+# ### individual plots
+# p_stats_SSB <- stats_plot %>%
+#   filter(stat %in% c("SSB/B[MSY]")) %>%
+#   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("not optimised" = "#1B9E77", 
+#                                "GA: multiplier" =  "#D95F02", 
+#                                "GA: all" = "#7570B3")) +
+#   scale_colour_manual(values = c("not optimised" = "#1B9E77", 
+#                                  "GA: multiplier" =  "#D95F02", 
+#                                  "GA: all" = "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, NA))
+# p_stats_F <- stats_plot %>%
+#   filter(stat %in% c("F/F[MSY]")) %>%
+#   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("not optimised" = "#1B9E77", 
+#                                "GA: multiplier" =  "#D95F02", 
+#                                "GA: all" = "#7570B3")) +
+#   scale_colour_manual(values = c("not optimised" = "#1B9E77", 
+#                                  "GA: multiplier" =  "#D95F02", 
+#                                  "GA: all" = "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, NA))
+# p_stats_C <- stats_plot %>%
+#   filter(stat %in% c("Catch/MSY")) %>%
+#   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("not optimised" = "#1B9E77", 
+#                                "GA: multiplier" =  "#D95F02", 
+#                                "GA: all" = "#7570B3")) +
+#   scale_colour_manual(values = c("not optimised" = "#1B9E77", 
+#                                  "GA: multiplier" =  "#D95F02", 
+#                                  "GA: all" = "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, NA))
+# p_stats_risk <- stats_plot %>%
+#   filter(stat %in% c("B[lim]~risk")) %>%
+#   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("not optimised" = "#1B9E77", 
+#                                "GA: multiplier" =  "#D95F02", 
+#                                "GA: all" = "#7570B3")) +
+#   scale_colour_manual(values = c("not optimised" = "#1B9E77", 
+#                                  "GA: multiplier" =  "#D95F02", 
+#                                  "GA: all" = "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+# p_stats_ICV <- stats_plot %>%
+#   filter(stat %in% c("ICV")) %>%
+#   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("not optimised" = "#1B9E77", 
+#                                "GA: multiplier" =  "#D95F02", 
+#                                "GA: all" = "#7570B3")) +
+#   scale_colour_manual(values = c("not optimised" = "#1B9E77", 
+#                                  "GA: multiplier" =  "#D95F02", 
+#                                  "GA: all" = "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+# p_stats_fitness <- stats_plot %>%
+#   filter(stat %in% c("fitness~value")) %>%
+#   ggplot(aes(x = stock, y = value, fill = rule, colour = rule)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            size = 0.1, show.legend = TRUE) +
+#   scale_fill_manual("", values = c("not optimised" = "#1B9E77", 
+#                                "GA: multiplier" =  "#D95F02", 
+#                                "GA: all" = "#7570B3")) +
+#   scale_colour_manual("", values = c("not optimised" = "#1B9E77", 
+#                                  "GA: multiplier" =  "#D95F02", 
+#                                  "GA: all" = "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
+#         axis.title.y = element_blank(),
+#         legend.key.width = unit(0.2, units = "lines"),
+#         legend.key.height = unit(1, units = "lines")) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(NA, NA))
+# p_stats_combined <- plot_grid(
+#   plot_grid(p_stats_SSB, 
+#             #p_stats_F, 
+#             p_stats_C,
+#             p_stats_risk, p_stats_ICV,
+#             p_stats_fitness + theme(legend.position = "none"),
+#             ncol = 1, align = "v",
+#             rel_heights = c(1.25, 1, 1, 1, 1.5)),
+#   get_legend(p_stats_fitness), rel_widths = c(1, 0.15))
+# p_stats_combined
+# ggsave(filename = "output/plots/PA/all_stocks_stats.png", 
+#        plot = p_stats_combined,
+#        width = 17, height = 10, units = "cm", dpi = 600, type = "cairo")
+# ggsave(filename = "output/plots/PA/all_stocks_stats.pdf", 
+#        plot = p_stats_combined,
+#        width = 17, height = 10, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
 ### plot - all stocks stats PA vs. 2 over 3 - not used ####
 ### ------------------------------------------------------------------------ ###
 
-### load data
-all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
+# ### load data
+# all_GA <- readRDS("output/all_stocks_GA_optimised_stats.rds")
 
 stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
   foreach(fhist = c("one-way", "random"), .combine = "rbind") %do% {
-    stats_i <- readRDS(paste0("output/500_50/2over3/", fhist, "/", stock, 
+    stats_i <- readRDS(paste0("output/500_50/2over3/", fhist, "/", stock,
                               "_stats.rds"))
     stats_i <- as.data.frame(lapply(as.data.frame(t(stats_i)), unlist))
     stats_i$fhist <- fhist
@@ -1160,8 +1160,8 @@ stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
     stats_i_PA$fitness <- -sum(abs(stats_i_PA$SSB_rel - 1),
                                abs(stats_i_PA$Catch_rel - 1),
                                stats_i_PA$ICV,
-                               penalty(x = stats_i_PA$risk_Blim, negative = FALSE, 
-                                       max = 5, inflection = 0.06, 
+                               penalty(x = stats_i_PA$risk_Blim, negative = FALSE,
+                                       max = 5, inflection = 0.06,
                                        steepness = 0.5e+3))
     stats_i_MSY$scenario <- "MSY"
     stats_i_PA$scenario <- "PA"
@@ -1169,200 +1169,202 @@ stats_2over3 <- foreach(stock = stocks$stock, .combine = "rbind") %:%
     return(rbind(stats_i_MSY, stats_i_PA))
 }
 saveRDS(stats_2over3, "output/all_stocks_2over_stats.rds")
-stats_2over3 <- readRDS("output/all_stocks_2over_stats.rds")
-
-### combine 
-stats_plot <- bind_rows(
-  all_GA %>% 
-    filter(optimised == "all" & scenario == "MSY") %>%
-    select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
-    mutate(catch_rule = "rfb", group = "rfb: MSY"),
-  all_GA %>% 
-    filter(optimised == "all_cap" & scenario == "PA") %>%
-    select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
-    mutate(catch_rule = "rfb", group = "rfb: MSY-PA"),
-  stats_2over3 %>%
-    filter(scenario == "PA") %>%
-    select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
-    mutate(catch_rule = "2 over 3", group = "2 over 3")
-)
-
-stocks_sorted <- stocks %>%
-  select(stock, k) %>%
-  arrange(k)
-
-### format for plotting
-stats_plot <- stats_plot %>% 
-  mutate(stock = factor(stock, levels = stocks_sorted$stock)) %>%
-  pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV)) %>%
-  mutate(stat = name) %>%
-  mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
-         stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
-         stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
-         stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
-         stat = ifelse(stat == "ICV", "ICV", stat)) %>%
-  mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5)]),
-         group = factor(group, 
-                        levels = c("2 over 3", "rfb: MSY", "rfb: MSY-PA"),
-                        labels = c("2 over 3", "rfb: MSY", "rfb: MSY-PA")))
-saveRDS(stats_plot, file = "output/plots/PA/data_stocks_2over3_stats.rds")
-stats_plot <- readRDS("output/plots/PA/data_stocks_2over3_stats.rds")
-
-### individual plots
-p_stats_SSB <- stats_plot %>%
-  filter(stat %in% c("SSB/B[MSY]")) %>%
-  ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
-                               "rfb: MSY" = "#66A61E", 
-                               "rfb: MSY-PA" =  "#7570B3")) +
-  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
-                                 "rfb: MSY" = "#66A61E", 
-                                 "rfb: MSY-PA" =  "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, NA))
-p_stats_F <- stats_plot %>%
-  filter(stat %in% c("F/F[MSY]")) %>%
-  ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
-                               "rfb: MSY" = "#66A61E", 
-                               "rfb: MSY-PA" =  "#7570B3")) +
-  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
-                                 "rfb: MSY" = "#66A61E", 
-                                 "rfb: MSY-PA" =  "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, NA))
-p_stats_C <- stats_plot %>%
-  filter(stat %in% c("Catch/MSY")) %>%
-  ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
-  geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
-                               "rfb: MSY" = "#66A61E", 
-                               "rfb: MSY-PA" =  "#7570B3")) +
-  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
-                                 "rfb: MSY" = "#66A61E", 
-                                 "rfb: MSY-PA" =  "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(), limits = c(0, NA))
-p_stats_risk <- stats_plot %>%
-  filter(stat %in% c("B[lim]~risk")) %>%
-  ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
-  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = FALSE, size = 0.1) +
-  scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
-                               "rfb: MSY" = "#66A61E", 
-                               "rfb: MSY-PA" =  "#7570B3")) +
-  scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
-                                 "rfb: MSY" = "#66A61E", 
-                                 "rfb: MSY-PA" =  "#7570B3")) +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.title.y = element_blank(),
-        plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank()) +
-  scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
-p_stats_ICV <- stats_plot %>%
-  filter(stat %in% c("ICV")) %>%
-  ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
-  geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
-  geom_col(position = position_dodge2(), width = 0.8, 
-           show.legend = TRUE, size = 0.1) +
-  scale_fill_manual("catch rule",
-                    values = c("2 over 3" = "#E6AB02", 
-                               "rfb: MSY" = "#66A61E", 
-                               "rfb: MSY-PA" =  "#7570B3")) +
-  scale_colour_manual("catch rule",
-                      values = c("2 over 3" = "#E6AB02", 
-                                 "rfb: MSY" = "#66A61E", 
-                                 "rfb: MSY-PA" =  "#7570B3")) +
-  # scale_fill_discrete("catch rule") + scale_colour_discrete("catch rule") +
-  facet_grid(stat ~ fhist, 
-             switch = "y", scales = "free", labeller = "label_parsed") +
-  labs(x = "stock", y = "") +
-  theme_bw(base_size = 8, base_family = "sans") +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(), 
-        panel.spacing.x = unit(0, units = "cm"),
-        plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
-        strip.text.x = element_blank(),
-        strip.text.y = element_text(size = 8),
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
-        axis.title.y = element_blank(),
-        legend.key.width = unit(0.2, units = "lines"),
-        legend.key.height = unit(1, units = "lines")) +
-  scale_y_continuous(trans = trans_from(0), limits = c(NA, 1))
-p_stats_combined <- plot_grid(
-  plot_grid(p_stats_SSB, 
-            #p_stats_F, 
-            p_stats_C,
-            p_stats_risk, 
-            p_stats_ICV + theme(legend.position = "none"),
-            ncol = 1, align = "v",
-            rel_heights = c(1.25, 1, 1, 1.5)),
-  get_legend(p_stats_ICV), rel_widths = c(1, 0.15))
-p_stats_combined
-ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.png", 
-       plot = p_stats_combined,
-       width = 17, height = 10, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.pdf", 
-       plot = p_stats_combined,
-       width = 17, height = 10, units = "cm", dpi = 600)
+write.csv(stats_2over3, file = "output/all_stocks_2over_stats.csv",
+          row.names = FALSE)
+# stats_2over3 <- readRDS("output/all_stocks_2over_stats.rds")
+# 
+# ### combine 
+# stats_plot <- bind_rows(
+#   all_GA %>% 
+#     filter(optimised == "all" & scenario == "MSY") %>%
+#     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
+#     mutate(catch_rule = "rfb", group = "rfb: MSY"),
+#   all_GA %>% 
+#     filter(optimised == "all_cap" & scenario == "PA") %>%
+#     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
+#     mutate(catch_rule = "rfb", group = "rfb: MSY-PA"),
+#   stats_2over3 %>%
+#     filter(scenario == "PA") %>%
+#     select(fhist, stock, SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV) %>%
+#     mutate(catch_rule = "2 over 3", group = "2 over 3")
+# )
+# 
+# stocks_sorted <- stocks %>%
+#   select(stock, k) %>%
+#   arrange(k)
+# 
+# ### format for plotting
+# stats_plot <- stats_plot %>% 
+#   mutate(stock = factor(stock, levels = stocks_sorted$stock)) %>%
+#   pivot_longer(c(SSB_rel, Fbar_rel, Catch_rel, risk_Blim, ICV)) %>%
+#   mutate(stat = name) %>%
+#   mutate(stat = ifelse(stat == "SSB_rel", "SSB/B[MSY]", stat),
+#          stat = ifelse(stat == "Fbar_rel", "F/F[MSY]", stat),
+#          stat = ifelse(stat == "Catch_rel", "Catch/MSY", stat),
+#          stat = ifelse(stat == "risk_Blim", "B[lim]~risk", stat),
+#          stat = ifelse(stat == "ICV", "ICV", stat)) %>%
+#   mutate(stat = factor(stat, levels = unique(stat)[c(1, 2, 3, 4, 5)]),
+#          group = factor(group, 
+#                         levels = c("2 over 3", "rfb: MSY", "rfb: MSY-PA"),
+#                         labels = c("2 over 3", "rfb: MSY", "rfb: MSY-PA")))
+# saveRDS(stats_plot, file = "output/plots/PA/data_stocks_2over3_stats.rds")
+# stats_plot <- readRDS("output/plots/PA/data_stocks_2over3_stats.rds")
+# 
+# ### individual plots
+# p_stats_SSB <- stats_plot %>%
+#   filter(stat %in% c("SSB/B[MSY]")) %>%
+#   ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+#                                "rfb: MSY" = "#66A61E", 
+#                                "rfb: MSY-PA" =  "#7570B3")) +
+#   scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+#                                  "rfb: MSY" = "#66A61E", 
+#                                  "rfb: MSY-PA" =  "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, NA))
+# p_stats_F <- stats_plot %>%
+#   filter(stat %in% c("F/F[MSY]")) %>%
+#   ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+#                                "rfb: MSY" = "#66A61E", 
+#                                "rfb: MSY-PA" =  "#7570B3")) +
+#   scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+#                                  "rfb: MSY" = "#66A61E", 
+#                                  "rfb: MSY-PA" =  "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, NA))
+# p_stats_C <- stats_plot %>%
+#   filter(stat %in% c("Catch/MSY")) %>%
+#   ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
+#   geom_hline(yintercept = 1, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+#                                "rfb: MSY" = "#66A61E", 
+#                                "rfb: MSY-PA" =  "#7570B3")) +
+#   scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+#                                  "rfb: MSY" = "#66A61E", 
+#                                  "rfb: MSY-PA" =  "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(), limits = c(0, NA))
+# p_stats_risk <- stats_plot %>%
+#   filter(stat %in% c("B[lim]~risk")) %>%
+#   ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_hline(yintercept = 0.05, linetype = "solid", size = 0.5, colour = "red") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = FALSE, size = 0.1) +
+#   scale_fill_manual(values = c("2 over 3" = "#E6AB02", 
+#                                "rfb: MSY" = "#66A61E", 
+#                                "rfb: MSY-PA" =  "#7570B3")) +
+#   scale_colour_manual(values = c("2 over 3" = "#E6AB02", 
+#                                  "rfb: MSY" = "#66A61E", 
+#                                  "rfb: MSY-PA" =  "#7570B3")) +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.title.y = element_blank(),
+#         plot.margin = unit(x = c(1, 3, 0, 3), units = "pt"),
+#         axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         axis.title.x = element_blank()) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(0, 1))
+# p_stats_ICV <- stats_plot %>%
+#   filter(stat %in% c("ICV")) %>%
+#   ggplot(aes(x = stock, y = value, fill = group, colour = group)) +
+#   geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+#   geom_col(position = position_dodge2(), width = 0.8, 
+#            show.legend = TRUE, size = 0.1) +
+#   scale_fill_manual("catch rule",
+#                     values = c("2 over 3" = "#E6AB02", 
+#                                "rfb: MSY" = "#66A61E", 
+#                                "rfb: MSY-PA" =  "#7570B3")) +
+#   scale_colour_manual("catch rule",
+#                       values = c("2 over 3" = "#E6AB02", 
+#                                  "rfb: MSY" = "#66A61E", 
+#                                  "rfb: MSY-PA" =  "#7570B3")) +
+#   # scale_fill_discrete("catch rule") + scale_colour_discrete("catch rule") +
+#   facet_grid(stat ~ fhist, 
+#              switch = "y", scales = "free", labeller = "label_parsed") +
+#   labs(x = "stock", y = "") +
+#   theme_bw(base_size = 8, base_family = "sans") +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(), 
+#         panel.spacing.x = unit(0, units = "cm"),
+#         plot.margin = unit(x = c(0, 3, 3, 3), units = "pt"),
+#         strip.text.x = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
+#         axis.title.y = element_blank(),
+#         legend.key.width = unit(0.2, units = "lines"),
+#         legend.key.height = unit(1, units = "lines")) +
+#   scale_y_continuous(trans = trans_from(0), limits = c(NA, 1))
+# p_stats_combined <- plot_grid(
+#   plot_grid(p_stats_SSB, 
+#             #p_stats_F, 
+#             p_stats_C,
+#             p_stats_risk, 
+#             p_stats_ICV + theme(legend.position = "none"),
+#             ncol = 1, align = "v",
+#             rel_heights = c(1.25, 1, 1, 1.5)),
+#   get_legend(p_stats_ICV), rel_widths = c(1, 0.15))
+# p_stats_combined
+# ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.png", 
+#        plot = p_stats_combined,
+#        width = 17, height = 10, units = "cm", dpi = 600, type = "cairo")
+# ggsave(filename = "output/plots/PA/all_stocks_2over3_stats.pdf", 
+#        plot = p_stats_combined,
+#        width = 17, height = 10, units = "cm", dpi = 600)
 
 ### ------------------------------------------------------------------------ ###
 ### plot comparison of rules & optimisations ####
@@ -1566,7 +1568,7 @@ plot_comparison_six <- function(stocks, data, data_dev, ylim) {
   return(p)
 }
 
-### plot for manuscript
+### plot for manuscript -- supplementary material
 plot_comparison_six(stocks = c("ang3", "pol", "ple", "tur", "jnd", "her"),
                     data = stats_plot, data_dev = stats_plot_dev, 
                     ylim = c(-8.5, 0))
