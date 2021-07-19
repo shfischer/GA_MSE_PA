@@ -3,5 +3,9 @@
 .Rhistory
 .RData
 .Ruserdata
-input/
-output/
+input/*/*
+input/*.pdf
+input/*.png
+output/*/*
+output/*.rds
+output/*.xlsx
