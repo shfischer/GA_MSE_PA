@@ -72,7 +72,7 @@ p_mult <- df_mult %>%
   geom_point(size = 0.0, stroke = 0) +
   geom_vline(xintercept = 0.75, colour = "black", linetype = "dotted",
              size = 0.4) +
-  geom_text(x = 0.77, y = 1, hjust = 0, size = 2, check_overlap = TRUE,
+  geom_text(x = 0.78, y = 1, hjust = 0, size = 2, check_overlap = TRUE,
             label = expression(italic(x) == 0.75)) +
   theme_bw(base_size = 8) +
   labs(x = expression(multiplier~(italic(x))), y = expression(italic(B)[lim]~risk)) +
@@ -250,7 +250,7 @@ p_obs <- df_unc %>%
   geom_point(size = 0.0, stroke = 0) +
   geom_vline(xintercept = 0.2, colour = "black", linetype = "dotted",
              size = 0.4) +
-  geom_text(x = 0.21, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
+  geom_text(x = 0.22, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
             label = "default: CV=0.2") +
   ylim(c(0, 0.5)) + 
   theme_bw(base_size = 8) +
@@ -281,7 +281,7 @@ p_rec <- df_rec %>%
   scale_linetype("multiplier") +
   geom_vline(xintercept = 0.6, colour = "black", linetype = "dotted",
              size = 0.4) +
-  geom_text(x = 0.61, y = 0.5, hjust = 0, size = 2, check_overlap = TRUE,
+  geom_text(x = 0.62, y = 0.495, hjust = 0, size = 2, check_overlap = TRUE,
             #label = ("default: 0.6")
             label = expression("default:"~sigma[R]==0.6)) +
   ylim(c(0, 0.5)) + 
@@ -349,7 +349,7 @@ p_Blim <- as.data.frame(window(SSBs, start = 101)) %>%
              colour = "black", linetype = "dotted",
              size = 0.4) +
   annotate(geom = "text",
-           x = Blim/c(refpts["msy", "ssb"]) * 1.1, y = 1, 
+           x = Blim/c(refpts["msy", "ssb"]) * 1.15, y = 0.99, 
             hjust = 0, size = 2, check_overlap = TRUE,
             label = expression(default:~italic(B)[lim]==0.57~italic(B)[MSY])) +
   theme_bw(base_size = 8) +
@@ -428,7 +428,7 @@ p_h <- df_h %>%
   geom_point(size = 0.0, stroke = 0) +
   geom_vline(xintercept = 0.75, colour = "black", linetype = "dotted",
              size = 0.4) +
-  geom_text(x = 0.38, y = 1.0, hjust = 0, size = 2, check_overlap = TRUE,
+  geom_text(x = 0.37, y = 1.0, hjust = 0, size = 2, check_overlap = TRUE,
             #label = ("default: 0.6")
             label = expression("default:"~italic(h)==0.75)) +
   ylim(c(0, 1)) +
@@ -448,7 +448,7 @@ p <- plot_grid(p_mult, p_Blim, p_initial,
                labels = c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)"), 
                hjust = 0, label_size = 10)
 p 
-ggsave(filename = "output/plots/PA/pol_PA_sensitivity2.png", plot = p,
+ggsave(filename = "output/plots/PA/pol_PA_sensitivity.png", plot = p,
        width = 17, height = 12, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/PA/pol_PA_sensitivity.pdf", plot = p,
        width = 17, height = 12, units = "cm")
