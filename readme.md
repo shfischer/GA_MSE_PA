@@ -20,50 +20,60 @@ The simulation is based on the Fisheries Library in R
 ([FLR](http://www.flr-project.org/)) and the Assessment for All (a4a)
 standard MSE framework ([`FLR/mse`](github.com/FLR/mse)) developed
 during the Workshop on development of MSE algorithms with R/FLR/a4a
-([Jardim et
-al., 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
+([Jardim et al.,
+2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
 The operating models provided as an input are those from the repository
 [shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
 described in:
 
-> Simon H. Fischer, José A. A. De Oliveira, Laurence T. Kell (2020).
+> Fischer, S. H., De Oliveira, J. A. A., and Laurence T. Kell (2020).
 > Linking the performance of a data-limited empirical catch rule to
-> life-history traits, ICES Journal of Marine Science,
+> life-history traits. ICES Journal of Marine Science, 77: 1914-1926.
 > <https://doi.org/10.1093/icesjms/fsaa054>.
+
+The [PA branch](/tree/PA) (also available from
+[shfischer/GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA)) of this
+repository includes the optimisation with specific risk limits for the
+ICES precautionary approach (PA) and contains the code for the
+publication:
+
+> Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
+> (in press). Application of explicit precautionary principles in
+> data-limited fisheries management. ICES Journal of Marine Science.
 
 ## Repository structure
 
 The root folder contains the following R scripts:
 
-  - `OM.R`: This script creates the operating models,
-  - `funs.R` contains functions and methods used for the creation of the
+-   `OM.R`: This script creates the operating models,
+-   `funs.R` contains functions and methods used for the creation of the
     operating models and for running the MSE,
-  - `funs_GA.R` contains the function used in the optimisation
+-   `funs_GA.R` contains the function used in the optimisation
     procedure,
-  - `run_ms.R` is an R script for running MSE projections and is called
+-   `run_ms.R` is an R script for running MSE projections and is called
     from a job submission script
-  - `run*.pbs` are job submission scripts which are used on a high
+-   `run*.pbs` are job submission scripts which are used on a high
     performance computing cluster and call `run_ms.R`
-  - `analysis.R` is for analysing the results
+-   `analysis.R` is for analysing the results
 
 The following input files are provided:
 
-  - `input/stocks.csv` contains the stock definitions and life-history
+-   `input/stocks.csv` contains the stock definitions and life-history
     parameters
-  - `input/brps.rds` contains the FLBRP objects which are the basis for
+-   `input/brps.rds` contains the FLBRP objects which are the basis for
     the OMs
 
 The following outputs summarising the results from running the
 optimisation are provided:
 
-  - `output/pol_obj_fun_explorations_stats.csv` exploration of fitness
+-   `output/pol_obj_fun_explorations_stats.csv` exploration of fitness
     functions for pollack
-  - `output/pol_interval_MSY_stats.csv` impact of fixing the catch
+-   `output/pol_interval_MSY_stats.csv` impact of fixing the catch
     advice interval for pollack
-  - `output/all_stocks_MSY_stats.csv` optimisation results for all 29
+-   `output/all_stocks_MSY_stats.csv` optimisation results for all 29
     simulated stocks
-  - `output/groups_MSY_stats.csv` optimisation results for stock groups
+-   `output/groups_MSY_stats.csv` optimisation results for stock groups
 
 ## R, R packages and version info
 
@@ -116,14 +126,15 @@ The exact versions of the packages as used here can be installed with
 
 ``` r
 remotes::install_github(repo = "flr/FLCore", ref = "3d694903b9e6717b86c3e8486fc14ebf92908786")
-remotes::install_github(repo = "shfischer/FLash", ref = "d1fb86fa081aaa5b6980d74b07d9adb44ad19a7f") # silenced version of FLash
-remotes::install_github(repo = "flr/FLBRP", ref = "3a4d6390abc56870575fbaba3637091036468217")
+remotes::install_github(repo = "shfischer/FLash", ref = "d1fb86fa081aaa5b6980d74b07d9adb44ad19a7f", INSTALL_opts = "--no-multiarch") # silenced version of FLash
+# INSTALL_opts = "--no-multiarch" to avoid issues in Windows
+remotes::install_github(repo = "flr/FLBRP", ref = "3a4d6390abc56870575fbaba3637091036468217", INSTALL_opts = "--no-multiarch")
 ```
 
-Furthermore, a data-limited fork of the `mse/flr` package is required
+Furthermore, a data-limited fork of the `flr/mse` package is required:
 
 ``` r
-remotes::install_github(repo = "shfischer/mse", ref = "mseDL2.0")
+remotes::install_github(repo = "shfischer/mse", ref = "mseDL2.0", INSTALL_opts = "--no-multiarch")
 ```
 
 And a modified version of the `GA` package for genetic algorithms which
