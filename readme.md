@@ -32,7 +32,8 @@ described in:
 > life-history traits. ICES Journal of Marine Science, 77: 1914-1926.
 > <https://doi.org/10.1093/icesjms/fsaa054>.
 
-The [PA branch](/tree/PA) (also available from
+The [PA branch](https://github.com/shfischer/GA_MSE/tree/PA) (also
+available from
 [shfischer/GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA)) of this
 repository includes the optimisation with specific risk limits for the
 ICES precautionary approach (PA) and contains the code for the
