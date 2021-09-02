@@ -1,5 +1,5 @@
-Using a genetic algorithm to optimise a data-limited catch rule –
-including precautionary risk limits
+Application of explicit precautionary principles in data-limited
+fisheries management
 ================
 
 This repository ([GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA))
@@ -20,15 +20,20 @@ during the Workshop on development of MSE algorithms with R/FLR/a4a
 ([Jardim et al.,
 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
-The master branch contains the code for the publication:
+The master branch contains the code for the open access publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Using a genetic algorithm to optimise a data-limited catch
-> rule. ICES Journal of Marine Science.
-> <https://dx.doi.org/10.1093/icesjms/fsab018>.
+> rule. ICES Journal of Marine Science. 78: 1311-1323.
+> <https://doi.org/10.1093/icesjms/fsab018>.
 
 This is the **PA branch** which includes the optimisation with specific
-risk limits for the ICES precautionary approach (PA).
+risk limits for the ICES precautionary approach (PA) and contains the
+code for the publication:
+
+> Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
+> (in press). Application of explicit precautionary principles in
+> data-limited fisheries management. ICES Journal of Marine Science.
 
 ## Repository structure
 
@@ -146,14 +151,15 @@ The exact versions of the packages as used here can be installed with
 
 ``` r
 remotes::install_github(repo = "flr/FLCore", ref = "3d694903b9e6717b86c3e8486fc14ebf92908786")
-remotes::install_github(repo = "shfischer/FLash", ref = "d1fb86fa081aaa5b6980d74b07d9adb44ad19a7f") # silenced version of FLash
-remotes::install_github(repo = "flr/FLBRP", ref = "3a4d6390abc56870575fbaba3637091036468217")
+remotes::install_github(repo = "shfischer/FLash", ref = "d1fb86fa081aaa5b6980d74b07d9adb44ad19a7f", INSTALL_opts = "--no-multiarch") # silenced version of FLash
+# INSTALL_opts = "--no-multiarch" to avoid issues in Windows
+remotes::install_github(repo = "flr/FLBRP", ref = "3a4d6390abc56870575fbaba3637091036468217", INSTALL_opts = "--no-multiarch")
 ```
 
 Furthermore, a data-limited fork of the `flr/mse` package is required:
 
 ``` r
-remotes::install_github(repo = "shfischer/mse", ref = "mseDL2.0")
+remotes::install_github(repo = "shfischer/mse", ref = "mseDL2.0", INSTALL_opts = "--no-multiarch")
 ```
 
 And a modified version of the `GA` package for genetic algorithms which
