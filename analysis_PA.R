@@ -376,13 +376,13 @@ all_mult_refs <- readRDS("output/plots/PA/data_all_stocks_multiplier_stats_refs.
 ### plot some example stocks
 p_all_mult <- all_mult %>%
   filter(stock %in% c("ang3", "pol", "tur", "san") &
-           stat != "F/F[MSY]") %>%
+           stat %in% c("Catch/MSY", "B[lim]~risk")) %>%
   ggplot(aes(x = multiplier, y = value, linetype = fhist,
              colour = fhist)) +
   geom_line(size = 0.4) +
   geom_point(data = all_mult_refs %>%
                filter(stock %in% c("ang3", "pol", "tur", "san") &
-                        stat != "F/F[MSY]"),
+                        stat %in% c("Catch/MSY", "B[lim]~risk")),
              aes(shape = point), size = 1, stroke = 1) +
   scale_shape_manual("risk limit", values = 2:4, 
                      guide = guide_legend(order = 2)) + 
@@ -404,10 +404,10 @@ p_all_mult <- all_mult %>%
         legend.key.height = unit(1, "line"))
 ggsave(filename = "output/plots/PA/all_stocks_mult_stats.png", 
        plot = p_all_mult,
-       width = 17, height = 13, units = "cm", dpi = 600, type = "cairo")
+       width = 17, height = 7, units = "cm", dpi = 600, type = "cairo")
 ggsave(filename = "output/plots/PA/all_stocks_mult_stats.pdf", 
        plot = p_all_mult,
-       width = 17, height = 13, units = "cm", dpi = 600)
+       width = 17, height = 7, units = "cm", dpi = 600)
 
 ### plot all stocks for supplementary document
 . <- foreach(subset = split(stocks$stock, rep(seq(6), 
