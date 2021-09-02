@@ -35,6 +35,15 @@ code for the publication:
 > (in press). Application of explicit precautionary principles in
 > data-limited fisheries management. ICES Journal of Marine Science.
 
+The operating models provided as an input are those from the repository
+[shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
+described in:
+
+> Fischer, S. H., De Oliveira, J. A. A., and Laurence T. Kell (2020).
+> Linking the performance of a data-limited empirical catch rule to
+> life-history traits. ICES Journal of Marine Science, 77: 1914-1926.
+> <https://doi.org/10.1093/icesjms/fsaa054>.
+
 ## Repository structure
 
 The code, input and output files from the master branch
