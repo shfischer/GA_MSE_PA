@@ -7,7 +7,7 @@ This repository contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Using a genetic algorithm to optimize a data-limited catch
-> rule. ICES Journal of Marine Science.
+> rule. ICES Journal of Marine Science. 78: 1311-1323.
 > <https://dx.doi.org/10.1093/icesjms/fsab018>.
 
 The status of the repository used for the publication is saved in the
@@ -27,9 +27,9 @@ The operating models provided as an input are those from the repository
 [shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
 described in:
 
-> Fischer, S. H., De Oliveira, J. A. A., and Laurence T. Kell (2020).
-> Linking the performance of a data-limited empirical catch rule to
-> life-history traits. ICES Journal of Marine Science, 77: 1914-1926.
+> Fischer, S. H., De Oliveira, J. A. A., and Kell, L. T. (2020). Linking
+> the performance of a data-limited empirical catch rule to life-history
+> traits. ICES Journal of Marine Science, 77: 1914-1926.
 > <https://doi.org/10.1093/icesjms/fsaa054>.
 
 The [PA branch](https://github.com/shfischer/GA_MSE/tree/PA) (also
@@ -40,8 +40,9 @@ ICES precautionary approach (PA) and contains the code for the
 publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
-> (in press). Application of explicit precautionary principles in
+> (2021). Application of explicit precautionary principles in
 > data-limited fisheries management. ICES Journal of Marine Science.
+> 12pp. <https://doi.org/10.1093/icesjms/fsab169>.
 
 ## Repository structure
 
