@@ -20,7 +20,7 @@ during the Workshop on development of MSE algorithms with R/FLR/a4a
 ([Jardim et al.,
 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
-The master branch contains the code for the open access publication:
+The master branch contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Using a genetic algorithm to optimise a data-limited catch
@@ -32,8 +32,9 @@ risk limits for the ICES precautionary approach (PA) and contains the
 code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
-> (in press). Application of explicit precautionary principles in
+> (2021). Application of explicit precautionary principles in
 > data-limited fisheries management. ICES Journal of Marine Science.
+> 12pp. <https://doi.org/10.1093/icesjms/fsab169>.
 
 The operating models provided as an input are those from the repository
 [shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
