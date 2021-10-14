@@ -195,7 +195,8 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
     }
     
     ### calculate stats
-    stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs,
+    stat_yrs_calc <- "more"
+    stats <- mp_stats(input = input, res_mp = res_mp, stat_yrs = stat_yrs_calc,
                       collapse_correction = collapse_correction)
     
     ### add existing results for stock groups
@@ -260,7 +261,7 @@ mp_fitness <- function(params, inp_file, path, check_file = FALSE,
                              steepness = 0.5e+3))
   }
   ### MSY target but replace risk with PA objective
-    if (isTRUE(obj_ICES_MSYPA)) {
+  if (isTRUE(obj_ICES_MSYPA)) {
     obj <- obj - sum(abs(unlist(SSB_rel) - 1)) -
       sum(abs(unlist(Catch_rel) - 1)) -
       sum(unlist(ICV)) -

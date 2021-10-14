@@ -3,16 +3,20 @@
 ### run MSE ####
 ### ------------------------------------------------------------------------ ###
 
+### ------------------------------------------------------------------------ ###
+### arguments ####
+### ------------------------------------------------------------------------ ###
+
 args <- commandArgs(TRUE)
 print("arguments passed on to this script:")
 print(args)
 
-### evaluate arguments passed to R
-for (i in seq_along(args)) eval(parse(text = args[[i]]))
-
 ### evaluate arguments, if they are passed to R:
 if (length(args) > 0) {
   
+  ### extract arguments
+for (i in seq_along(args)) eval(parse(text = args[[i]]))
+  ### set default arguments
   ### parallelization
   if (!exists("use_MPI")) use_MPI <- FALSE
   if (!exists("n_blocks")) n_blocks <- 1
@@ -66,6 +70,7 @@ if (length(args) > 0) {
     if (!exists("maxiter")) stop("maxiter missing")
     if (!exists("stock_id")) stop("stock_id missing")
     if (!exists("run")) run <- maxiter
+    if (!exists("collate")) collate <- TRUE
     ### objective function elements
     if (!exists("obj_SSB")) obj_SSB <- TRUE
     if (!exists("obj_F")) obj_F <- FALSE
@@ -78,7 +83,12 @@ if (length(args) > 0) {
     if (!exists("risk_threshold")) risk_threshold <- 0.05
     ### GA
     if (!exists("add_suggestions")) add_suggestions <- FALSE
+    if (!exists("stat_yrs")) stat_yrs <- "all"
   }
+
+} else {
+  
+  stop("no argument passed to R")
 
 }
 
@@ -87,6 +97,9 @@ if (length(args) > 0) {
 ### ------------------------------------------------------------------------ ###
 
 ### load packages
+### GA fork from GitHub remotes::install_github("shfischer/GA")
+### use mse fork from shfischer/mse, branch mseDL2.0 
+### remotes::install_github("shfischer/mse", ref = "mseDL2.0)
 req_pckgs <- c("mse", "tidyr", "dplyr", "doParallel", "GA", "doRNG")
 for (i in req_pckgs) library(package = i, character.only = TRUE)
 
