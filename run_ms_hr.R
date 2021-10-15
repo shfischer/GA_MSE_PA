@@ -56,6 +56,8 @@ for (i in seq_along(args)) eval(parse(text = args[[i]]))
   ### recruitment variability
   if (!exists("sigmaR")) sigmaR <- 0.6
   if (!exists("sigmaR_rho")) sigmaR_rho <- 0.0
+  ### recruitment steepness
+  if (!exists("steepness")) steepness <- 0.75
   
   ### what to save
   if (!exists("check_file")) check_file <- TRUE
@@ -218,7 +220,8 @@ if (isFALSE(ga_search)) {
                           sigmaL = sigmaL,
                           sigmaB = sigmaB,
                           sigmaR = sigmaR,
-                          sigmaR_rho = sigmaR_rho)
+                          sigmaR_rho = sigmaR_rho,
+                          steepness = steepness)
   
   ### ---------------------------------------------------------------------- ###
   ### go through runs ####
@@ -235,14 +238,14 @@ if (isFALSE(ga_search)) {
     par_i <- hr_params[hr_i, ]
     
     input_i <- hr_par(input = input[[1]], lhist = lhist,
-                    hr = hr, hr_ref = hr_ref, 
-                    multiplier = par_i$multiplier,
-                    comp_b = par_i$comp_b, idxB_lag = par_i$idxB_lag, 
-                    idxB_range_3 = par_i$idxB_range_3,
-                    interval = par_i$interval, 
-                    upper_constraint = par_i$upper_constraint,
-                    lower_constraint = par_i$lower_constraint,
-                    cap_below_b = cap_below_b)
+                      hr = hr, hr_ref = hr_ref, 
+                      multiplier = par_i$multiplier,
+                      comp_b = par_i$comp_b, idxB_lag = par_i$idxB_lag, 
+                      idxB_range_3 = par_i$idxB_range_3,
+                      interval = par_i$interval, 
+                      upper_constraint = par_i$upper_constraint,
+                      lower_constraint = par_i$lower_constraint,
+                      cap_below_b = cap_below_b)
     
     ## --------------------------------------------------------------------- ###
     ## observation uncertainty ####
@@ -328,6 +331,26 @@ if (isFALSE(ga_search)) {
       
     }
     
+    ### -------------------------------------------------------------------- ###
+    ### recruitment steepness ####
+    ### -------------------------------------------------------------------- ###
+    steepness_i <- par_i$steepness
+    if (steepness_i != 0.75) {
+      
+      ### load brp
+      brps <- readRDS("input/brps.rds")
+      brp <- brps[[stock]]
+      
+      ### calculate new recruitment model parameters with new steepness
+      alpha <- (4*steepness_i*c(refpts(brp)["virgin", "rec"])) /
+        (5*steepness_i - 1)
+      beta <- (c(refpts(brp)["virgin", "ssb"]) * (1 - steepness_i)) /
+        (5*steepness_i - 1)
+      
+      ### insert values
+      params(input_i$om@sr)[] <- c(alpha, beta)
+      
+    }
     
     ### -------------------------------------------------------------------- ###
     ### paths ####
@@ -337,7 +360,7 @@ if (isFALSE(ga_search)) {
                          par_i$idxB_range_3, par_i$interval, 
                          par_i$upper_constraint, par_i$lower_constraint,
                          par_i$sigmaL, par_i$sigmaB, par_i$sigmaR, 
-                         par_i$sigmaR_rho), 
+                         par_i$sigmaR_rho, par_i$steepness), 
                        collapse = "_")
     path_out <- paste0("output/hr/", n_iter, "_", n_yrs, "/", scenario, "/",
                        fhist, "/", paste0(stock, collapse = "_"), "/")
@@ -393,7 +416,8 @@ if (isFALSE(ga_search)) {
       paste0(stock, collapse = "_"), "/",
       "collated_stats_", hr, "_", 
       paste0(apply(hr_params, 2, function(x) {
-        ifelse(isTRUE(length(unique(x)) > 1), paste0(range(x), collapse = "-"), x[1])
+        ifelse(isTRUE(length(unique(x)) > 1), paste0(range(x), collapse = "-"),
+               x[1])
       }), collapse = "_"), ".rds"))
     
   }
