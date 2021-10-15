@@ -1978,7 +1978,8 @@ df_sens <- bind_rows(df_stats_idx_lngth, df_stats_rec, df_stats_status,
 df_blank <- data.frame(name = rep(c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk"),
                                   each = 2),
                        x = c(0, 1, 0, 1, 0, 1),
-                       value = c(0, 1.8, 0, 1.4, 0, 1))
+                       value = c(0, 1.8, 0, 1.4, 0, 1),
+                       fhist = NA)
 
 p_sens_rec <- df_sens %>%
   filter(sensitivity == "rec") %>%
@@ -2413,30 +2414,210 @@ ggsave(filename = "output/plots/hr_GA_stocks_optimised.pdf",
 ### ------------------------------------------------------------------------ ###
 
 ### load results from previous simulations
-stats_rfb_PA <- readRDS("../wklife9_GA_tmp/output/all_stocks_PA_stats.rds")
-stats_rfb_MSY <- readRDS("../wklife9_GA_tmp/output/all_stocks_MSY_stats.rds")
-stats_2over3 <- readRDS("../wklife9_GA_tmp/output/all_stocks_MSY_stats.rds")
+stats_rfb <- readRDS("../wklife9_GA_tmp/output/all_stocks_GA_optimised_stats.rds")
+stats_2over3 <- readRDS("../wklife9_GA_tmp/output/all_stocks_2over_stats.rds")
 ### load HR results
 stats_hr <- readRDS("output/hr_GA_all_stocks_stats.rds")
 
 ### combine all results
 stats_all_rules <- bind_rows(
-  stats_rfb_PA %>%
+  stats_rfb %>%
     select(obj_fun, fhist, scenario, optimised, stock,
            lag_idx, range_idx_1, range_idx_2, range_catch, exp_r, exp_f, exp_b,
            interval, multiplier, upper_constraint, lower_constraint, 
-           fitness, iter, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV) %>% View()
-  
-  stats_rfb_MSY %>%
-    select(obj_fun, fhist, scenario, optimised, stock,
-           lag_idx, range_idx_1, range_idx_2, range_catch, exp_r, exp_f, exp_b,
-           interval, multiplier, upper_constraint, lower_constraint, 
-           fitness, iter, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV) %>%
-    mutate(rule = "rfb", obj_fun = "MSY")
-  
-  mutate()
-  
+           fitness, iter, 
+           risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV) %>%
+    filter(optimised %in% c("zero-fishing", "default", "mult", "all", 
+                            "all_cap")) %>%
+    filter(!(scenario == "PA" &	optimised == "all")) %>%
+    mutate(catch_rule = ifelse(optimised == "zero-fishing", 
+                               "zero-fishing", "rfb")) %>%
+    mutate(optimised = ifelse(optimised %in% c("all", "all_cap"), 
+                              "all", optimised)) %>%
+    mutate(scenario = ifelse(scenario == "PA", "MSY-PA", scenario)),
+  stats_2over3 %>%
+    mutate(scenario = ifelse(scenario == "PA", "MSY-PA", scenario)),
+  stats_hr %>%
+    mutate(parameters = as.character(parameters)) %>%
+    mutate(parameters = ifelse(optimised == FALSE, "default", parameters)) %>%
+    mutate(parameters = ifelse(parameters == "multiplier", "mult", parameters)) %>%
+    mutate(optimised = parameters, scenario = objective) %>%
+    unique()
 )
+
+### recreate fitness components
+stats_all_rules <- stats_all_rules %>%
+  mutate(
+    comp_Catch = Catch_rel - 1,
+    comp_SSB = SSB_rel - 1,
+    comp_ICV = ICV,
+    comp_risk = ifelse(scenario != "MSY", NA, risk_Blim),
+    comp_risk_penalty = ifelse(scenario != "MSY-PA", NA,
+      penalty(x = risk_Blim, negative = FALSE, max = 5, 
+              inflection = 0.06, steepness = 0.5e+3))) %>%
+  pivot_longer(c(comp_SSB, comp_Catch, comp_ICV, comp_risk, comp_risk_penalty),
+               names_prefix = "comp_") %>% 
+  mutate(name = factor(name,
+                       levels = rev(c("SSB", "Catch", "ICV", "risk",
+                                      "risk_penalty")),
+                       labels = rev(c("SSB", "Catch", "ICV", "risk",
+                                      "risk penalty")))) %>%
+  mutate(optimised = ifelse(catch_rule == "zero-fishing", "", optimised),
+         optimised = ifelse(catch_rule == "zero-fishing", "", optimised)) %>%
+  mutate(optimised = factor(optimised, 
+                            levels = c("", "default", "mult", "all"),
+                            labels = c("", "default", "optimised (multiplier)",
+                                       "optimised (all)"))) %>%
+  mutate(catch_rule = factor(catch_rule, 
+                             levels = c("zero-fishing", "2 over 3", "rfb", 
+                                        "hr")))
+### deviations from objective (for SSB and Catch)
+stats_all_rules_dev <- stats_all_rules %>%
+  filter(name %in% c("SSB", "Catch")) %>%
+  mutate(value_sign = ifelse(name == "SSB",
+                             -abs(SSB_rel - 1)/2,
+                             -abs(SSB_rel - 1) - abs(Catch_rel - 1)/2)) %>%
+  mutate(sign = ifelse(name == "SSB",
+                       ifelse(SSB_rel >= 1, "+", "-"),
+                       ifelse(Catch_rel >= 1, "+", "-"))) %>%
+  filter(abs(value) >= 0.02)
+stats_all_rules <- stats_all_rules %>%
+  full_join(stats_all_rules_dev)
+
+
+plots <- foreach(stock = stocks$stock, 
+                 .final = function(x) {setNames(x, stocks$stock)}) %do% {
+  
+  p_title <- bquote(bold(.(stocks$common_name[stocks$stock == stock]))~(.(stock)*","~italic(k)==.(stocks$k[stocks$stock == stock])*phantom(i)*year^-1))
+  
+  df_i <- stats_all_rules %>%
+    mutate(value = -abs(value)) %>%
+    filter(stock == !!stock) %>%
+    mutate(catch_rule_numeric = as.numeric(catch_rule))
+  
+  df_i_zero_2over3 <- df_i %>%
+    filter(catch_rule %in% c("zero-fishing", "2 over 3"))
+  df_i_opt_default <- df_i %>%
+    filter(catch_rule %in% c("rfb", "hr") &
+             optimised == "default") %>%
+    mutate(catch_rule_numeric = catch_rule_numeric - 0.235)
+  df_i_opt_mult <- df_i %>%
+    filter(catch_rule %in% c("rfb", "hr") &
+             optimised == "optimised (multiplier)") %>%
+    mutate(catch_rule_numeric = catch_rule_numeric + 0)
+  df_i_opt_all <- df_i %>%
+    filter(catch_rule %in% c("rfb", "hr") &
+             optimised == "optimised (all)") %>%
+    mutate(catch_rule_numeric = catch_rule_numeric + 0.235)
+  
+  p <- ggplot() +
+    geom_col(data = df_i_zero_2over3,
+             aes(x = catch_rule_numeric, y = value, group = optimised, 
+                 fill = name),
+             position = position_stack(), width = 0.22) +
+    geom_col(data = df_i_opt_default,
+             aes(x = catch_rule_numeric, y = value, group = optimised, 
+                 fill = name),
+             position = position_stack(), width = 0.22) +
+    geom_col(data = df_i_opt_mult,
+             aes(x = catch_rule_numeric, y = value, group = optimised, 
+                 fill = name),
+             position = position_stack(), width = 0.22) +
+    geom_col(data = df_i_opt_all,
+             aes(x = catch_rule_numeric, y = value, group = optimised, 
+                 fill = name),
+             position = position_stack(), width = 0.22) +
+    
+    geom_text(data = df_i_zero_2over3,
+             aes(x = catch_rule_numeric, y = value_sign, 
+                 label = sign), 
+             vjust = 0.5, colour = "grey20", size = 2.75) +
+    geom_text(data = df_i_opt_default,
+             aes(x = catch_rule_numeric, y = value_sign, 
+                 label = sign), 
+             vjust = 0.5, colour = "grey20", size = 2.75) +
+    geom_text(data = df_i_opt_mult,
+             aes(x = catch_rule_numeric, y = value_sign, 
+                 label = sign), 
+             vjust = 0.5, colour = "grey20", size = 2.75) +
+    geom_text(data = df_i_opt_all, 
+             aes(x = catch_rule_numeric, y = value_sign, 
+                 label = sign), 
+             vjust = 0.5, colour = "grey20", size = 2.75) +
+    # geom_text(data = pol_GA_plot_dev,
+    #           aes(x = parameters, y = value_sign, label = sign), 
+    #           vjust = 0.5, colour = "grey20") +
+    facet_grid(scenario ~ fhist) +
+    scale_x_continuous(breaks = c(1, 2, 2.765, 3, 3.235, 3.765, 4, 4.235), 
+                       minor_breaks = NULL, 
+                       labels = c("zero-fishing", "2 over 3", 
+                                  "rfb: default", "rfb: multiplier", "rfb: all",
+                                  "hr: default", "hr: multiplier", "hr: all")
+                       ) +
+    scale_fill_manual("fitness\nelements", 
+                      values = brewer.pal(n = 5, name = "Dark2"),
+                      breaks = (c("SSB", "Catch", "ICV", "risk", 
+                                     "risk penalty"))) +
+    labs(y = "fitness", x = "", title = p_title) +
+    theme_bw(base_size = 8) +
+    theme(#plot.title = element_text(hjust = 0.5),
+          axis.title.x = element_blank(),
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+  return(p)
+}
+
+#plots$pol
+#plots$ang3
+
+### combine some plots
+plot_grid(plots$ang3 +
+            ylim(c(-8, 0)) +
+            theme(axis.text.x = element_blank(),
+                  axis.ticks.x = element_blank(),
+                  strip.text.y = element_blank(),
+                  legend.position = "none"), 
+          plots$pol +
+            ylim(c(-8, 0)) +
+            theme(axis.text.x = element_blank(),
+                  axis.ticks.x = element_blank(),
+                  axis.title.y = element_blank(),
+                  legend.position = "none"), 
+          get_legend(plots$pol +
+                       theme(legend.key.width = unit(0.5, "lines"),
+                             legend.key.height = unit(1, "lines"))),
+          plots$tur +
+            ylim(c(-8, 0)) +
+            theme(strip.text.y = element_blank(),
+                  strip.text.x = element_blank(),
+                  legend.position = "none"), 
+          plots$san +
+            ylim(c(-8, 0)) +
+            theme(strip.text.x = element_blank(),
+                  axis.title.y = element_blank(),
+                  legend.position = "none"),
+          NULL,
+          nrow = 2, 
+          rel_widths = c(1, 1, 0.25),
+          rel_heights = c(1, 1.1))
+
+
+ggsave(filename = "output/plots/hr_rules_comparison.png", type = "cairo",
+       width = 17, height = 15, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/hr_rules_comparison.pdf",
+       width = 17, height = 15, units = "cm")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### ------------------------------------------------------------------------ ###
