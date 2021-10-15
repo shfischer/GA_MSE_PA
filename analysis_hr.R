@@ -1561,119 +1561,81 @@ Blim <- brp@Blim
 Bmsy <- c(refpts(brp)["msy", "ssb"])
 MSY <- c(refpts(brp)["msy", "yield"])
 
-
-### ------------------------------------------------------------------------ ###
-### sensitivity - stats over time ####
-### ------------------------------------------------------------------------ ###
-
-stats_time <- foreach(fhist = c("random", "one-way"),
+### stats over time ####
+stats_sens_time <- foreach(fhist = c("random", "one-way"),
                      .combine = rbind) %do% {
-  
+  #browser()
   res <- readRDS(paste0("output/hr/500_100/sensitivity/", fhist, 
                         "/pol/mp_length_1_TRUE_1_1_1_Inf_0.rds"))
-  
   ### collapse correction
   res_corrected <- collapse_correction(stk = res@stock, yrs = 101:200)
-  
   ### template
-  df_i <- data.frame(year = 1:100)
-  
+  tmp <- data.frame(year = 1:100)
   ### Blim risk
-  df_i$risk_cumulative <- sapply(1:100, function(x) {
+  tmp$risk_average <- sapply(1:100, function(x) {
     mean(c(res_corrected$ssb[, ac(seq(from = 101, length.out = x))] < Blim), 
          na.rm = TRUE)
   })
-  df_i$risk_annual <- c(apply(res_corrected$ssb < Blim, 2, mean, na.rm = TRUE))
-  
+  tmp$risk_annual <- c(apply(res_corrected$ssb < Blim, 2, mean, na.rm = TRUE))
   ### SSB
-  df_i$SSB_annual <- sapply(1:100, function(x) {
+  tmp$SSB_annual <- sapply(1:100, function(x) {
     median(c(res_corrected$ssb[, x]/Bmsy), na.rm = TRUE)
   })
-  df_i$SSB_cumulative <-  sapply(1:100, function(x) {
+  tmp$SSB_average <-  sapply(1:100, function(x) {
     median(c(res_corrected$ssb[, ac(seq(from = 101, length.out = x))]/Bmsy), 
            na.rm = TRUE)
   })
-  
   ### Catch
-  df_i$Catch_annual <- sapply(1:100, function(x) {
+  tmp$Catch_annual <- sapply(1:100, function(x) {
     median(c(res_corrected$catch[, x]/MSY), na.rm = TRUE)
   })
-  df_i$Catch_cumulative <-  sapply(1:100, function(x) {
+  tmp$Catch_average <-  sapply(1:100, function(x) {
     median(c(res_corrected$catch[, ac(seq(from = 101, length.out = x))]/MSY), 
            na.rm = TRUE)
   })
-  
-  df_i <- df_i %>%
-    pivot_longer(2:7, names_to = c(".value", "period"), names_sep = "_") %>%
-    mutate(fhist = !!fhist)
+  tmp <- tmp %>%
+    pivot_longer(2:7, names_to = c(".value", "period"), names_sep = "_")
+  ### full data.frame
+  df_i <- data.frame(
+    stock = "pol", multiplier = 1, comp_b = TRUE, idxB_lag = 1, 
+    idxB_range_3 = 1, interval = 1, upper_constraint = Inf, 
+    lower_constraint = 0, sigmaL = 0.2, sigmaB = 0.2, sigmaR = 0.6,
+    sigmaR_rho = 0,
+    risk_Blim = tmp$risk,
+    SSB_rel = tmp$SSB,
+    Catch_rel = tmp$Catch,
+    stat_metric = tmp$period,
+    fhist = fhist,
+    n_yrs = tmp$year,
+    n_iter = 10000,
+    steepness = 0.75,
+    sensitivity = "period") %>%
+    arrange(stat_metric, n_yrs)
   return(df_i)
 }
-saveRDS(stats_time, file = "output/hr_pol_sensitivity_time.rds")
-write.csv(stats_time, row.names = FALSE, 
-          file = "output/hr_pol_sensitivity_time.csv")
-stats_time <- readRDS("output/hr_pol_sensitivity_time.rds")
 
-p_time_ssb <- stats_time %>%
-  ggplot(aes(x = year, y = SSB, colour = fhist, linetype = period)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = "year", y = expression(SSB/B[MSY])) +
-  theme_bw(base_size = 8)
-p_time_catch <- stats_time %>%
-  ggplot(aes(x = year, y = Catch, colour = fhist, linetype = period)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = "year", y = expression(Catch/MSY)) +
-  theme_bw(base_size = 8)
-p_time_risk <- stats_time %>%
-  ggplot(aes(x = year, y = risk, colour = fhist, linetype = period)) +
-  geom_line(show.legend = TRUE) +
-  scale_colour_brewer("fishing history", palette = "Dark2") +
-  scale_linetype("") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = "year", y = expression(B[lim]~risk)) +
-  theme_bw(base_size = 8) +
-  theme(legend.position = c(0.7, 0.8),
-        legend.key.height = unit(0.8, "line"),
-        legend.key = element_blank(),
-        legend.background = element_blank())
-
-p_time <- plot_grid(p_time_ssb, p_time_catch, p_time_risk,
-                    ncol = 3, align = "hv")
-p_time
-
-### ------------------------------------------------------------------------ ###
-### sensitivity - stock status ####
-### ------------------------------------------------------------------------ ###
-
-stats_status <- foreach(fhist = c("random", "one-way"),
+### stock status
+stats_sens_status <- foreach(fhist = c("random", "one-way"),
                      .combine = rbind) %do% {
-  
+  #browser()
   res <- readRDS(paste0("output/hr/10000_50/sensitivity/", fhist, 
                         "/pol/mp_length_1_TRUE_1_1_1_Inf_0.rds"))
-  
   ### collapse correction
   res_corrected <- collapse_correction(stk = res@stock, yrs = 101:150)
-  
   ### starting condition
   SSBs0 <- ssb(res@stock)[, ac(100)]
   SSBs0 <- SSBs0/Bmsy
   SSBs0 <- c(SSBs0)
   SSB_breaks <- seq(from = 0, to = max(SSBs0), by = 0.1)
   SSB_groups <- cut(SSBs0, breaks = SSB_breaks)
-  
   SSB_levels <- unique(as.character(SSB_groups))
-  
-  ### number of replicates per group:
+  ### number of replicates per group
   group_n <- sapply(SSB_levels, function(x) {
     length(which(SSB_groups %in% x))
   })
-  group_n[sort(names(group_n))]
-  
+  # group_n[sort(names(group_n))]
   ### Blim risk per group
-  ### SSB is on absolut scale 
+  ### SSB is on absolute scale 
   risk_group <- sapply(SSB_levels, function(x) {
     tmp <- res_corrected$ssb[,,,,, which(SSB_groups %in% x)]
     mean(tmp < (Blim))
@@ -1688,7 +1650,6 @@ stats_status <- foreach(fhist = c("random", "one-way"),
     tmp <- res_corrected$catch[,,,,, which(SSB_groups %in% x)]/MSY
     median(tmp)
   })
-  
   ### get starting conditions
   SSB_levels <- sapply(SSB_levels, function(x) {
     x <- gsub(x = x, pattern = "\\(|\\]", replacement = "")
@@ -1696,320 +1657,129 @@ stats_status <- foreach(fhist = c("random", "one-way"),
     mean(as.numeric(x))
   })
   pos_remove <- which(is.na(SSB_levels))
-  
-  df_i <- data.frame(SSB0 = unlist(SSB_levels)[-pos_remove],
-                     SSB = unlist(SSB_group)[-pos_remove],
-                     Catch = unlist(Catch_group)[-pos_remove],
-                     risk = unlist(risk_group)[-pos_remove],
-                     fhist = fhist,
-                     iter = unlist(group_n)[-pos_remove])
+  df_i <- data.frame(
+    stock = "pol", multiplier = 1, comp_b = TRUE, idxB_lag = 1, 
+    idxB_range_3 = 1, interval = 1, upper_constraint = Inf, 
+    lower_constraint = 0, sigmaL = 0.2, sigmaB = 0.2, sigmaR = 0.6,
+    sigmaR_rho = 0,
+    risk_Blim = unlist(risk_group)[-pos_remove],
+    SSB_rel = unlist(SSB_group)[-pos_remove],
+    Catch_rel = unlist(Catch_group)[-pos_remove],
+    SSB0_rel = unlist(SSB_levels)[-pos_remove],
+    n_iter_part = unlist(group_n)[-pos_remove],
+    fhist = fhist,
+    n_yrs = 50,
+    n_iter = 10000,
+    steepness = 0.75,
+    sensitivity = "stock_status")
   row.names(df_i) <- NULL
-  
+  df_i <- df_i[order(df_i$SSB0_rel), ]
   return(df_i)
 }
-write.csv(stats_status, row.names = FALSE, 
-          file = "output/hr_pol_sensitivity_status.csv")
-saveRDS(stats_status, file = "output/hr_pol_sensitivity_status.rds")
-stats_status <- readRDS("output/hr_pol_sensitivity_status.rds")
 
-
-p_status_ssb <- stats_status %>%
-  filter(iter >= 200) %>%
-  ggplot(aes(x = SSB0, y = SSB, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, 1.5) + ylim(0, NA) +
-  labs(x = expression(SSB[y == 0]/B[MSY]), y = expression(SSB/B[MSY])) +
-  theme_bw(base_size = 8)
-p_status_catch <- stats_status %>%
-  filter(iter >= 200) %>%
-  ggplot(aes(x = SSB0, y = Catch, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, 1.5) + ylim(0, NA) +
-  labs(x = expression(SSB[y == 0]/B[MSY]), y = expression(Catch/MSY)) +
-  theme_bw(base_size = 8)
-p_status_risk <- stats_status %>%
-  filter(iter >= 200) %>%
-  ggplot(aes(x = SSB0, y = risk, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, 1.5) + ylim(0, NA) +
-  labs(x = expression(SSB[y == 0]/B[MSY]), y = expression(B[lim]~risk)) +
-  theme_bw(base_size = 8)
-
-p_status <- plot_grid(p_status_ssb, p_status_catch, p_status_risk,
-                      ncol = 3, align = "hv")
-p_status
-
-### ------------------------------------------------------------------------ ###
-### sensitivity - recruitment variability ####
-### ------------------------------------------------------------------------ ###
-
-stats_rec <- foreach(fhist = c("one-way", "random"), 
+### recruitment & observations
+stats_sens_more <- foreach(sensitivity = c("rec_var", "rec_steepness",
+                                           "obs_idx_sd",
+                                     "obs_lngth_sd", "obs_idx_lngth_sd"),
+                     .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), 
                      .combine = bind_rows) %do% {
-  tmp <- readRDS(
-    paste0("output/hr/500_50/sensitivity/", fhist, 
-           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds"))
+  #browser()
+  file_name <- switch(sensitivity,
+    "rec_var" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds",
+    "rec_steepness" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0_0-1.rds",
+    "obs_idx_sd" = "1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds",
+    "obs_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds",
+    "obs_idx_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds"
+  )
+  file_name <- paste0("collated_stats_length_", file_name)
+  tmp <- readRDS(paste0("output/hr/500_50/sensitivity/", fhist, "/pol/",
+                        file_name))
   tmp <- as.data.frame(lapply(tmp, unlist))
+  tmp$sensitivity <- sensitivity
   tmp$fhist <- fhist
   tmp$n_yrs <- 50
   tmp$n_iter <- 500
   return(tmp)
 }
-write.csv(stats_rec, row.names = FALSE, 
-          file = "output/hr_pol_sensitivity_rec.csv")
-saveRDS(stats_rec, file = "output/hr_pol_sensitivity_rec.rds")
-stats_rec <- readRDS("output/hr_pol_sensitivity_rec.rds")
 
-p_rec_ssb <- stats_rec %>%
-  ggplot(aes(x = sigmaR, y = SSB_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[R]), y = expression(SSB/B[MSY])) +
-  theme_bw(base_size = 8)
-p_rec_catch <- stats_rec %>%
-  ggplot(aes(x = sigmaR, y = Catch_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[R]), y = expression(Catch/MSY)) +
-  theme_bw(base_size = 8)
-p_rec_risk <- stats_rec %>%
-  ggplot(aes(x = sigmaR, y = risk_Blim, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[R]), y = expression(B[lim]~risk)) +
-  theme_bw(base_size = 8)
+### combine all sensitivity runs
+stats_sens <- bind_rows(stats_sens_more, stats_sens_status, stats_sens_time)
+saveRDS(stats_sens, "output/hr_pol_sensitivity.rds")
+write.csv(stats_sens, "output/hr_pol_sensitivity.csv", row.names = FALSE)
+stats_sens <- readRDS("output/hr_pol_sensitivity.rds")
 
-p_rec <- plot_grid(p_rec_ssb, p_rec_catch, p_rec_risk,
-                   ncol = 3, align = "hv")
-p_rec
-
-### ------------------------------------------------------------------------ ###
-### sensitivity - biomass index ####
-### ------------------------------------------------------------------------ ###
-
-stats_idx <- foreach(fhist = c("one-way", "random"), 
-                     .combine = bind_rows) %do% {
-  tmp <- readRDS(
-    paste0("output/hr/500_50/sensitivity/", fhist, 
-           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds"))
-  tmp <- as.data.frame(lapply(tmp, unlist))
-  tmp$fhist <- fhist
-  tmp$n_yrs <- 50
-  tmp$n_iter <- 500
-  return(tmp)
-}
-write.csv(stats_idx, row.names = FALSE, 
-          file = "output/hr_pol_sensitivity_idx.csv")
-saveRDS(stats_idx, file = "output/hr_pol_sensitivity_idx.rds")
-stats_idx <- readRDS("output/hr_pol_sensitivity_idx.rds")
-
-
-
-p_idx_ssb <- stats_idx %>%
-  ggplot(aes(x = sigmaB, y = SSB_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[B]), y = expression(SSB/B[MSY])) +
-  theme_bw(base_size = 8)
-p_idx_catch <- stats_idx %>%
-  ggplot(aes(x = sigmaB, y = Catch_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[B]), y = expression(Catch/MSY)) +
-  theme_bw(base_size = 8)
-p_idx_risk <- stats_idx %>%
-  ggplot(aes(x = sigmaB, y = risk_Blim, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[B]), y = expression(B[lim]~risk)) +
-  theme_bw(base_size = 8)
-
-p_idx <- plot_grid(p_idx_ssb, p_idx_catch, p_idx_risk,
-                   ncol = 3, align = "hv")
-p_idx
-
-### ------------------------------------------------------------------------ ###
-### sensitivity - length index ####
-### ------------------------------------------------------------------------ ###
-
-stats_lngth <- foreach(fhist = c("one-way", "random"), 
-                     .combine = bind_rows) %do% {
-  tmp <- readRDS(
-    paste0("output/hr/500_50/sensitivity/", fhist, 
-           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds"))
-  tmp <- as.data.frame(lapply(tmp, unlist))
-  tmp$fhist <- fhist
-  tmp$n_yrs <- 50
-  tmp$n_iter <- 500
-  return(tmp)
-}
-write.csv(stats_lngth, row.names = FALSE, 
-          file = "output/hr_pol_sensitivity_lngth.csv")
-saveRDS(stats_lngth, file = "output/hr_pol_sensitivity_lngth.rds")
-stats_lngth <- readRDS("output/hr_pol_sensitivity_lngth.rds")
-
-
-
-p_lngth_ssb <- stats_lngth %>%
-  ggplot(aes(x = sigmaL, y = SSB_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[L]), y = expression(SSB/B[MSY])) +
-  theme_bw(base_size = 8)
-p_lngth_catch <- stats_lngth %>%
-  ggplot(aes(x = sigmaL, y = Catch_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[L]), y = expression(Catch/MSY)) +
-  theme_bw(base_size = 8)
-p_lngth_risk <- stats_lngth %>%
-  ggplot(aes(x = sigmaL, y = risk_Blim, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[L]), y = expression(B[lim]~risk)) +
-  theme_bw(base_size = 8)
-
-p_lngth <- plot_grid(p_lngth_ssb, p_lngth_catch, p_lngth_risk,
-                   ncol = 3, align = "hv")
-p_lngth
-
-### ------------------------------------------------------------------------ ###
-### sensitivity - length & biomass index ####
-### ------------------------------------------------------------------------ ###
-
-stats_idx_lngth <- foreach(fhist = c("one-way", "random"), 
-                       .combine = bind_rows) %do% {
-  tmp <- readRDS(
-    paste0("output/hr/500_50/sensitivity/", fhist, 
-           "/pol/collated_stats_length_1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds"))
-  tmp <- as.data.frame(lapply(tmp, unlist))
-  tmp$fhist <- fhist
-  tmp$n_yrs <- 50
-  tmp$n_iter <- 500
-  return(tmp)
-}
-write.csv(stats_idx_lngth, row.names = FALSE, 
-          file = "output/hr_pol_sensitivity_lngth.csv")
-saveRDS(stats_idx_lngth, file = "output/hr_pol_sensitivity_idx_lngth.rds")
-stats_idx_lngth <- readRDS("output/hr_pol_sensitivity_idx_lngth.rds")
-
-p_idx_lngth_ssb <- stats_idx_lngth %>%
-  ggplot(aes(x = sigmaB, y = SSB_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[L]~"&"~sigma[B]), y = expression(SSB/B[MSY])) +
-  theme_bw(base_size = 8)
-p_idx_lngth_catch <- stats_idx_lngth %>%
-  ggplot(aes(x = sigmaB, y = Catch_rel, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[L]~"&"~sigma[B]), y = expression(Catch/MSY)) +
-  theme_bw(base_size = 8)
-p_idx_lngth_risk <- stats_idx_lngth %>%
-  ggplot(aes(x = sigmaB, y = risk_Blim, colour = fhist)) +
-  geom_line(show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2") +
-  xlim(0, NA) + ylim(0, NA) +
-  labs(x = expression(sigma[L]~"&"~sigma[B]), y = expression(B[lim]~risk)) +
-  theme_bw(base_size = 8)
-
-p_idx_lngth <- plot_grid(p_idx_lngth_ssb, p_idx_lngth_catch, p_idx_lngth_risk,
-                     ncol = 3, align = "hv")
-p_idx_lngth
-
-### ------------------------------------------------------------------------ ###
-### combine sensitivity plots ####
-### ------------------------------------------------------------------------ ###
-df_stats_idx_lngth <- stats_idx_lngth %>% 
-  select(fhist, sigmaB, SSB_rel, Catch_rel, risk_Blim) %>%
-  rename(x = sigmaB, SSB = SSB_rel, Catch = Catch_rel, risk = risk_Blim) %>%
-  mutate(sensitivity = "obs") %>%
-  pivot_longer(c(SSB, Catch, risk))
-df_stats_rec <- stats_rec %>% 
-  select(fhist, sigmaR, SSB_rel, Catch_rel, risk_Blim) %>%
-  rename(x = sigmaR, SSB = SSB_rel, Catch = Catch_rel, risk = risk_Blim) %>%
-  mutate(sensitivity = "rec") %>%
-  pivot_longer(c(SSB, Catch, risk))
-df_stats_status <- stats_status %>%
-  filter(SSB0 <= 2) %>% ### remove SSB/Bmsy>2
-  rename(x = SSB0) %>%
-  mutate(sensitivity = "stock_status") %>%
-  select(-iter) %>%
-  pivot_longer(c(SSB, Catch, risk))
-df_stats_time <- stats_time %>%
-  filter(period == "cumulative") %>%
-  rename(x = year) %>%
-  mutate(sensitivity = "period") %>%
-  pivot_longer(c(SSB, Catch, risk))
-
-df_sens <- bind_rows(df_stats_idx_lngth, df_stats_rec, df_stats_status,
-                     df_stats_time) %>%
-  mutate(period = ifelse(is.na(period), "annual", period)) %>%
-  mutate(label_top = factor(sensitivity, 
-                            levels = c("rec", "obs", "stock_status", "period"), 
-                            labels = c("recruitment~variability", 
-                                       "observation~uncertainty",
-                                       "initial~stock~status",
-                                       "projection~period"))) %>%
-  mutate(label_bottom = factor(sensitivity, 
-                            levels = c("rec", "obs", "stock_status", "period"), 
-                            labels = c("sigma[R]", 
-                                       "sigma[obs]",
-                                       "SSB[y==0]/B[MSY]",
-                                       "years"))) %>%
-  mutate(name = factor(name, levels = c("SSB", "Catch", "risk"),
-                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk"))) %>%
-  mutate(value = ifelse(sensitivity == "stock_status" & fhist == "one-way",
-                        NA, value))
-
+### plot sensitivity analysis
+stats_sens_plot <- stats_sens %>%
+  pivot_longer(c(risk_Blim, SSB_rel, Catch_rel)) %>%
+  mutate(name = factor(name, levels = c("SSB_rel", "Catch_rel", "risk_Blim"),
+                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk")))
 df_blank <- data.frame(name = rep(c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk"),
                                   each = 2),
                        x = c(0, 1, 0, 1, 0, 1),
                        value = c(0, 1.8, 0, 1.4, 0, 1),
                        fhist = NA)
-
-p_sens_rec <- df_sens %>%
-  filter(sensitivity == "rec") %>%
-  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+p_sens_rec <- stats_sens_plot %>%
+  filter(sensitivity == "rec_var") %>%
+  ggplot(aes(x = sigmaR, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
+  geom_vline(xintercept = 0.6, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
-  geom_blank(data = df_blank) +
-  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "recruitment~variability", scales = "free", 
+             labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Dark2") +
-  scale_fill_brewer("", palette = "Dark2") +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_fill_brewer("", palette = "Set1") +
   labs(x = expression(sigma[R])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
+        strip.text.y = element_text(size = 8),
         strip.background.y = element_blank(),
-        axis.title.y = element_blank(), 
+        axis.title.y = element_blank(),
         strip.switch.pad.grid = unit(0, "pt"),
         plot.margin = unit(c(4, 2, 4, 4), "pt"))
-p_sens_obs <- df_sens %>%
-  filter(sensitivity == "obs") %>%
-  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+p_sens_rec_steepness <- stats_sens_plot %>%
+  filter(sensitivity == "rec_steepness" &
+           steepness > 0.2) %>%
+  ggplot(aes(x = steepness, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
+  geom_vline(xintercept = 0.75, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
-  geom_blank(data = df_blank) +
-  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "recruitment~steepness", scales = "free", 
+             labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Dark2") +
-  scale_fill_brewer("", palette = "Dark2") +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_fill_brewer("", palette = "Set1") +
+  labs(x = expression(italic(h))) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.text.y = element_blank(),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(4, 2, 4, 0), "pt"))
+p_sens_obs <- stats_sens_plot %>%
+  filter(sensitivity == "obs_idx_sd") %>%
+  ggplot(aes(x = sigmaB, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
+  geom_vline(xintercept = 0.2, size = 0.4, colour = "grey") +
+  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
+              show.legend = FALSE) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "observation~uncertainty", scales = "free", 
+             labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_fill_brewer("", palette = "Set1") +
   labs(x = expression(sigma[obs])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
@@ -2020,17 +1790,20 @@ p_sens_obs <- df_sens %>%
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
         plot.margin = unit(c(4, 2, 4, 0), "pt"))
-p_sens_status <- df_sens %>%
-  filter(sensitivity == "stock_status") %>%
-  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+p_sens_status <- stats_sens_plot %>%
+  filter(sensitivity == "stock_status" &
+           fhist == "random" &
+           SSB0_rel <= 2) %>%
+  ggplot(aes(x = SSB0_rel, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
   stat_smooth(n = 50, span = 0.4, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
-  geom_blank(data = df_blank) +
-  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "stock~status", scales = "free", labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Dark2") +
-  scale_fill_brewer("", palette = "Dark2") +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_fill_brewer("", palette = "Set1") +
   labs(x = expression(SSB[y == 0]/B[MSY])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
@@ -2043,16 +1816,20 @@ p_sens_status <- df_sens %>%
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
         plot.margin = unit(c(4, 2, 4, 0), "pt"))
-p_sens_period <- df_sens %>%
-  filter(sensitivity == "period") %>%
-  ggplot(aes(x = x, y = value, fill = fhist, colour = fhist, linetype = fhist)) +
+p_sens_period <- stats_sens_plot %>%
+  filter(sensitivity == "period" &
+           stat_metric == "average") %>%
+  ggplot(aes(x = n_yrs, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
+  geom_vline(xintercept = 50, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.1, se = FALSE, geom = "line", size = 0.4) + 
   geom_point(size = 0.3, stroke = 0, shape = 21) +
-  geom_blank(data = df_blank) +
-  facet_grid(name ~ label_top, scales = "free", labeller = "label_parsed",
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "projection~time", scales = "free", 
+             labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("fishing history", palette = "Dark2") +
-  scale_fill_brewer("fishing history", palette = "Dark2") +
+  scale_colour_brewer("fishing history", palette = "Set1") +
+  scale_fill_brewer("fishing history", palette = "Set1") +
   scale_linetype("fishing history") +
   labs(x = "years") +
   theme_bw(base_size = 8) +
@@ -2069,8 +1846,9 @@ p_sens_period <- df_sens %>%
         legend.key.height = unit(0.6, "lines"),
         legend.key = element_blank())
 
-plot_grid(p_sens_rec, p_sens_obs, p_sens_status, p_sens_period, 
-          nrow = 1, rel_widths = c(1.2, 1, 1, 1), align = "h")
+plot_grid(p_sens_rec, p_sens_rec_steepness, p_sens_obs, p_sens_status,
+          p_sens_period, 
+          nrow = 1, rel_widths = c(1.2, 1, 1, 1, 1), align = "h")
 
 ggsave(filename = "output/plots/hr_sensitivity_stats.png", type = "cairo",
        width = 17, height = 12, units = "cm", dpi = 600)
