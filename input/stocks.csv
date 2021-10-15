@@ -1,22 +1,22 @@
 ﻿seq,scientific_name,common_name,area,stock,stock_old,sex,a,b,linf,l50,a50,t0,k
-1,Lophius budegassa,Black anglerfish,Celtic Seas,ang3,ang-78ab_2,F,0.0259,2.858,110.1,54.8,9,0.39,0.08
+1,Lophius budegassa,Blackbellied angler,Celtic Seas,ang3,ang-78ab_2,F,0.0259,2.858,110.1,54.8,9,0.39,0.08
 2,Raja clavata,Thornback ray,Celtic Seas,rjc2,rjc.27.afg,F,0.0024,3.2653,139.5,71.8,6.13,-1.84,0.09
-3,Sebastes norvegicus,Rose fish,Northern,smn,smn-con,C,0.0178,2.972,50.2,40.3,NA,0.08,0.11
-4,Anarchias lupus,Wolffish,North Sea,wlf,anarchias_lupus,F,0.0046,3.185,115.1,21.5,3.8,-0.39,0.11
+3,Sebastes norvegicus,Golden redfish,Northern,smn,smn-con,C,0.0178,2.972,50.2,40.3,NA,0.08,0.11
+4,Anarchias lupus,Atlantic wolffish,North Sea,wlf,anarchias_lupus,F,0.0046,3.185,115.1,21.5,3.8,-0.39,0.11
 5,Lepidorhombus whiffiagonis,Megrim,North Sea,meg,meg-4a6a,C,0.0022,3.3433,54,23,3,NA,0.12
 6,Molva molva,Ling,Widely,lin,lin-comb,C,0.0036,3.108,119,74,7.2,NA,0.14
 7,Raja clavata,Thornback ray,North Sea,rjc,rjc.27.347d,F,0.0045,3.0686,118,77.1,NA,-0.88,0.14
-8,Scyliorhinus canicula,Lesserspotted dogfish,Celtic Seas,syc,syc27.67,F,0.0019,3.1541,75.14,57,7.9,-0.96,0.15
+8,Scyliorhinus canicula,Lesser spotted dogfish,Celtic Seas,syc,syc27.67,F,0.0019,3.1541,75.14,57,7.9,-0.96,0.15
 9,Mustelus asterias,Starry smooth-hound,Widely,sdv,sdv.27.nea,F,0.001,3.27,123.5,81.9,NA,NA,0.15
-10,Lophius piscatorius,White anglerfish,Celtic Seas,ang,ang-78ab,C,0.0198,2.895,105.555,73,NA,-0.38,0.18
-11,Lophius piscatorius,White anglerfish,North Sea,ang2,ang-ivvi,C,0.0297,2.841,106,61,NA,NA,0.18
+10,Lophius piscatorius,Angler,Celtic Seas,ang,ang-78ab,C,0.0198,2.895,105.555,73,NA,-0.38,0.18
+11,Lophius piscatorius,Angler,North Sea,ang2,ang-ivvi,C,0.0297,2.841,106,61,NA,NA,0.18
 12,Pollachius pollachius,Pollack,North Sea,pol,pol-nsea,C,0.0076,3.069,85.6,47.1,NA,NA,0.19
 13,Melanogrammus aeglefinus,Haddock,Celtic Seas,had,had-iris,C,0.0113,2.96,79.9,NA,2,-0.36,0.2
-14,Nephrops,Shellfish,Biscay-Iberia,nep,nep-2829,M,0.00028,3.229,70,28.4,NA,NA,0.2
-15,Mullus surmuletus,Red mullet,Celtic Seas,mut,mut-comb,F,0.0057,3.243,47.5,16.9,NA,NA,0.21
-16,Spondyliosoma cantharus,Black sea-bream,Celtic Seas,sbb,spondyliosoma_cantharus,F,0.0148,3.004,41.25,22,NA,-1.16,0.22
-17,Pleuronectes platessa,Plaice,Celtic Seas,ple,ple-celt,F,0.011,2.958,48,22.9,NA,NA,0.23
-18,Scyliorhinus canicula,Lesserspotted dogfish,Biscay-Iberia,syc2,syc27.8c,F,0.0022,3.119,66.2,59.1,NA,-0.71,0.23
+14,Nephrops,Norway lobster,Biscay-Iberia,nep,nep-2829,M,0.00028,3.229,70,28.4,NA,NA,0.2
+15,Mullus surmuletus,Striped red mullet,Celtic Seas,mut,mut-comb,F,0.0057,3.243,47.5,16.9,NA,NA,0.21
+16,Spondyliosoma cantharus,Black seabream,Celtic Seas,sbb,spondyliosoma_cantharus,F,0.0148,3.004,41.25,22,NA,-1.16,0.22
+17,Pleuronectes platessa,European plaice,Celtic Seas,ple,ple-celt,F,0.011,2.958,48,22.9,NA,NA,0.23
+18,Scyliorhinus canicula,Lesser spotted dogfish,Biscay-Iberia,syc2,syc27.8c,F,0.0022,3.119,66.2,59.1,NA,-0.71,0.23
 19,Argentina silus,Greater argentine,Widely,arg,arg-comb-ex5.,C,0.005,3.075,44,38,8.2,NA,0.23
 20,Scopthalmus maximus,Turbot,North Sea,tur,tur-nsea,F,0.0149,3.079,66.7,34.2,2.2,0.29,0.32
 21,Chelidonichtys lucerna,Tub gurnard,Celtic Seas,gut,chelidonichtys_lucerna,F,0.0043,3.21,66.8,40.1,NA,-0.46,0.32
@@ -25,6 +25,6 @@
 24,Microstomus kitt,Lemon sole,North Sea,lem,lem-nsea,C,0.0123,2.971,37,27,NA,NA,0.42
 25,Engraulis encrasicolus,Anchovy,Biscay-Iberia,ane,ane-pore,C,0.005,3.107,23,16.8,NA,NA,0.44
 26,Zeus faber,John Dory,Celtic Seas,jnd,zeus_faber,F,0.0399,2.754,50.8,34.5,NA,-1.47,0.47
-27,Sardina pilchardus,Pilchard,Celtic Seas,sar,sardina_pilchardus,C,0.0053,3.162,22,14.3,NA,NA,0.6
+27,Sardina pilchardus,European pilchard,Celtic Seas,sar,sardina_pilchardus,C,0.0053,3.162,22,14.3,NA,NA,0.6
 28,Clupea harengus,Herring,Celtic Seas,her,her-nis,F,0.0048,3.198,33,23,NA,NA,0.606
 29,Ammodytes spp.,Sandeels,North Sea,san,san-ns4,C,0.0049,2.783,24,12,NA,NA,1
