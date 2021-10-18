@@ -1800,7 +1800,8 @@ p_sens_status <- stats_sens_plot %>%
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "stock~status", scales = "free", labeller = "label_parsed",
+  facet_grid(name ~ "initial~stock~status", scales = "free",
+             labeller = "label_parsed",
              switch = "y") +
   scale_colour_brewer("", palette = "Set1") +
   scale_fill_brewer("", palette = "Set1") +
@@ -1851,9 +1852,9 @@ plot_grid(p_sens_rec, p_sens_rec_steepness, p_sens_obs, p_sens_status,
           nrow = 1, rel_widths = c(1.2, 1, 1, 1, 1), align = "h")
 
 ggsave(filename = "output/plots/hr_sensitivity_stats.png", type = "cairo",
-       width = 17, height = 12, units = "cm", dpi = 600)
+       width = 17, height = 8, units = "cm", dpi = 600)
 ggsave(filename = "output/plots/hr_sensitivity_stats.pdf",
-       width = 17, height = 12, units = "cm")
+       width = 17, height = 8, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
 ### GA: pollack explorations ####
