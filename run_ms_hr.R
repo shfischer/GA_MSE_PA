@@ -494,29 +494,27 @@ if (isFALSE(ga_search)) {
   pos_fixed <- which(sapply(mget(ga_names, ifnotfound = FALSE), is.numeric))
   par_fixed <- names(pos_fixed)
   val_fixed <- as.vector(unlist(mget(ga_names, ifnotfound = FALSE)[pos_fixed]))
-  ga_lower[pos_fixed] <- min(val_fixed, na.rm = TRUE)
-  ga_upper[pos_fixed] <- max(val_fixed, na.rm = TRUE)
-  ### check if only 1 parameter required
-  run_all <- ifelse(isTRUE(length(pos_default) == 7) & 
-                      isTRUE(length(pos_fixed) == 1),
-                    TRUE, FALSE)
-  if (isFALSE(run_all)) {
-    ### remove not requested parameters from suggestions
-    ga_suggestions[, pos_default] <- rep(ga_default[pos_default], 
-                                         each = nrow(ga_suggestions))
-    ga_suggestions[, pos_fixed] <- rep(val_fixed, 
+  ga_lower[pos_fixed] <- val_fixed
+  ga_upper[pos_fixed] <- val_fixed
+  ### remove not requested parameters from suggestions
+  ga_suggestions[, pos_default] <- rep(ga_default[pos_default], 
                                        each = nrow(ga_suggestions))
-    ga_suggestions <- unique(ga_suggestions)
-    names(ga_suggestions) <- ga_names
-  ### add all supplied values
-  } else {
-    n_vals <- length(val_fixed)
-    ga_suggestions <- ga_suggestions[rep(1, n_vals),]
-    ga_suggestions[, pos_default] <- rep(ga_default[pos_default], each = n_vals)
-    ga_suggestions[, pos_fixed] <- val_fixed
+  ga_suggestions[, pos_fixed] <- rep(val_fixed, 
+                                     each = nrow(ga_suggestions))
+  ga_suggestions <- unique(ga_suggestions)
+  names(ga_suggestions) <- ga_names
+  
+  ### multiplier only: run all possible values
+  if (isTRUE(multiplier) &
+      !any(sapply(mget(setdiff(ga_names, "multiplier"), ifnotfound = FALSE),
+                    isTRUE))) {
+    m_vals <- seq(from = ga_lower[6], to = ga_upper[6], by = 0.01)
+    ga_suggestions[1, ] <- ga_lower
+    ga_suggestions <- ga_suggestions[rep(1, length(m_vals)), ]
+    ga_suggestions$multiplier <- m_vals
     ### adapt GA dimensions
     maxiter <- run <- 1
-    popSize <- n_vals
+    popSize <- length(m_vals)
   }
   
   ### ---------------------------------------------------------------------- ###
