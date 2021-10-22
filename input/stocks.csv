@@ -1,8 +1,8 @@
-﻿seq,scientific_name,common_name,area,stock,stock_old,sex,a,b,linf,l50,a50,t0,k
+seq,scientific_name,common_name,area,stock,stock_old,sex,a,b,linf,l50,a50,t0,k
 1,Lophius budegassa,Blackbellied angler,Celtic Seas,ang3,ang-78ab_2,F,0.0259,2.858,110.1,54.8,9,0.39,0.08
 2,Raja clavata,Thornback ray,Celtic Seas,rjc2,rjc.27.afg,F,0.0024,3.2653,139.5,71.8,6.13,-1.84,0.09
 3,Sebastes norvegicus,Golden redfish,Northern,smn,smn-con,C,0.0178,2.972,50.2,40.3,NA,0.08,0.11
-4,Anarchias lupus,Atlantic wolffish,North Sea,wlf,anarchias_lupus,F,0.0046,3.185,115.1,21.5,3.8,-0.39,0.11
+4,Anarhichas lupus,Atlantic wolffish,North Sea,wlf,anarchias_lupus,F,0.0046,3.185,115.1,21.5,3.8,-0.39,0.11
 5,Lepidorhombus whiffiagonis,Megrim,North Sea,meg,meg-4a6a,C,0.0022,3.3433,54,23,3,NA,0.12
 6,Molva molva,Ling,Widely,lin,lin-comb,C,0.0036,3.108,119,74,7.2,NA,0.14
 7,Raja clavata,Thornback ray,North Sea,rjc,rjc.27.347d,F,0.0045,3.0686,118,77.1,NA,-0.88,0.14
