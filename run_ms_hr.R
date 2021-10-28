@@ -528,10 +528,9 @@ if (isFALSE(ga_search)) {
   ### output path
   ### set name depending on which GA parameters are used
   scn_pars <- ga_names[setdiff(seq_along(ga_names), pos_default)]
-  if (isFALSE(run_all)) {
-    scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
-      scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
-  }
+  ### add fixed parameters
+  scn_pars[which(scn_pars %in% par_fixed)] <- paste0(
+    scn_pars[which(scn_pars %in% par_fixed)], val_fixed)
   scn_pars_c <- paste0(scn_pars, collapse = "-")
   #scenario <- "trial"
   path_out <- paste0("output/", catch_rule, "/", n_iter, "_", n_yrs, "/", 
