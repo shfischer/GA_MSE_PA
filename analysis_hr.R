@@ -803,7 +803,7 @@ write.csv(res_def, file = "output/500_50/length/all_def_mult.csv",
 res_def <- readRDS("output/500_50/length/all_def_mult.rds")
 
 
-### plot
+### plot all stocks
 res_def_p <- res_def %>%
   #filter(stat_yrs == "all") %>%
   select(multiplier, risk_Blim, SSB_rel, Fbar_rel, Catch_rel, ICV,
@@ -818,7 +818,6 @@ res_def_p <- res_def %>%
 stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
                                      "B[lim]~risk", "ICV"),
                             target = c(1, 1, 1, 0, 0))
-### plot all stocks
 p <- res_def_p %>% 
   ggplot(aes(x = multiplier, y = value,
              colour = as.factor(fhist), linetype = as.factor(fhist))) +
@@ -845,12 +844,24 @@ ggsave(filename = "output/plots/length_all_def_mult.pdf",
 ggsave(filename = "output/plots/length_all_def_mult.png", type = "cairo",
        width = 50, height = 10, units = "cm", dpi = 600)
 
+### find max catch
+max_catch <- res_def %>%
+  group_by(stock, fhist, k) %>%
+  filter(Catch_rel == max(Catch_rel))
+summary(max_catch)
+table(max_catch$multiplier)
+
 ### plot subset and stats individually
 p_SSB <- res_def_p %>% 
   filter(stock %in% c("ang3", "pol", "bll", "san")) %>%
   filter(key == "SSB_rel") %>%
   ggplot(aes(x = multiplier, y = value,
              colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_vline(data = max_catch %>% 
+               filter(stock %in% c("ang3", "pol", "bll", "san")),
+             aes(xintercept = multiplier, 
+                 linetype = as.factor(fhist)),
+             size = 0.15, colour = "grey40", show.legend = FALSE) +
   geom_line(size = 0.3) +
   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
              scales = "free_y") +
@@ -878,7 +889,19 @@ p_Catch <- res_def_p %>%
   filter(key == "Catch_rel") %>%
   ggplot(aes(x = multiplier, y = value,
              colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_vline(data = max_catch %>% 
+               filter(stock %in% c("ang3", "pol", "bll", "san")),
+             aes(xintercept = multiplier, 
+                 linetype = as.factor(fhist)),
+             size = 0.15, colour = "grey40", show.legend = FALSE) +
   geom_line(size = 0.3, show.legend = FALSE) +
+  geom_point(data = res_def_p %>% 
+               filter(stock %in% c("ang3", "pol", "bll", "san") & 
+                        key == "Catch_rel") %>%
+               group_by(stock, fhist) %>%
+               filter(value == max(value)),
+               aes(shape = as.factor(fhist)), show.legend = FALSE,
+               size = 0.5) +
   scale_colour_brewer("fishing history", palette = "Set1") +
   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
              scales = "free_y") +
@@ -900,6 +923,11 @@ p_risk <- res_def_p %>%
   filter(key == "risk_Blim") %>%
   ggplot(aes(x = multiplier, y = value,
              colour = as.factor(fhist), linetype = as.factor(fhist))) +
+  geom_vline(data = max_catch %>% 
+               filter(stock %in% c("ang3", "pol", "bll", "san")),
+             aes(xintercept = multiplier, 
+                 linetype = as.factor(fhist)),
+             size = 0.15, colour = "grey40", show.legend = FALSE) +
   geom_line(size = 0.3, show.legend = FALSE) +
   scale_colour_brewer("fishing history", palette = "Set1") +
   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
@@ -919,13 +947,6 @@ p_stats <- plot_grid(p_SSB, p_Catch, p_risk,
                      rel_heights = c(1.25, 1, 1.25))
 p_stats
 
-
-### find max catch
-max_catch <- res_def %>%
-  group_by(stock, fhist, k) %>%
-  filter(Catch_rel == max(Catch_rel))
-summary(max_catch)
-table(max_catch$multiplier)
 
 ### estimate correlation
 max_catch_cor <- foreach(fhist = c("one-way", "random")) %:%
@@ -1030,13 +1051,15 @@ p_max_catch <- max_catch_p %>%
 p_max_catch
 
 ### combine plots
-plot_grid(p_stats, p_max_catch,
-          ncol = 2, rel_widths = c(0.67, 0.33),
-          labels = c("(a)", "(b)"), label_size = 9, align = "h", axis = "t")
+p <- plot_grid(p_stats, p_max_catch,
+               ncol = 2, rel_widths = c(0.67, 0.33),
+               labels = c("(a)", "(b)"), label_size = 9, align = "h", 
+               axis = "t")
+p
 ggsave(filename = "output/plots/paper/HR_mult_max_catch_cor.png", 
-       type = "cairo",
+       type = "cairo", plot = p,
        width = 17, height = 10, units = "cm", dpi = 600)
-ggsave(filename = "output/plots/paper/HR_mult_max_catch_cor.pdf",
+ggsave(filename = "output/plots/paper/HR_mult_max_catch_cor.pdf", plot = p,
        width = 17, height = 10, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
