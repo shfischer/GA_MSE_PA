@@ -168,9 +168,14 @@ all_GA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
                      "multiplier-upper_constraint-lower_constraint")
     )
     if (identical(scenario, "GA_cond_cap")) {
-      file_prefix <- gsub(x = file_prefix, 
-                          pattern = "upper_constraint-lower_constraint",
+      if (identical(parameters, "all")) {
+        file_prefix <- gsub(x = file_prefix, 
+                            pattern = "upper_constraint-lower_constraint",
                         replacement = "upper_constraint1.2-lower_constraint0.7")
+      } else if (isTRUE(parameters %in% c("none", "mult"))) {
+        file_prefix <- paste0(file_prefix, "-", 
+                              "upper_constraint1.2-lower_constraint0.7")
+      }
     }
     file_suffix <- switch(objective,
                           "MSY" = paste0("obj_SSB_C_risk_ICV"),
@@ -241,6 +246,68 @@ all_GA <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
 }
 saveRDS(all_GA, file = "output/hr_all_GA_stats.rds")
 write.csv(all_GA, file = "output/hr_all_GA_stats.csv", row.names = FALSE)
+
+### ------------------------------------------------------------------------ ###
+### collate data: all stocks - multiplier with cond. cap - all runs ####
+all_mult <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
+  foreach(parameters = c("mult"), .combine = bind_rows) %:%
+  foreach(objective = c("MSY-PA"), .combine = bind_rows) %:%
+  foreach(scenario = c("GA_cond_cap", "GA_cond_cap_mult"), .combine = bind_rows) %:%
+  foreach(catch_rule = "hr", .combine = bind_rows) %:%
+  foreach(stat_yrs = "all", .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %:%
+  foreach(years = c(50, 100), .combine = bind_rows) %do% {#browser()
+    
+    ### find files
+    file_prefix <- "multiplier-upper_constraint1.2-lower_constraint0.7"
+    file_suffix <- "obj_ICES_MSYPA"
+    file_res <- paste0(file_prefix, "--", file_suffix, "_res.rds")
+    file_runs <- paste0(file_prefix, "--", file_suffix, "_runs.rds")
+    
+    if (!file.exists(paste0("output/", catch_rule, "/500_", years, "/", 
+                            scenario, "/", fhist, "/", stock, "/", file_res))) { 
+      return(NULL)
+    }
+    
+    df_res <- data.frame(parameters = parameters, objective = objective, 
+                         scenario = scenario, catch_rule = catch_rule, 
+                         stat_yrs = stat_yrs, fhist = fhist, stock = stock,
+                         years = years)
+    ### load GA results
+    res <- readRDS(paste0("output/", catch_rule, "/500_", years, "/", 
+                          scenario, "/", fhist, "/", stock, "/", file_res))
+    runs <- readRDS(paste0("output/", catch_rule, "/500_", years, "/", 
+                           scenario, "/", fhist, "/", stock, "/", file_runs))
+    solution <- c(res@solution[, "multiplier"])
+    
+    runs_df <- lapply(runs, function(x) {
+      tmp <- cbind(as.data.frame(t(x$pars)), 
+                   as.data.frame(t(unlist(x$stats[1:11, ]))))
+      penalty_tmp <- penalty(x = tmp$risk_Blim, 
+                             negative = FALSE, max = 5, 
+                             inflection = 0.05 + 0.01, 
+                             steepness = 0.5e+3)
+      if (isTRUE(objective == "MSY")) {
+        tmp$fitness <- -sum(abs(tmp$SSB_rel - 1), abs(tmp$Catch_rel - 1), 
+                            tmp$risk_Blim, tmp$ICV)
+      } else if (isTRUE(objective == "MSY-PA")) {
+        tmp$fitness <- -sum(abs(tmp$SSB_rel - 1),
+                            abs(tmp$Catch_rel - 1), 
+                            tmp$ICV,
+                            penalty_tmp)
+      }
+      return(tmp)
+    })
+    runs_df <- do.call(rbind, runs_df)
+    row.names(runs_df) <- NULL
+    runs_df$optimum <- ifelse(round(runs_df$multiplier, 2) == round(solution, 2), 
+                              TRUE, FALSE)
+    
+    df_res <- cbind(df_res, runs_df)
+    return(df_res)
+}
+saveRDS(all_mult, file = "output/hr_all_mult_runs_stats.rds")
+write.csv(all_mult, file = "output/hr_all_mult_runs_stats.csv", row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
 ### figures for paper ####
@@ -1359,7 +1426,7 @@ ggsave(filename = "output/plots/paper/hr_GA_pol_comps_fitness.pdf",
        width = 17, height = 8, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
-### all stocks compre HR to rfb ####
+### all stocks compare HR to rfb - table like plot ####
 ### ------------------------------------------------------------------------ ###
 
 ### stats from 2 over 3 rule
@@ -1442,7 +1509,7 @@ stats_plot <- stats_plot %>%
 saveRDS(stats_plot, "output/plots/data_all_comparison_table.rds")
 stats_plot <- readRDS("output/plots/data_all_comparison_table.rds")
 
-### plot 
+### plot (table style)
 p_all_table <- stats_plot %>%
   ggplot(aes(x = group, y = stock_k, fill = fitness_colour)) +
   geom_raster(aes(alpha = "")) +
@@ -1479,6 +1546,404 @@ ggsave(filename = "output/plots/paper/all_comparison_table.png",
 ggsave(filename = "output/plots/paper/all_comparison_table.pdf",
        plot = p_all_table,
        width = 17, height = 16, units = "cm", dpi = 600)
+
+### ------------------------------------------------------------------------ ###
+### all stocks compare HR to rfb - full details ####
+### ------------------------------------------------------------------------ ###
+
+### stats from 2 over 3 rule
+stats_2over3 <- readRDS("../GA_MSE/output/all_stocks_2over_stats.rds")
+### stats from rfb-rule
+stats_rfb <- readRDS("../GA_MSE/output/all_stocks_GA_optimised_stats.rds")
+### harvest rate
+stats_hr <- readRDS("output/hr_all_GA_stats.rds")
+
+### combine 
+stats_full <- bind_rows(
+  ### zero fishing
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "zero-fishing" & multiplier == 0 & 
+             scenario == "PA") %>%
+    mutate(catch_rule = "zero-fishing", group = "zero-fishing"),
+  ### 2 over 3 rule
+  stats_2over3 %>%
+    filter(scenario == "PA") %>%
+    mutate(catch_rule = "2 over 3", group = "2 over 3"),
+  ### rfb-rule, default
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "default" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "none", group = "rfb: default"),
+  ### rfb-rule, optimisation with multiplier
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "mult" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", group = "rfb: mult"),
+  ### rfb-rule, optimisation with all parameters
+  stats_rfb %>% 
+    filter(capped == FALSE, optimised == "all_cap" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "PA", group = "rfb: all"),
+  ### rfb-rule, default with cond. cap
+  stats_rfb %>% 
+    filter(capped == TRUE, optimised == "default" & scenario == "PA") %>%
+    mutate(catch_rule = "rfb", target = "none", group = "rfb: default*"),
+  ### rfb-rule, cond. cap, optimisation with multiplier, target PA
+  stats_rfb %>% 
+    filter(capped == TRUE, optimised == "mult" & scenario == "PA_capped") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb: mult*"),
+  ### rfb-rule, cond. cap, optimisation with all, target PA
+  stats_rfb %>% 
+    filter(capped == TRUE, optimised == "all" & scenario == "PA_capped") %>%
+    mutate(catch_rule = "rfb", target = "PA", 
+           group = "rfb: all*"),
+  ### hr, default, target PA
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA" & 
+             parameters == "none") %>%
+    mutate(catch_rule = "hr", target = "PA", group = "hr: default"),
+  ### hr, optimisation with multiplier, target PA
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA" & 
+             parameters == "mult") %>%
+    mutate(catch_rule = "hr", target = "PA", group = "hr: mult"),
+  ### hr, optimisation with all parameters, target PA
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA" & 
+             parameters == "all") %>%
+    mutate(catch_rule = "hr", target = "PA", group = "hr: all"),
+  ### hr, cond. cap, default, target PA
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA_cond_cap" & 
+             parameters == "none") %>%
+    mutate(catch_rule = "hr", target = "PA", group = "hr: default*"),
+  ### hr, cond. cap, optimisation with multiplier, target PA
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA_cond_cap" & 
+             parameters == "mult") %>%
+    mutate(catch_rule = "hr", target = "PA", group = "hr: mult*"),
+  ### hr, cond. cap, optimisation with all parameters, target PA
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA_cond_cap" & 
+             parameters == "all") %>%
+    mutate(catch_rule = "hr", target = "PA", group = "hr: all*")
+)
+
+
+breaks <- c(1, 3, 5, 6, 7, 8.5, 9.5, 10.5, 12.5, 13.5, 14.5, 16, 17, 18)
+stats_plot_full <- stats_full %>%
+  select(fhist, stock, catch_rule, target, group, 
+         SSB_rel, Catch_rel, ICV, risk_Blim) %>%
+  mutate(penalty = penalty(x = risk_Blim, 
+                           negative = FALSE, max = 5, 
+                           inflection = 0.06, 
+                           steepness = 0.5e+3)) %>%
+  mutate(comp_Catch = Catch_rel - 1,
+         comp_SSB = SSB_rel - 1,
+         comp_ICV = ICV,
+         comp_risk_penalty =  penalty) %>%
+  pivot_longer(c(comp_SSB, comp_Catch, comp_ICV, comp_risk_penalty),
+               names_prefix = "comp_") %>%
+  mutate(name = factor(name,
+                       levels = rev(c("SSB", "Catch", "ICV",
+                                      "risk_penalty")),
+                       labels = rev(c("SSB", "Catch", "ICV",
+                                      "risk-PA\n(penalty)")))) %>% 
+  full_join(stocks %>%
+    select(stock, k) %>%
+    mutate(stock = factor(stock, levels = stock),
+           stock_k = paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
+                                      "*year^-1)")) %>%
+           mutate(stock_k = factor(stock_k, levels = rev(stock_k)))) %>%
+  mutate(
+    group = factor(group, 
+                   levels = c("zero-fishing", "2 over 3", 
+                              "rfb: default", "rfb: mult", "rfb: all",
+                              "rfb: default*", "rfb: mult*", "rfb: all*",
+                              "hr: default", "hr: mult", "hr: all",
+                              "hr: default*", "hr: mult*", "hr: all*"),
+                   labels = c("(a) zero-fishing", "(b) 2 over 3", 
+                              "(i) rfb: default",
+                              "(j) rfb: mult", "(k) rfb: all",
+                              "(c) rfb: default*",
+                              "(d) rfb: mult*", "(e) rfb: all*",
+                              "(l) hr: default",
+                              "(m) hr: mult", "(n) hr: all",
+                              "(f) hr: default*",
+                              "(g) hr: mult*", "(h) hr: all*"))) %>%
+  mutate(group_numeric = factor(group, labels = breaks)) %>%
+  mutate(group_numeric = as.numeric(as.character(group_numeric)))
+
+stats_plot_dev <- stats_plot_full %>%
+  filter(name %in% c("SSB", "Catch")) %>%
+  mutate(value_sign = ifelse(name == "SSB",
+                             -abs(SSB_rel - 1)/2,
+                             -abs(SSB_rel - 1) - abs(Catch_rel - 1)/2)) %>%
+  mutate(sign = ifelse(name == "SSB",
+                       ifelse(SSB_rel > 1, "+", "-"),
+                       ifelse(Catch_rel > 1, "+", "-"))) %>%
+  filter(abs(value) >= 0.1)
+
+saveRDS(stats_plot_full, "output/plots/data_all_comparison_full.rds")
+stats_plot_full <- readRDS("output/plots/data_all_comparison_full.rds")
+saveRDS(stats_plot_dev, "output/plots/data_all_comparison_full_dev.rds")
+stats_plot_dev <- readRDS("output/plots/data_all_comparison_full_dev.rds")
+
+plot_comparison <- function(stock, data, data_dev, ylim, breaks) {
+  data %>% 
+    filter(stock %in% !!stock) %>%
+    mutate(value = -abs(value)) %>%
+    ggplot(aes(x = group_numeric, y = value, fill = name)) +
+    geom_hline(yintercept = 0, linetype = "solid", size = 0.5, colour = "grey") +
+    geom_col(position = "stack", width = 1, 
+             colour = "black", size = 0.1, show.legend = TRUE) +
+    ### for reversing order in legend (not in plot)
+    scale_fill_discrete("fitness\nelements",
+                        breaks = rev(levels(data$name))) +
+    geom_text(data = stats_plot_dev %>%
+                filter(stock %in% !!stock),
+              aes(x = group_numeric, y = value_sign, label = sign),
+              vjust = 0.5, colour = "grey20") +
+    facet_grid(fhist ~ stock_k, scales = "free", space = "free_x", 
+               labeller = label_parsed) +
+    labs(y = "fitness", x = "") +
+    scale_x_continuous(breaks = breaks, 
+                       labels = levels(data$group),
+                       minor_breaks = NULL) +
+    coord_cartesian(ylim = ylim) +
+    theme_bw(base_size = 8, base_family = "sans") +
+    theme(panel.spacing.x = unit(0, units = "cm"),
+          axis.title.x = element_blank(),
+          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
+                                     lineheight = 0.7),
+          #plot.margin = unit(x = c(1, 3, 3, 3), units = "pt"),
+          legend.key.width = unit(0.65, "lines"),
+          legend.key.height = unit(1, "lines"))
+}
+
+plot_comparison(stock = stocks$stock[12], data = stats_plot_full, 
+                data_dev = data_dev, ylim = ylim, breaks = breaks)
+
+plot_comparison_six <- function(stocks, data, data_dev, ylim, breaks) {
+  #browser()
+  if (isTRUE(length(stocks) == 5)) {
+    p1 <- NULL
+    stocks <- c(NA, stocks)
+  } else {
+    p1 <- plot_comparison(stock = stocks[1], data = data, 
+                          data_dev = data_dev, ylim = ylim, breaks) + 
+      theme(strip.text.y = element_blank(),
+            axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            legend.position = "none",) +
+      labs(y = "")
+  }
+  p2 <- plot_comparison(stock = stocks[2], data = data, 
+                        data_dev = data_dev, ylim = ylim, breaks) + 
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.title.y = element_blank())
+  p3 <- plot_comparison(stock = stocks[3], data = data, 
+                        data_dev = data_dev, ylim = ylim, breaks) + 
+    theme(strip.text.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          legend.position = "none") +
+    labs(y = "fitness")
+  p4 <- plot_comparison(stock = stocks[4], data = data, 
+                        data_dev = data_dev, ylim = ylim, breaks) + 
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          legend.position = "none",
+          axis.title.y = element_blank())
+  p5 <- plot_comparison(stock = stocks[5], data = data, 
+                        data_dev = data_dev, ylim = ylim, breaks) + 
+    theme(strip.text.y = element_blank(),
+          legend.position = "none") +
+    labs(y = "")
+  p6 <- plot_comparison(stock = stocks[6], data = data, 
+                        data_dev = data_dev, ylim = ylim, breaks) + 
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),legend.position = "none",
+          axis.title.y = element_blank())
+  ### combine all plots
+  p <- plot_grid(p1, p2 + theme(legend.position = "none"), get_legend(p2),
+                 p3, p4, NULL,
+                 p5, p6, NULL,
+                 ncol = 3, rel_heights = c(1, 1, 1.25), 
+                 rel_widths = c(1, 1, 0.3))
+  return(p)
+}
+
+### plot all stocks for supplementary material
+for (i in seq_along(split(stocks$stock, ceiling(seq_along(stocks$stock)/6)))) {
+  #browser()
+  plot_comparison_six(stocks = split(stocks$stock, 
+                                     ceiling(seq_along(stocks$stock)/6))[[i]],
+                      data = stats_plot_full, data_dev = stats_plot_dev, 
+                      ylim = c(-8.5, 0), breaks = breaks)
+  ggsave(filename = paste0("output/plots/paper/all_comparison_full_", i , 
+                           ".png"),
+         width = 17, height = 18, units = "cm", dpi = 600, type = "cairo")
+  ggsave(filename = paste0("output/plots/paper/all_comparison_full_", i , 
+                           ".pdf"),
+         width = 17, height = 18, units = "cm", dpi = 600)
+}
+
+
+### ------------------------------------------------------------------------ ###
+### tmp: ang3 and cond. cap with multiplier ####
+### ------------------------------------------------------------------------ ###
+
+runs <- readRDS("C:/Users/sf02/OneDrive - CEFAS/data-limited/GA_MSE_HR/output/hr/500_50/GA_cond_cap/random/ang3/multiplier-upper_constraint1.2-lower_constraint0.7--obj_SSB_C_risk_ICV_runs.rds")
+res <- readRDS("C:/Users/sf02/OneDrive - CEFAS/data-limited/GA_MSE_HR/output/hr/500_50/GA_cond_cap/random/ang3/multiplier-upper_constraint1.2-lower_constraint0.7--obj_SSB_C_risk_ICV_res.rds")
+res@solution
+
+runs <- lapply(runs, function(x) {
+  #browser()
+  tmp <- c(x$pars, x$stats[1:11])
+  names(tmp) <- c(names(x$pars), dimnames(x$stats)[[1]][1:11])
+  tmp <- as.data.frame(tmp)
+  return(tmp)
+})
+runs <- do.call(bind_rows, runs)
+
+
+ggplot(data = runs,
+       aes(x = multiplier, y = risk_Blim)) +
+  geom_line() +
+  geom_hline(yintercept = 0.05) +
+  ylim(c(0, NA))
+
+### ------------------------------------------------------------------------ ###
+### supplementary tables: optimised parameterisations ####
+### ------------------------------------------------------------------------ ###
+
+pol_GA <- readRDS("output/hr_pol_comps_stats.rds")
+stats_hr <- readRDS("output/hr_all_GA_stats.rds")
+
+### default fitness
+fitness_default <- stats_hr %>% 
+  filter(parameters == "none") %>%
+  group_by(objective, scenario, stock, fhist) %>%
+  select(scenario, objective, fhist, stock, fitness) %>%
+  rename(fitness_default = fitness) %>%
+  ungroup() %>%
+  arrange(scenario, objective, fhist)
+
+
+### combine 
+df <- bind_rows(
+  ### pollack explorations
+  pol_GA %>%
+    filter(parameters != "not optimised") %>%
+    mutate(stock = "pol", scenario_no = 0),
+  # ### MSY mult
+  # stats_hr %>%
+  #   filter(objective == "MSY" & scenario == "GA" &
+  #            parameters == "mult") %>%
+  #   mutate(scenario_no = 0.1),
+  # ### MSY all
+  # stats_hr %>%
+  #   filter(objective == "MSY" & scenario == "GA" &
+  #            parameters == "all") %>%
+  #   mutate(scenario_no = 0.2),
+  ### MSY-PA mult
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA" &
+             parameters == "mult") %>%
+    mutate(scenario_no = 1),
+  ### MSY-PA all
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA" &
+             parameters == "all") %>%
+    mutate(scenario_no = 2),
+  ### MSY-PA mult & cond. cap
+  stats_hr %>%
+    filter(objective == "MSY-PA" & scenario == "GA_cond_cap" &
+             parameters == "mult") %>%
+    mutate(scenario_no = 3),
+    ### MSY-PA all & cond. cap
+  stats_hr %>%
+  filter(objective == "MSY-PA" & scenario == "GA_cond_cap" &
+             parameters == "all") %>%
+    mutate(scenario_no = 4)
+) %>%
+  left_join(fitness_default) %>%
+  mutate(fitness_improvement = round((1 - fitness/fitness_default)*100)) %>%
+  select(scenario, scenario_no, objective, parameters, fhist, stock, iter, 
+         idxB_lag, idxB_range_3, comp_b_multiplier, interval, multiplier,
+         upper_constraint, lower_constraint, 
+         SSB_rel, Catch_rel, ICV, risk_Blim, 
+         fitness_improvement) %>% 
+  arrange(scenario_no, objective, fhist) %>%
+  select(-scenario_no) %>%
+  mutate(SSB_rel = round(SSB_rel, 2),
+         Catch_rel = round(Catch_rel, 2),
+         ICV = round(ICV, 2),
+         risk_Blim = round(risk_Blim, 3))
+# View(df)
+write.csv(df, file = "output/hr_summary_table_parameters.csv", 
+          row.names = FALSE)
+
+### ------------------------------------------------------------------------ ###
+### optimised multiplier  ####
+### ------------------------------------------------------------------------ ###
+
+all_mult <- readRDS("output/hr_all_mult_runs_stats.rds")
+
+
+all_mult_plot <- all_mult %>%
+  full_join(stocks %>%
+            select(stock, k) %>%
+            mutate(stock = factor(stock, levels = stock),
+                   stock_k = paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
+                                    "*year^-1)")) %>%
+            mutate(stock_k = factor(stock_k, levels = rev(stock_k))))
+
+all_mult_plot %>%
+  #filter(years == 100) %>%
+  filter(k < 0.45 & k >= 0.32) %>%
+  ggplot(aes(x = multiplier, y = risk_Blim, group = stock, colour = k)) +
+  geom_line() +
+  facet_grid(fhist ~ years) +
+  theme_bw()
+
+all_mult_plot %>%
+  filter(optimum == TRUE) %>%
+  ggplot(aes(x = k, y = multiplier, colour = fhist)) +
+  geom_point() +
+  theme_bw() +
+  geom_vline(xintercept = 0.32) +
+  geom_vline(xintercept = 0.45) +
+  geom_smooth() +
+  facet_grid(fhist ~ years)
+
+all_mult_plot %>%
+  filter(optimum == TRUE & years == 50) %>%
+  ggplot(aes(x = k, y = multiplier, colour = fhist, shape = fhist)) +
+  geom_line(aes(group = stock), colour = "grey", size = 0.3) +
+  geom_point(size = 0.5) +
+  #geom_jitter() + 
+  geom_vline(xintercept = 0.315, size = 0.3, linetype = "dashed") +
+  geom_vline(xintercept = 0.45, size = 0.3, linetype = "dashed") +
+  #geom_smooth() +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_shape_discrete("") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 2)) +
+  labs(x = expression(italic(k)~"year"^{-1})) + 
+  theme_bw(base_size = 8) +
+  theme(legend.position = c(0.75, 0.82),
+        legend.key.width = unit(0.5, "lines"),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key = element_blank(),
+        legend.background = element_blank())
+ggsave(filename = "output/plots/paper/all_mult.png", 
+       width = 8.5, height = 6, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper/all_mult.pdf",
+       width = 8.5, height = 6, units = "cm", dpi = 600)
 
 
 ### ------------------------------------------------------------------------ ###
