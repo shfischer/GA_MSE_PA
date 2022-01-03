@@ -314,6 +314,243 @@ write.csv(all_mult, file = "output/hr_all_mult_runs_stats.csv", row.names = FALS
 ### ------------------------------------------------------------------------ ###
 
 ### ------------------------------------------------------------------------ ###
+### visualise calculation of target HR - pollack ####
+### ------------------------------------------------------------------------ ###
+
+stock <- "pol"
+input <- readRDS(paste0("input/hr/500_50/OM_2_mp_input/random/", stock, ".rds"))
+lhist <- stocks[stocks$stock == stock, ]
+brp <- brps$pol
+refpts(brp)
+
+### find iteration with increasing F
+pos <- which(fbar(input$om@stock)[, ac(50)] < 0.05 * c(refpts(brp)["crash","harvest"]) &
+               fbar(input$om@stock)[, ac(100)] > 0.95 * c(refpts(brp)["crash","harvest"]))
+### 478
+plot(input$om@stock, iter = 478)
+
+### recreate mean catch length without noise
+Lc <- calc_lc(stk = input$om@stock[, ac(50:100)], 
+              a = lhist$a, b = lhist$b)
+pars_l <- FLPar(a = lhist$a,  b = lhist$b, Lc = Lc)
+idxL = lmean(stk = input$om@stock[, ac(50:100)], params = pars_l)
+LFeM <- (lhist$linf + 2*1.5*c(Lc)) / (1 + 2*1.5)
+
+plot(idxL, iter = 478) + geom_hline(yintercept = LFeM)
+
+df_idxL <- as.data.frame(idxL) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+df_catch <- as.data.frame(catch(input$om@stock[, ac(50:100)])) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+df_idxB <- as.data.frame(input$oem@observations$idx$idxB[, ac(50:100)]) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+df_cr <- as.data.frame(catch(input$om@stock[, ac(50:100)]) / 
+                         input$oem@observations$idx$idxB[, ac(50:100)]) %>%
+  filter(iter == pos)  %>%
+  mutate(year = year - 100)
+
+### find years where L > LFeM
+df_years <- df_idxL %>% filter(data >= LFeM) %>% select(year) %>% unlist()
+
+### mean length
+p_idxL1 <- df_idxL %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  facet_wrap(~ "step 1", strip.position = "top") +
+  labs(x = "year", y = "mean catch length [cm]") +
+  theme_bw(base_size = 8) +
+  theme(strip.text = element_text(size = 8))
+p_idxL1
+### add reference length
+p_idxL2 <- df_idxL %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_hline(yintercept = LFeM, linetype = "dashed") + 
+  facet_wrap(~ "step 2", strip.position = "top") +
+  labs(x = "year", y = "mean catch length [cm]") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_idxL2
+### add points
+p_idxL3 <- df_idxL %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_hline(yintercept = LFeM, linetype = "dashed") + 
+  geom_point(data = df_idxL %>% filter(year %in% df_years),
+             colour = "red", size = 0.4) +
+  facet_wrap(~ "step 3", strip.position = "top") +
+  labs(x = "year", y = "mean catch length [cm]") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_idxL3
+
+### catch
+p_catch <- df_catch %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  labs(x = "year", y = "catch") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.x = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_rect(fill = "transparent", colour = NA),
+        panel.background = element_rect(fill = "transparent", colour = NA))
+p_catch
+### biomass index
+p_idxB <- df_idxB %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  labs(x = "year", y = "index") +
+  theme_bw(base_size = 8) +
+  theme(axis.title.x = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_rect(fill = "transparent", colour = NA),
+        panel.background = element_rect(fill = "transparent", colour = NA))
+p_idxB
+
+### catch rate
+p_cr1 <- df_cr %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  facet_wrap(~ "step 4", strip.position = "top") +
+  labs(x = "year", y = "catch/index") +
+  ylim(c(0, 0.4)) +
+  theme_bw(base_size = 8) +
+  theme(strip.text = element_text(size = 8)) +
+  annotation_custom(grob = ggplotGrob(p_catch),
+                    xmin = -50, xmax = -35,
+                    ymin = 0.3, ymax = 0.4) +
+  annotation_custom(grob = ggplotGrob(p_idxB),
+                    xmin = -30, xmax = -15,
+                    ymin = 0.3, ymax = 0.4) +
+  annotate("segment", x = -34, xend = -31, y = 0.3, yend = 0.4,
+           colour = "black", size = 1)
+p_cr1
+### catch rate & points
+p_cr2 <- df_cr %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_point(data = df_cr %>% filter(year %in% df_years),
+             colour = "red", size = 0.4) +
+  facet_wrap(~ "step 5", strip.position = "top") +
+  labs(x = "year", y = "catch/index") +
+  ylim(c(0, 0.4)) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_cr2
+### catch rate & points & reference
+p_cr3 <- df_cr %>% 
+  ggplot(aes(x = year, y = data)) +
+  geom_line() +
+  geom_point(data = df_cr %>% filter(year %in% df_years),
+             colour = "red", size = 0.4) +
+  geom_hline(yintercept = df_cr %>% 
+               filter(year %in% df_years) %>% 
+               summarise(mean(data)) %>% unlist(),
+             colour = "red") +
+  facet_wrap(~ "step 6", strip.position = "top") +
+  labs(x = "year", y = "catch/index") +
+  ylim(c(0, 0.4)) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 8))
+p_cr3
+
+
+### combine all plots
+plot_grid(p_idxL1, p_idxL2, p_idxL3,
+          ncol = 3, rel_widths = c(1.12, 1, 1))
+ggsave(filename = "output/plots/length_procedure_combined_1.png",
+       width = 17, height = 6, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/length_procedure_combined_1.pdf",
+       width = 17, height = 6, units = "cm")
+ggsave(filename = "output/plots/length_procedure_combined_1_.pdf",
+       width = 17, height = 6, units = "cm")
+plot_grid(p_cr1, p_cr2, p_cr3,
+          ncol = 3, rel_widths = c(1.12, 1, 1))
+ggsave(filename = "output/plots/length_procedure_combined_2.png",
+       width = 17, height = 6, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/length_procedure_combined_2.pdf",
+       width = 17, height = 6, units = "cm")
+
+### ------------------------------------------------------------------------ ###
+### HR principle visualisation ####
+### ------------------------------------------------------------------------ ###
+
+ggplot() +
+  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
+           linetype = "dotted") +
+  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
+           linetype = "dotted") +
+  geom_line(data = data.frame(x = seq(0, 1, length.out = 1000), 
+                              y = seq(0, 1, length.out = 1000),
+                              z = seq(0, 1, length.out = 1000)),
+            aes(x = x, y = y, colour = z),
+            size = 1, show.legend = FALSE) +
+  scale_colour_gradient(low = "red", high = "yellow") +
+  geom_line(data = data.frame(x = c(1, 2), 
+                              y = c(1, 1)),
+            aes(x = x, y = y), colour = "green3", size = 1) +
+  scale_x_continuous("index I", expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
+  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, "H")) +
+  theme_classic()
+ggsave(filename = "output/plots/HR_principle.png",
+       width = 8.5, height = 5, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/HR_principle.pdf",
+       width = 8.5, height = 5, units = "cm")
+
+data.frame(x = c(0, 1, 2),
+           y = c(0, 1, 1)) %>%
+  ggplot(aes(x = x, y = y)) +
+  annotation_raster(matrix(colorRampPalette(c("red", "orange", "yellow"))(255),
+                           nrow = 1),
+                    xmin = 0, xmax = 1, ymin = 0, ymax = 1, interpolate = TRUE) +
+  annotate("polygon", x = c(0, 1, 0), y = c(0, 1.01, 1.01), fill = "white") +
+  annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
+  geom_line() +
+  scale_x_continuous("index I", expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
+  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, "H")) +
+  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
+           linetype = "dotted") +
+  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
+           linetype = "dotted") +
+  #theme(panel.background = element_blank())
+  theme_classic()
+ggsave(filename = "output/plots/HR_principle_area.png",
+       width = 8.5, height = 5, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/HR_principle_area.pdf",
+       width = 8.5, height = 5, units = "cm")
+
+
+
+### ------------------------------------------------------------------------ ###
 ### sensitivity to simulation assumptions ####
 ### ------------------------------------------------------------------------ ###
 ### use pollack as example
@@ -2670,7 +2907,7 @@ ggsave(filename = "output/plots/HR_length_stats.pdf",
 ### ------------------------------------------------------------------------ ###
 
 stock <- "gut"
-input <- readRDS(paste0("input/500_50/OM_2_mp_input/random/", stock, ".rds"))
+input <- readRDS(paste0("input/500_100/OM_2_mp_input/random/", stock, ".rds"))
 lhist <- stocks[stocks$stock == stock, ]
 
 stk <- input$om@stock[, ac(50:100)]
@@ -2991,240 +3228,6 @@ ggsave(filename = "output/plots/length_cap2030_b/multiplier.pdf",
 ggsave(filename = "output/plots/length_cap2030_b/multiplier.png", 
        type = "cairo", width = 17, height = 10, units = "cm", dpi = 600)
 
-### ------------------------------------------------------------------------ ###
-### visualise calculation of target HR - pollack ####
-### ------------------------------------------------------------------------ ###
-
-stock <- "pol"
-input <- readRDS(paste0("input/hr/500_50/OM_2_mp_input/random/", stock, ".rds"))
-lhist <- stocks[stocks$stock == stock, ]
-brp <- brps$pol
-refpts(brp)
-
-### find iteration with increasing F
-pos <- which(fbar(input$om@stock)[, ac(50)] < 0.05 * c(refpts(brp)["crash","harvest"]) &
-        fbar(input$om@stock)[, ac(100)] > 0.95 * c(refpts(brp)["crash","harvest"]))
-### 478
-plot(input$om@stock, iter = 478)
-
-### recreate mean catch length without noise
-Lc <- calc_lc(stk = input$om@stock[, ac(50:100)], 
-              a = lhist$a, b = lhist$b)
-pars_l <- FLPar(a = lhist$a,  b = lhist$b, Lc = Lc)
-idxL = lmean(stk = input$om@stock[, ac(50:100)], params = pars_l)
-LFeM <- (lhist$linf + 2*1.5*c(Lc)) / (1 + 2*1.5)
-
-plot(idxL, iter = 478) + geom_hline(yintercept = LFeM)
-
-df_idxL <- as.data.frame(idxL) %>%
-  filter(iter == pos)  %>%
-  mutate(year = year - 100)
-df_catch <- as.data.frame(catch(input$om@stock[, ac(50:100)])) %>%
-  filter(iter == pos)  %>%
-  mutate(year = year - 100)
-df_idxB <- as.data.frame(input$oem@observations$idx$idxB[, ac(50:100)]) %>%
-  filter(iter == pos)  %>%
-  mutate(year = year - 100)
-df_cr <- as.data.frame(catch(input$om@stock[, ac(50:100)]) / 
-                         input$oem@observations$idx$idxB[, ac(50:100)]) %>%
-  filter(iter == pos)  %>%
-  mutate(year = year - 100)
-
-### find years where L > LFeM
-df_years <- df_idxL %>% filter(data >= LFeM) %>% select(year) %>% unlist()
-
-### mean length
-p_idxL1 <- df_idxL %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  facet_wrap(~ "step 1", strip.position = "top") +
-  labs(x = "year", y = "mean catch length [cm]") +
-  theme_bw(base_size = 8) +
-  theme(strip.text = element_text(size = 8))
-p_idxL1
-### add reference length
-p_idxL2 <- df_idxL %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  geom_hline(yintercept = LFeM, linetype = "dashed") + 
-  facet_wrap(~ "step 2", strip.position = "top") +
-  labs(x = "year", y = "mean catch length [cm]") +
-  theme_bw(base_size = 8) +
-  theme(axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text = element_text(size = 8))
-p_idxL2
-### add points
-p_idxL3 <- df_idxL %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  geom_hline(yintercept = LFeM, linetype = "dashed") + 
-  geom_point(data = df_idxL %>% filter(year %in% df_years),
-             colour = "red", size = 0.4) +
-  facet_wrap(~ "step 3", strip.position = "top") +
-  labs(x = "year", y = "mean catch length [cm]") +
-  theme_bw(base_size = 8) +
-  theme(axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text = element_text(size = 8))
-p_idxL3
-
-### catch
-p_catch <- df_catch %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  labs(x = "year", y = "catch") +
-  theme_bw(base_size = 8) +
-  theme(axis.title.x = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        panel.grid = element_blank(),
-        panel.border = element_blank(),
-        plot.background = element_rect(fill = "transparent", colour = NA),
-        panel.background = element_rect(fill = "transparent", colour = NA))
-p_catch
-### biomass index
-p_idxB <- df_idxB %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  labs(x = "year", y = "index") +
-  theme_bw(base_size = 8) +
-  theme(axis.title.x = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        panel.grid = element_blank(),
-        panel.border = element_blank(),
-        plot.background = element_rect(fill = "transparent", colour = NA),
-        panel.background = element_rect(fill = "transparent", colour = NA))
-p_idxB
-
-### catch rate
-p_cr1 <- df_cr %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  facet_wrap(~ "step 4", strip.position = "top") +
-  labs(x = "year", y = "catch/index") +
-  ylim(c(0, 0.4)) +
-  theme_bw(base_size = 8) +
-  theme(strip.text = element_text(size = 8)) +
-  annotation_custom(grob = ggplotGrob(p_catch),
-                    xmin = -50, xmax = -35,
-                    ymin = 0.3, ymax = 0.4) +
-  annotation_custom(grob = ggplotGrob(p_idxB),
-                    xmin = -30, xmax = -15,
-                    ymin = 0.3, ymax = 0.4) +
-  annotate("segment", x = -34, xend = -31, y = 0.3, yend = 0.4,
-           colour = "black", size = 1)
-p_cr1
-### catch rate & points
-p_cr2 <- df_cr %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  geom_point(data = df_cr %>% filter(year %in% df_years),
-             colour = "red", size = 0.4) +
-  facet_wrap(~ "step 5", strip.position = "top") +
-  labs(x = "year", y = "catch/index") +
-  ylim(c(0, 0.4)) +
-  theme_bw(base_size = 8) +
-  theme(axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text = element_text(size = 8))
-p_cr2
-### catch rate & points & reference
-p_cr3 <- df_cr %>% 
-  ggplot(aes(x = year, y = data)) +
-  geom_line() +
-  geom_point(data = df_cr %>% filter(year %in% df_years),
-             colour = "red", size = 0.4) +
-  geom_hline(yintercept = df_cr %>% 
-               filter(year %in% df_years) %>% 
-               summarise(mean(data)) %>% unlist(),
-             colour = "red") +
-  facet_wrap(~ "step 6", strip.position = "top") +
-  labs(x = "year", y = "catch/index") +
-  ylim(c(0, 0.4)) +
-  theme_bw(base_size = 8) +
-  theme(axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text = element_text(size = 8))
-p_cr3
-
-
-### combine all plots
-plot_grid(p_idxL1, p_idxL2, p_idxL3,
-          ncol = 3, rel_widths = c(1.12, 1, 1))
-ggsave(filename = "output/plots/length_procedure_combined_1.png",
-       width = 17, height = 6, units = "cm", dpi = 600,
-       type = "cairo")
-ggsave(filename = "output/plots/length_procedure_combined_1.pdf",
-       width = 17, height = 6, units = "cm")
-ggsave(filename = "output/plots/length_procedure_combined_1_.pdf",
-       width = 17, height = 6, units = "cm")
-plot_grid(p_cr1, p_cr2, p_cr3,
-          ncol = 3, rel_widths = c(1.12, 1, 1))
-ggsave(filename = "output/plots/length_procedure_combined_2.png",
-       width = 17, height = 6, units = "cm", dpi = 600,
-       type = "cairo")
-ggsave(filename = "output/plots/length_procedure_combined_2.pdf",
-       width = 17, height = 6, units = "cm")
-
-### ------------------------------------------------------------------------ ###
-### HR principle visualisation ####
-### ------------------------------------------------------------------------ ###
-
-ggplot() +
-  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
-           linetype = "dotted") +
-  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
-           linetype = "dotted") +
-  geom_line(data = data.frame(x = seq(0, 1, length.out = 1000), 
-                              y = seq(0, 1, length.out = 1000),
-                              z = seq(0, 1, length.out = 1000)),
-            aes(x = x, y = y, colour = z),
-            size = 1, show.legend = FALSE) +
-  scale_colour_gradient(low = "red", high = "yellow") +
-  geom_line(data = data.frame(x = c(1, 2), 
-                              y = c(1, 1)),
-            aes(x = x, y = y), colour = "green3", size = 1) +
-  scale_x_continuous("index I", expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
-  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, "H")) +
-  theme_classic()
-ggsave(filename = "output/plots/HR_principle.png",
-       width = 8.5, height = 5, units = "cm", dpi = 600,
-       type = "cairo")
-ggsave(filename = "output/plots/HR_principle.pdf",
-       width = 8.5, height = 5, units = "cm")
-
-data.frame(x = c(0, 1, 2),
-           y = c(0, 1, 1)) %>%
-  ggplot(aes(x = x, y = y)) +
-  annotation_raster(matrix(colorRampPalette(c("red", "orange", "yellow"))(255),
-                           nrow = 1),
-                    xmin = 0, xmax = 1, ymin = 0, ymax = 1, interpolate = TRUE) +
-  annotate("polygon", x = c(0, 1, 0), y = c(0, 1.01, 1.01), fill = "white") +
-  annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
-  geom_line() +
-  scale_x_continuous("index I", expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
-  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, "H")) +
-  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
-           linetype = "dotted") +
-  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
-           linetype = "dotted") +
-  #theme(panel.background = element_blank())
-  theme_classic()
-ggsave(filename = "output/plots/HR_principle_area.png",
-       width = 8.5, height = 5, units = "cm", dpi = 600,
-       type = "cairo")
-ggsave(filename = "output/plots/HR_principle_area.pdf",
-       width = 8.5, height = 5, units = "cm")
 
 
 
