@@ -140,7 +140,7 @@ pol_GA <- pol_GA %>%
              "upper_cap", "lower_cap", "caps",
              "all_no_caps", "all", "mult_cond_cap", "all_cond_cap"),
   labels = c("not optimised", "index range", "time lag",
-             "multiplier", "interval", "index trigger\nmultiplier",
+             "multiplier", "interval", "index trigger\nbuffer",
              "upper cap", "lower cap", "both caps", 
              "all without caps", "all",
              "multiplier (cond. cap)",
@@ -547,7 +547,25 @@ ggsave(filename = "output/plots/HR_principle_area.png",
        type = "cairo")
 ggsave(filename = "output/plots/HR_principle_area.pdf",
        width = 8.5, height = 5, units = "cm")
-
+### no colours
+data.frame(x = c(0, 1, 2),
+           y = c(0, 1, 1)) %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_line() +
+  scale_x_continuous("index I", expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
+  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+                     breaks = c(0, 1), labels = c(0, "H")) +
+  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
+           linetype = "dotted") +
+  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
+           linetype = "dotted") +
+  theme_classic()
+ggsave(filename = "output/plots/HR_principle_bw.png",
+       width = 8.5, height = 5, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/HR_principle_bw.pdf",
+       width = 8.5, height = 5, units = "cm")
 
 
 ### ------------------------------------------------------------------------ ###
