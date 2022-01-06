@@ -74,6 +74,8 @@ described in:
 >
 > -   `output/hr_pol_comps_stats.csv` results for exploration of
 >     parameters of harvest rate rule for pollack
+> -   `output/hr_pol_sensitivity.csv` summarised results from
+>     sensitivity runs for pollack
 > -   `output/hr_all_GA_stats.csv` results for all stocks
 > -   `output/hr_all_mult_runs_stats.csv` results for all stocks with
 >     multiplier and conditional uncertainty caps
