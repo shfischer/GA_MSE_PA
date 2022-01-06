@@ -2,9 +2,9 @@ Exploration of harvest-rate based fisheries management for data-limited
 stocks
 ================
 
-This repository ([GA\_MSE\_HR](https://github.com/shfischer/GA_MSE_HR))
-is a mirror of [GA\_MSE](https://github.com/shfischer/GA_MSE) and
-([GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA)) with the
+This repository ([GA_MSE_HR](https://github.com/shfischer/GA_MSE_HR)) is
+a mirror of [GA_MSE](https://github.com/shfischer/GA_MSE) and
+([GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA)) with the
 `harvest_rate` branch displayed as default branch.
 
 ## Introduction
@@ -72,7 +72,11 @@ described in:
 > The following outputs summarising the results from running the
 > optimisation are provided:
 >
-> -   `output/`
+> -   `output/hr_pol_comps_stats.csv` results for exploration of
+>     parameters of harvest rate rule for pollack
+> -   `output/hr_all_GA_stats.csv` results for all stocks
+> -   `output/hr_all_mult_runs_stats.csv` results for all stocks with
+>     multiplier and conditional uncertainty caps
 
 ## R, R packages and version info
 
