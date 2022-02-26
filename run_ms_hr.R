@@ -53,6 +53,9 @@ for (i in seq_along(args)) eval(parse(text = args[[i]]))
   ### observation uncertainty
   if (!exists("sigmaL")) sigmaL <- 0.2
   if (!exists("sigmaB")) sigmaB <- 0.2
+  ### observation uncertainty auto-correlation
+  if (!exists("sigmaL_rho")) sigmaL_rho <- 0
+  if (!exists("sigmaB_rho")) sigmaB_rho <- 0
   ### recruitment variability
   if (!exists("sigmaR")) sigmaR <- 0.6
   if (!exists("sigmaR_rho")) sigmaR_rho <- 0.0
@@ -219,6 +222,8 @@ if (isFALSE(ga_search)) {
                           lower_constraint = lower_constraint,
                           sigmaL = sigmaL,
                           sigmaB = sigmaB,
+                          sigmaL_rho = sigmaL_rho,
+                          sigmaB_rho = sigmaB_rho,
                           sigmaR = sigmaR,
                           sigmaR_rho = sigmaR_rho,
                           steepness = steepness)
@@ -253,7 +258,10 @@ if (isFALSE(ga_search)) {
     ### change uncertainty?
     sigmaB_i <- par_i$sigmaB
     sigmaL_i <- par_i$sigmaL
-    if (par_i$sigmaB != 0.2 | par_i$sigmaL != 0.2) {
+    sigmaB_rho_i <- par_i$sigmaB_rho
+    sigmaL_rho_i <- par_i$sigmaL_rho
+    if (par_i$sigmaB != 0.2 | par_i$sigmaL != 0.2 |
+        par_i$sigmaB_rho != 0 | par_i$sigmaL_rho != 0) {
         
       #browser()
       ### create observation noise
@@ -261,16 +269,16 @@ if (isFALSE(ga_search)) {
       dev_idxB <- input_i$oem@deviances$idx$idxB
       dev_idxL <- input_i$oem@deviances$idx$idxL
       dev_idxB[] <- rlnoise(n = dims(dev_idxB)$iter, dev_idxB %=% 0, 
-                            sd = sigmaB_i, b = 0)
+                            sd = sigmaB_i, b = sigmaB_rho_i)
       dev_idxL[] <- rlnoise(n = dims(dev_idxL)$iter, dev_idxL %=% 0, 
-                            sd = sigmaL_i, b = 0)
+                            sd = sigmaL_i, b = sigmaL_rho_i)
       set.seed(696)
       dev_idxB[, ac(50:150)] <- rlnoise(n = dims(dev_idxB)$iter,
                                         window(dev_idxB, end = 150) %=% 0,
-                                        sd = sigmaB_i, b = 0)
+                                        sd = sigmaB_i, b = sigmaB_rho_i)
       dev_idxL[, ac(50:150)] <- rlnoise(n = dims(dev_idxB)$iter,
                                         window(dev_idxB, end = 150) %=% 0,
-                                        sd = sigmaL_i, b = 0)
+                                        sd = sigmaL_i, b = sigmaL_rho_i)
       ### insert
       input_i$oem@deviances$idx$idxB <- dev_idxB
       input_i$oem@deviances$idx$idxL <- dev_idxL
@@ -353,14 +361,29 @@ if (isFALSE(ga_search)) {
     }
     
     ### -------------------------------------------------------------------- ###
+    ### update target harvest rate ####
+    ### -------------------------------------------------------------------- ###
+    ### run again in case residuals were changed
+    input_i <- hr_par(input = input_i, lhist = lhist,
+                      hr = hr, hr_ref = hr_ref, 
+                      multiplier = par_i$multiplier,
+                      comp_b = par_i$comp_b, idxB_lag = par_i$idxB_lag, 
+                      idxB_range_3 = par_i$idxB_range_3,
+                      interval = par_i$interval, 
+                      upper_constraint = par_i$upper_constraint,
+                      lower_constraint = par_i$lower_constraint,
+                      cap_below_b = cap_below_b)
+    
+    ### -------------------------------------------------------------------- ###
     ### paths ####
     ### -------------------------------------------------------------------- ###
     ### generate file name
     file_out <- paste0(c(hr, par_i$multiplier, par_i$comp_b, par_i$idxB_lag, 
                          par_i$idxB_range_3, par_i$interval, 
                          par_i$upper_constraint, par_i$lower_constraint,
-                         par_i$sigmaL, par_i$sigmaB, par_i$sigmaR, 
-                         par_i$sigmaR_rho, par_i$steepness), 
+                         par_i$sigmaL, par_i$sigmaB, 
+                         par_i$sigmaL_rho, par_i$sigmaB_rho, 
+                         par_i$sigmaR, par_i$sigmaR_rho, par_i$steepness), 
                        collapse = "_")
     path_out <- paste0("output/hr/", n_iter, "_", n_yrs, "/", scenario, "/",
                        fhist, "/", paste0(stock, collapse = "_"), "/")
@@ -447,6 +470,8 @@ if (isFALSE(ga_search)) {
                           lower_constraint = lower_constraint,
                           sigmaL = sigmaL,
                           sigmaB = sigmaB,
+                          sigmaL_rho = sigmaL_rho,
+                          sigmaB_rho = sigmaB_rho,
                           sigmaR = sigmaR,
                           sigmaR_rho = sigmaR_rho)
   par_i <- hr_params[1, ]
