@@ -7,6 +7,7 @@ library(tidyverse)
 library(doParallel)
 library(scales)
 library(cowplot)
+library(patchwork)
 library(RColorBrewer)
 library(akima)
 source("funs.R")
@@ -697,19 +698,23 @@ stats_sens_status <- foreach(fhist = c("random", "one-way"),
   }
 
 ### recruitment & observations
-stats_sens_more <- foreach(sensitivity = c("rec_var", "rec_steepness",
+stats_sens_more <- foreach(sensitivity = c("rec_var", "rec_rho",
+                                           "rec_steepness",
                                            "obs_idx_sd",
-                                           "obs_lngth_sd", "obs_idx_lngth_sd"),
+                                           "obs_lngth_sd", "obs_idx_lngth_sd",
+                                           "obs_idx_lngth_rho"),
                            .combine = bind_rows) %:%
   foreach(fhist = c("one-way", "random"), 
           .combine = bind_rows) %do% {
             #browser()
   file_name <- switch(sensitivity,
-                      "rec_var" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds",
-                      "rec_steepness" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0_0-1.rds",
-                      "obs_idx_sd" = "1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds",
-                      "obs_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds",
-                      "obs_idx_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds"
+    "rec_var" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds",
+    "rec_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0-1_0.75.rds",
+    "rec_steepness" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0_0-1.rds",
+    "obs_idx_sd" = "1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds",
+    "obs_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds",
+    "obs_idx_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds",
+    "obs_idx_lngth_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0-1_0.6_0_0.75.rds"
   )
   file_name <- paste0("collated_stats_length_", file_name)
   tmp <- readRDS(paste0("output/hr/500_50/sensitivity/", fhist, "/pol/",
@@ -747,19 +752,48 @@ p_sens_rec <- stats_sens_plot %>%
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "recruitment~variability", scales = "free", 
+  facet_grid(name ~ "'Recruitment\n\ \ variability'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
   scale_colour_brewer("", palette = "Set1") +
   scale_fill_brewer("", palette = "Set1") +
+  scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(sigma[R])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
         strip.text.y = element_text(size = 8),
+        strip.text.x = element_text(margin = margin(8, 0, 0, 0)),
         strip.background.y = element_blank(),
         axis.title.y = element_blank(),
         strip.switch.pad.grid = unit(0, "pt"),
-        plot.margin = unit(c(4, 2, 4, 4), "pt"))
+        plot.margin = unit(c(2, 2, 4, 4), "pt"))
+p_sens_rec_rho <- stats_sens_plot %>%
+  filter(sensitivity == "rec_rho" &
+           sigmaR_rho < 0.99) %>%
+  ggplot(aes(x = sigmaR_rho, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
+  geom_vline(xintercept = 0.0, size = 0.4, colour = "grey") +
+  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
+              show.legend = FALSE) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "'\ \ \ Recruitment\nauto-correlation'", scales = "free", 
+             labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_fill_brewer("", palette = "Set1") +
+  scale_x_continuous(breaks = c(0, 0.5, 1)) +
+  labs(x = expression(italic(rho)[R])) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.text.y = element_blank(),
+        strip.text.x = element_text(margin = margin(8, 0, 1.2, 0)),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(2, 2, 4, 0), "pt"))
 p_sens_rec_steepness <- stats_sens_plot %>%
   filter(sensitivity == "rec_steepness" &
            steepness > 0.2) %>%
@@ -770,23 +804,25 @@ p_sens_rec_steepness <- stats_sens_plot %>%
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "recruitment~steepness", scales = "free", 
+  facet_grid(name ~ "'Recruitment\n\ steepness'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
   scale_colour_brewer("", palette = "Set1") +
   scale_fill_brewer("", palette = "Set1") +
+  scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(italic(h))) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
         strip.text.y = element_blank(),
+        strip.text.x = element_text(margin = margin(8, 0, 0, 0)),
         strip.background.y = element_blank(),
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
-        plot.margin = unit(c(4, 2, 4, 0), "pt"))
+        plot.margin = unit(c(2, 2, 4, 0), "pt"))
 p_sens_obs <- stats_sens_plot %>%
-  filter(sensitivity == "obs_idx_sd") %>%
+  filter(sensitivity == "obs_idx_lngth_sd") %>%
   ggplot(aes(x = sigmaB, y = value, fill = fhist, colour = fhist, 
              linetype = fhist)) +
   geom_vline(xintercept = 0.2, size = 0.4, colour = "grey") +
@@ -794,21 +830,49 @@ p_sens_obs <- stats_sens_plot %>%
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "observation~uncertainty", scales = "free", 
+  facet_grid(name ~ "'Observation\n\ uncertainty'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
   scale_colour_brewer("", palette = "Set1") +
   scale_fill_brewer("", palette = "Set1") +
-  labs(x = expression(sigma[obs])) +
+  scale_x_continuous(breaks = c(0, 0.5, 1)) +
+  labs(x = expression(italic(sigma)[obs])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
         strip.text.y = element_blank(),
+        strip.text.x = element_text(margin = margin(8, 0, 0, 0)),
         strip.background.y = element_blank(),
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
-        plot.margin = unit(c(4, 2, 4, 0), "pt"))
+        plot.margin = unit(c(2, 2, 4, 0), "pt"))
+p_sens_obs_rho <- stats_sens_plot %>%
+  filter(sensitivity == "obs_idx_lngth_rho" & sigmaB_rho < 1) %>%
+  ggplot(aes(x = sigmaB_rho, y = value, fill = fhist, colour = fhist, 
+             linetype = fhist)) +
+  geom_vline(xintercept = 0.0, size = 0.4, colour = "grey") +
+  stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
+              show.legend = FALSE) + 
+  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_blank(data = df_blank, aes(x = x, y = value)) +
+  facet_grid(name ~ "'\ \ \ Observation\nauto-correlation'", scales = "free", 
+             labeller = "label_parsed",
+             switch = "y") +
+  scale_colour_brewer("", palette = "Set1") +
+  scale_fill_brewer("", palette = "Set1") +
+  scale_x_continuous(breaks = c(0, 0.5, 1)) +
+  labs(x = expression(italic(rho)[obs])) +
+  theme_bw(base_size = 8) +
+  theme(strip.placement = "outside",
+        strip.text.y = element_blank(),
+        strip.text.x = element_text(margin = margin(8, 0, 1, 0)),
+        strip.background.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        strip.switch.pad.grid = unit(0, "pt"),
+        plot.margin = unit(c(2, 2, 4, 0), "pt"))
 p_sens_status <- stats_sens_plot %>%
   filter(sensitivity == "stock_status" &
            SSB0_rel <= 2) %>%
@@ -819,23 +883,25 @@ p_sens_status <- stats_sens_plot %>%
               show.legend = FALSE) + 
   geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "initial~stock~status", scales = "free",
+  facet_grid(name ~ "'\ \ \ \ \ \ Initial\nstock status'", scales = "free",
              labeller = "label_parsed",
              switch = "y") +
   scale_colour_brewer("", palette = "Set1") +
   scale_fill_brewer("", palette = "Set1") +
+  scale_x_continuous(limits = c(-0.05, 2.05)) +
   labs(x = expression(SSB[y == 0]/B[MSY])) +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
         strip.text.y = element_blank(),
         ### manual margins because no letter goes below base
-        strip.text.x = element_text(margin = unit(c(3.8, 0, 3.8, 0), "pt")),
+        #strip.text.x = element_text(margin = unit(c(3.8, 0, 3.8, 0), "pt")),
+        strip.text.x = element_text(margin = margin(8, 0, 1.2, 0)),
         strip.background.y = element_blank(),
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
-        plot.margin = unit(c(4, 2, 4, 0), "pt"))
+        plot.margin = unit(c(2, 2, 4, 0), "pt"))
 p_sens_period <- stats_sens_plot %>%
   filter(sensitivity == "period" &
            stat_metric == "average") %>%
@@ -845,7 +911,7 @@ p_sens_period <- stats_sens_plot %>%
   stat_smooth(n = 50, span = 0.1, se = FALSE, geom = "line", size = 0.4) + 
   geom_point(size = 0.3, stroke = 0, shape = 21) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "projection~time", scales = "free", 
+  facet_grid(name ~ "'Projection\n\ \ \ \ time'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
   scale_colour_brewer("fishing history", palette = "Set1") +
@@ -855,22 +921,28 @@ p_sens_period <- stats_sens_plot %>%
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
         strip.text.y = element_blank(),
+        strip.text.x = element_text(margin = margin(8, 0, 0, 0)),
         strip.background.y = element_blank(),
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
-        plot.margin = unit(c(4, 4, 4, 0), "pt"),
-        legend.position = c(0.7, 0.45),
+        plot.margin = unit(c(2, 4, 4, 0), "pt"),
+        legend.position = c(0.65, 0.45),
         legend.background = element_blank(),
         legend.key.height = unit(0.6, "lines"),
+        legend.key.width = unit(0.6, "lines"),
+        legend.title = element_blank(),
         legend.key = element_blank())
 
-plot_grid(p_sens_rec, p_sens_rec_steepness, p_sens_obs, p_sens_status,
-          p_sens_period, 
-          nrow = 1, rel_widths = c(1.2, 1, 1, 1, 1), align = "h")
+p <- p_sens_rec + p_sens_rec_rho + p_sens_rec_steepness +
+  p_sens_obs + p_sens_obs_rho +
+  p_sens_status + p_sens_period +
+  plot_layout(nrow = 1)
+p
 
-ggsave(filename = "output/plots/paper/pol_sensitivity_stats.png", type = "cairo",
+ggsave(filename = "output/plots/paper/pol_sensitivity_stats.png", 
+       type = "cairo",
        width = 17, height = 8, units = "cm", dpi = 600)
 ggsave(filename = "output/plots/paper/pol_sensitivity_stats.pdf",
        width = 17, height = 8, units = "cm")
