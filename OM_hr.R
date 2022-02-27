@@ -47,9 +47,9 @@ if (isTRUE(n_workers > 1)) {
 ### fishing history dimensions ####
 ### ------------------------------------------------------------------------ ###
 
-# n_iter <- 10000
+# n_iter <- 500
 # yrs_hist <- 100
-# yrs_proj <- 100
+# yrs_proj <- 50
 
 set.seed(2)
 
@@ -133,6 +133,27 @@ if (exists("OM")) {
         ### control object
         ctrl <- fwdControl(data.frame(year = 2:100, quantity = "f", val = fs))
         
+      ### roller-coaster
+      } else if (isTRUE(fhist == "roller-coaster")) {
+        
+        ### 0.5Fmsy until year 75, 
+        ### increase to 0.8Fcrash in 10 years
+        ### keep at 0.8Fcrash for 5 years
+        ### reduce to Fmsy in last 5 years
+        fs <- rep(c(refpts["msy", "harvest"]) * 0.5, 75)
+        f0_up <- c(refpts["msy", "harvest"]) * 0.5
+        fmax_up <- c(refpts["crash", "harvest"]) * 0.8
+        yrs_up <- 15
+        rate_up <- exp((log(fmax_up) - log(f0_up)) / yrs_up)
+        yrs_down <- 6
+        f0_down <- c(refpts["msy", "harvest"])
+        rate_down <- exp((log(fmax_up) - log(f0_down)) / yrs_down)
+        fs <- c(fs, rate_up ^ seq(yrs_up) * f0_up, rep(fmax_up, 3),
+                rev(rate_down ^ seq(yrs_down) * f0_down))
+        
+        ### control object
+        ctrl <- fwdControl(data.frame(year = 2:100, quantity = "f", val = fs))
+        
       ### random F trajectories
       } else if (isTRUE(fhist == "random")) {
         
@@ -158,9 +179,11 @@ if (exists("OM")) {
       #                  sr.residuals.mult = TRUE, maxF = 4)
       # }
       name(stk_stf) <- stock
-      path <- paste0("input/hr/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, "/")
+      path <- paste0("input/hr/", n_iter, "_", yrs_proj, "/OM_1_hist/", fhist, 
+                     "/")
       dir.create(path, recursive = TRUE)
-      saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, ".rds"))
+      saveRDS(list(stk = stk_stf, sr = stk_sr), file = paste0(path, stock, 
+                                                              ".rds"))
       
       return(NULL)
       #return(list(stk = stk_stf, sr = stk_sr))
