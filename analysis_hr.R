@@ -311,6 +311,78 @@ saveRDS(all_mult, file = "output/hr_all_mult_runs_stats.rds")
 write.csv(all_mult, file = "output/hr_all_mult_runs_stats.csv", row.names = FALSE)
 
 ### ------------------------------------------------------------------------ ###
+### collate data: all stocks - multiplier without cap - all runs ####
+all_mult <- foreach(stock = stocks$stock, .combine = bind_rows) %:%
+  foreach(parameters = c("mult"), .combine = bind_rows) %:%
+  foreach(objective = c("MSY-PA"), .combine = bind_rows) %:%
+  foreach(scenario = c("GA"), .combine = bind_rows) %:%
+  foreach(catch_rule = "hr", .combine = bind_rows) %:%
+  foreach(stat_yrs = "all", .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random", "roller-coaster"), 
+          .combine = bind_rows) %:%
+  foreach(years = c(50), .combine = bind_rows) %do% {#browser()
+    
+    ### find files
+    file_prefix <- "multiplier"
+    file_suffix <- "obj_ICES_MSYPA"
+    file_res <- paste0(file_prefix, "--", file_suffix, "_res.rds")
+    file_runs <- paste0(file_prefix, "--", file_suffix, "_runs.rds")
+    
+    if (!file.exists(paste0("output/", catch_rule, "/500_", years, "/", 
+                            scenario, "/", fhist, "/", stock, "/", file_res))) { 
+      return(NULL)
+    }
+    
+    df_res <- data.frame(parameters = parameters, objective = objective, 
+                         scenario = scenario, catch_rule = catch_rule, 
+                         stat_yrs = stat_yrs, fhist = fhist, stock = stock,
+                         years = years)
+    ### load GA results
+    res <- readRDS(paste0("output/", catch_rule, "/500_", years, "/", 
+                          scenario, "/", fhist, "/", stock, "/", file_res))
+    runs <- readRDS(paste0("output/", catch_rule, "/500_", years, "/", 
+                           scenario, "/", fhist, "/", stock, "/", file_runs))
+    solution <- c(res@solution[, "multiplier"])
+    
+    runs_df <- lapply(runs, function(x) {
+      tmp <- cbind(as.data.frame(t(x$pars)), 
+                   as.data.frame(t(unlist(x$stats[1:11, ]))))
+      penalty_tmp <- penalty(x = tmp$risk_Blim, 
+                             negative = FALSE, max = 5, 
+                             inflection = 0.05 + 0.01, 
+                             steepness = 0.5e+3)
+      if (isTRUE(objective == "MSY")) {
+        tmp$fitness <- -sum(abs(tmp$SSB_rel - 1), abs(tmp$Catch_rel - 1), 
+                            tmp$risk_Blim, tmp$ICV)
+      } else if (isTRUE(objective == "MSY-PA")) {
+        tmp$fitness <- -sum(abs(tmp$SSB_rel - 1),
+                            abs(tmp$Catch_rel - 1), 
+                            tmp$ICV,
+                            penalty_tmp)
+      }
+      return(tmp)
+    })
+    runs_df <- do.call(rbind, runs_df)
+    row.names(runs_df) <- NULL
+    runs_df$optimum <- ifelse(round(runs_df$multiplier, 2) == round(solution, 2), 
+                              TRUE, FALSE)
+    
+    df_res <- cbind(df_res, runs_df)
+    return(df_res)
+}
+saveRDS(all_mult, file = "output/hr_all_mult_runs_stats_nocaps.rds")
+write.csv(all_mult, file = "output/hr_all_mult_runs_stats_nocaps.csv", 
+          row.names = FALSE)
+
+all_mult %>% filter(stock == "pol") %>%
+  ggplot(aes(x = multiplier, y = risk_Blim, colour = as.factor(fhist))) +
+  geom_line()
+all_mult %>% filter(stock == "pol") %>%
+  ggplot(aes(x = multiplier, y = Catch_rel, colour = as.factor(fhist))) +
+  geom_line()
+
+
+### ------------------------------------------------------------------------ ###
 ### figures for paper ####
 ### ------------------------------------------------------------------------ ###
 
@@ -582,11 +654,15 @@ Bmsy <- c(refpts(brp)["msy", "ssb"])
 MSY <- c(refpts(brp)["msy", "yield"])
 
 ### stats over time
-stats_sens_time <- foreach(fhist = c("random", "one-way"),
+stats_sens_time <- foreach(fhist = c("random", "one-way", "roller-coaster"),
                            .combine = rbind) %do% {
                              #browser()
+  file <- ifelse(fhist %in% c("random", "one-way"),
+                 "mp_length_1_TRUE_1_1_1_Inf_0",
+                 "mp_length_1_TRUE_1_1_1_Inf_0_0.2_0.2_0_0_0.6_0_0.75")
   res <- readRDS(paste0("output/hr/500_100/sensitivity/", fhist, 
-                        "/pol/mp_length_1_TRUE_1_1_1_Inf_0.rds"))
+                        "/pol/", file, ".rds"))
+  
   ### collapse correction
   res_corrected <- collapse_correction(stk = res@stock, yrs = 101:200)
   ### template
@@ -632,7 +708,7 @@ stats_sens_time <- foreach(fhist = c("random", "one-way"),
     sensitivity = "period") %>%
     arrange(stat_metric, n_yrs)
   return(df_i)
-  }
+}
 
 ### stock status
 stats_sens_status <- foreach(fhist = c("random", "one-way"),
@@ -695,27 +771,40 @@ stats_sens_status <- foreach(fhist = c("random", "one-way"),
   row.names(df_i) <- NULL
   df_i <- df_i[order(df_i$SSB0_rel), ]
   return(df_i)
-  }
+}
 
 ### recruitment & observations
 stats_sens_more <- foreach(sensitivity = c("rec_var", "rec_rho",
                                            "rec_steepness",
-                                           "obs_idx_sd",
-                                           "obs_lngth_sd", "obs_idx_lngth_sd",
+                                           #"obs_idx_sd", "obs_lngth_sd",
+                                           "obs_idx_lngth_sd",
                                            "obs_idx_lngth_rho"),
                            .combine = bind_rows) %:%
-  foreach(fhist = c("one-way", "random"), 
+  foreach(fhist = c("one-way", "roller-coaster", "random"), 
           .combine = bind_rows) %do% {
             #browser()
-  file_name <- switch(sensitivity,
-    "rec_var" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds",
-    "rec_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0-1_0.75.rds",
-    "rec_steepness" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0_0-1.rds",
-    "obs_idx_sd" = "1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds",
-    "obs_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds",
-    "obs_idx_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds",
-    "obs_idx_lngth_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0-1_0.6_0_0.75.rds"
-  )
+  if (fhist %in% c("one-way", "random")) {
+    file_name <- switch(sensitivity,
+      "rec_var" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0.rds",
+      "rec_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0-1_0.75.rds",
+      "rec_steepness" = "1_1_1_1_1_Inf_0_0.2_0.2_0.6_0_0-1.rds",
+      "obs_idx_sd" = "1_1_1_1_1_Inf_0_0.2_0-1_0.6_0.rds",
+      "obs_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0.2_0.6_0.rds",
+      "obs_idx_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0-1_0.6_0.rds",
+      "obs_idx_lngth_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0-1_0.6_0_0.75.rds"
+    )
+  } else {
+    file_name <- switch(sensitivity,
+      "rec_var" = "1_1_1_1_1_Inf_0_0.2_0.2_0_0_0-1_0_0.75.rds",
+      "rec_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0_0_0.6_0-1_0.75.rds",
+      "rec_steepness" = "1_1_1_1_1_Inf_0_0.2_0.2_0_0_0.6_0_0-1.rds",
+      "obs_idx_sd" = "1_1_1_1_1_Inf_0_0.2_0-1_0_0_0.6_0_0.75.rds",
+      "obs_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0.2_0_0_0.6_0_0.75.rds",
+      "obs_idx_lngth_sd" = "1_1_1_1_1_Inf_0_0-1_0-1_0_0_0.6_0_0.75.rds",
+      "obs_idx_lngth_rho" = "1_1_1_1_1_Inf_0_0.2_0.2_0-1_0-1_0.6_0_0.75.rds"
+    )
+  }
+  
   file_name <- paste0("collated_stats_length_", file_name)
   tmp <- readRDS(paste0("output/hr/500_50/sensitivity/", fhist, "/pol/",
                         file_name))
@@ -737,12 +826,20 @@ stats_sens <- readRDS("output/hr_pol_sensitivity.rds")
 stats_sens_plot <- stats_sens %>%
   pivot_longer(c(risk_Blim, SSB_rel, Catch_rel)) %>%
   mutate(name = factor(name, levels = c("SSB_rel", "Catch_rel", "risk_Blim"),
-                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk")))
+                       labels = c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk")),
+         fhist = factor(fhist, levels = c("one-way", "roller-coaster",
+                                          "random")))
 df_blank <- data.frame(name = rep(c("SSB/B[MSY]", "Catch/MSY", "B[lim]~risk"),
                                   each = 2),
                        x = c(0, 1, 0, 1, 0, 1),
                        value = c(0, 1.8, 0, 1.4, 0, 1),
                        fhist = NA)
+res_def_colours <- c("one-way" = brewer.pal(n = 4, name = "Set1")[1], 
+                     "roller-coaster" = brewer.pal(n = 4, name = "Set1")[4], 
+                     "random" = brewer.pal(n = 4, name = "Set1")[2])
+res_def_linetype <- c("one-way" = "solid", 
+                      "roller-coaster" = "1212", 
+                      "random" = "3232")
 p_sens_rec <- stats_sens_plot %>%
   filter(sensitivity == "rec_var") %>%
   ggplot(aes(x = sigmaR, y = value, fill = fhist, colour = fhist, 
@@ -750,13 +847,14 @@ p_sens_rec <- stats_sens_plot %>%
   geom_vline(xintercept = 0.6, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_point(size = 0.15, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'Recruitment\n\ \ variability'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Set1") +
-  scale_fill_brewer("", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(sigma[R])) +
   theme_bw(base_size = 8) +
@@ -775,13 +873,14 @@ p_sens_rec_rho <- stats_sens_plot %>%
   geom_vline(xintercept = 0.0, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_point(size = 0.15, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'\ \ \ Recruitment\nauto-correlation'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Set1") +
-  scale_fill_brewer("", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(italic(rho)[R])) +
   theme_bw(base_size = 8) +
@@ -802,13 +901,14 @@ p_sens_rec_steepness <- stats_sens_plot %>%
   geom_vline(xintercept = 0.75, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_point(size = 0.15, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'Recruitment\n\ steepness'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Set1") +
-  scale_fill_brewer("", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(italic(h))) +
   theme_bw(base_size = 8) +
@@ -828,13 +928,14 @@ p_sens_obs <- stats_sens_plot %>%
   geom_vline(xintercept = 0.2, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_point(size = 0.15, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'Observation\n\ uncertainty'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Set1") +
-  scale_fill_brewer("", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(italic(sigma)[obs])) +
   theme_bw(base_size = 8) +
@@ -854,13 +955,14 @@ p_sens_obs_rho <- stats_sens_plot %>%
   geom_vline(xintercept = 0.0, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.2, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_point(size = 0.15, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'\ \ \ Observation\nauto-correlation'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Set1") +
-  scale_fill_brewer("", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   scale_x_continuous(breaks = c(0, 0.5, 1)) +
   labs(x = expression(italic(rho)[obs])) +
   theme_bw(base_size = 8) +
@@ -881,13 +983,14 @@ p_sens_status <- stats_sens_plot %>%
              linetype = fhist)) +
   stat_smooth(n = 50, span = 0.4, se = FALSE, geom = "line", size = 0.4,
               show.legend = FALSE) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21, show.legend = FALSE) +
+  geom_point(size = 0.15, stroke = 0, shape = 21, show.legend = FALSE) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'\ \ \ \ \ \ Initial\nstock status'", scales = "free",
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("", palette = "Set1") +
-  scale_fill_brewer("", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   scale_x_continuous(limits = c(-0.05, 2.05)) +
   labs(x = expression(SSB[y == 0]/B[MSY])) +
   theme_bw(base_size = 8) +
@@ -909,14 +1012,14 @@ p_sens_period <- stats_sens_plot %>%
              linetype = fhist)) +
   geom_vline(xintercept = 50, size = 0.4, colour = "grey") +
   stat_smooth(n = 50, span = 0.1, se = FALSE, geom = "line", size = 0.4) + 
-  geom_point(size = 0.3, stroke = 0, shape = 21) +
+  geom_point(size = 0.15, stroke = 0, shape = 21) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
   facet_grid(name ~ "'Projection\n\ \ \ \ time'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
-  scale_colour_brewer("fishing history", palette = "Set1") +
-  scale_fill_brewer("fishing history", palette = "Set1") +
-  scale_linetype("fishing history") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
+  scale_fill_manual("fishing history", values = res_def_colours) +
   labs(x = "years") +
   theme_bw(base_size = 8) +
   theme(strip.placement = "outside",
@@ -928,9 +1031,9 @@ p_sens_period <- stats_sens_plot %>%
         axis.ticks.y = element_blank(), 
         strip.switch.pad.grid = unit(0, "pt"),
         plot.margin = unit(c(2, 4, 4, 0), "pt"),
-        legend.position = c(0.65, 0.45),
+        legend.position = c(0.55, 0.26),
         legend.background = element_blank(),
-        legend.key.height = unit(0.6, "lines"),
+        legend.key.height = unit(0.5, "lines"),
         legend.key.width = unit(0.6, "lines"),
         legend.title = element_blank(),
         legend.key = element_blank())
@@ -942,9 +1045,9 @@ p <- p_sens_rec + p_sens_rec_rho + p_sens_rec_steepness +
 p
 
 ggsave(filename = "output/plots/paper/pol_sensitivity_stats.png", 
-       type = "cairo",
+       type = "cairo", plot = p,
        width = 17, height = 8, units = "cm", dpi = 600)
-ggsave(filename = "output/plots/paper/pol_sensitivity_stats.pdf",
+ggsave(filename = "output/plots/paper/pol_sensitivity_stats.pdf", plot = p,
        width = 17, height = 8, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
@@ -1105,30 +1208,25 @@ for (i in seq_along(groups)) {
 ### HR (length target) - multipliers - 50 years ####
 ### ------------------------------------------------------------------------ ###
 
-res_def <- foreach(stock = stocks$stock[1:29], .combine = bind_rows) %:%
-  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
-    ### load data
-    path <- paste0("output/500_50/length/", fhist, "/", stock, "/")
-    path_runs <- paste0(path, "collated_stats_length_0-2_1_1_1_1_Inf_0.rds")
-    if (!file.exists(path_runs)) return(NULL)
-    # print("found something")
-    runs <- readRDS(path_runs)
-    runs <- as.data.frame(lapply(runs, unlist))
-    runs$fhist <- fhist
-    return(runs)
-}
-
+### load results
+res_def <- readRDS("output/hr_all_mult_runs_stats_nocaps.rds")
+### add stock labels
 res_def <- res_def %>%
   left_join(stocks[, c("stock", "k")]) %>%
   mutate(stock_k = paste0(stock, "~(italic(k)==", k, ")")) %>%
   mutate(stock_k = factor(stock_k, levels = unique(stock_k))) %>%
   mutate(stock = factor(stock, levels = stocks$stock))
+### sort fishing histories
+res_def <- res_def %>%
+  mutate(fhist = factor(fhist, 
+                        levels = c("one-way", "roller-coaster", "random")))
 
-saveRDS(res_def, file = "output/500_50/length/all_def_mult.rds")
-write.csv(res_def, file = "output/500_50/length/all_def_mult.csv", 
-          row.names = FALSE)
-res_def <- readRDS("output/500_50/length/all_def_mult.rds")
-
+res_def_colours <- c("one-way" = brewer.pal(n = 4, name = "Set1")[1], 
+                        "roller-coaster" = brewer.pal(n = 4, name = "Set1")[4], 
+                        "random" = brewer.pal(n = 4, name = "Set1")[2])
+res_def_linetype <- c("one-way" = "solid", 
+                        "roller-coaster" = "dotted", 
+                        "random" = "dashed")
 
 ### plot all stocks
 res_def_p <- res_def %>%
@@ -1145,31 +1243,31 @@ res_def_p <- res_def %>%
 stats_targets <- data.frame(stat = c("SSB/B[MSY]", "F/F[MSY]", "Catch/MSY", 
                                      "B[lim]~risk", "ICV"),
                             target = c(1, 1, 1, 0, 0))
-p <- res_def_p %>% 
-  ggplot(aes(x = multiplier, y = value,
-             colour = as.factor(fhist), linetype = as.factor(fhist))) +
-  geom_line(size = 0.3) +
-  # geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.05),
-  #            aes(yintercept = y), colour = "red") +
-  facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
-             scales = "free_y") +
-  scale_linetype_discrete("fishing\nhistory") +
-  scale_colour_discrete("fishing\nhistory") +
-  theme_bw(base_size = 8) +
-  theme(strip.placement.y = "outside",
-        strip.background.y = element_blank(),
-        strip.text.y = element_text(size = 8),
-        strip.text.x = element_text(size = 6)) +
-  labs(x = "multiplier", y = "") +
-  ylim(c(0, NA))# +
-# scale_x_continuous(breaks = c(0, 0.5, 1)#,
-#                    #expand = expansion(mult = c(0.1, 0.1))
-#                    )
-p
-ggsave(filename = "output/plots/length_all_def_mult.pdf",
-       width = 50, height = 10, units = "cm")
-ggsave(filename = "output/plots/length_all_def_mult.png", type = "cairo",
-       width = 50, height = 10, units = "cm", dpi = 600)
+# p <- res_def_p %>% 
+#   ggplot(aes(x = multiplier, y = value,
+#              colour = as.factor(fhist), linetype = as.factor(fhist))) +
+#   geom_line(size = 0.3) +
+#   # geom_hline(data = data.frame(stat = "B[lim]~risk", y = 0.05),
+#   #            aes(yintercept = y), colour = "red") +
+#   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
+#              scales = "free_y") +
+#   scale_linetype_discrete("fishing\nhistory") +
+#   scale_colour_discrete("fishing\nhistory") +
+#   theme_bw(base_size = 8) +
+#   theme(strip.placement.y = "outside",
+#         strip.background.y = element_blank(),
+#         strip.text.y = element_text(size = 8),
+#         strip.text.x = element_text(size = 6)) +
+#   labs(x = "multiplier", y = "") +
+#   ylim(c(0, NA))# +
+# # scale_x_continuous(breaks = c(0, 0.5, 1)#,
+# #                    #expand = expansion(mult = c(0.1, 0.1))
+# #                    )
+# p
+# ggsave(filename = "output/plots/length_all_def_mult.pdf",
+#        width = 50, height = 10, units = "cm")
+# ggsave(filename = "output/plots/length_all_def_mult.png", type = "cairo",
+#        width = 50, height = 10, units = "cm", dpi = 600)
 
 ### find max catch
 max_catch <- res_def %>%
@@ -1186,14 +1284,13 @@ p_SSB <- res_def_p %>%
              colour = as.factor(fhist), linetype = as.factor(fhist))) +
   geom_vline(data = max_catch %>% 
                filter(stock %in% c("ang3", "pol", "bll", "san")),
-             aes(xintercept = multiplier, 
-                 linetype = as.factor(fhist)),
+             aes(xintercept = multiplier, linetype = fhist),
              size = 0.15, colour = "grey40", show.legend = FALSE) +
   geom_line(size = 0.3) +
   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
              scales = "free_y") +
-  scale_linetype_discrete("fishing history") +
-  scale_colour_brewer("fishing history", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
   labs(x = "multiplier", y = "") +
   ylim(c(0, NA)) +
   theme_bw(base_size = 8) +
@@ -1201,7 +1298,8 @@ p_SSB <- res_def_p %>%
         strip.background.y = element_blank(),
         strip.text.y = element_text(size = 8),
         strip.text.x = element_text(size = 8),
-        legend.key.height = unit(0.6, "lines"),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.6, "lines"),
         legend.key = element_blank(),
         legend.background = element_blank(),
         legend.position = c(0.9, 0.75),
@@ -1228,8 +1326,9 @@ p_Catch <- res_def_p %>%
                group_by(stock, fhist) %>%
                filter(value == max(value)),
                aes(shape = as.factor(fhist)), show.legend = FALSE,
-               size = 0.5) +
-  scale_colour_brewer("fishing history", palette = "Set1") +
+               size = 0.7) +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
              scales = "free_y") +
   labs(x = "multiplier", y = "") +
@@ -1256,7 +1355,8 @@ p_risk <- res_def_p %>%
                  linetype = as.factor(fhist)),
              size = 0.15, colour = "grey40", show.legend = FALSE) +
   geom_line(size = 0.3, show.legend = FALSE) +
-  scale_colour_brewer("fishing history", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
   facet_grid(stat ~ stock_k, labeller = "label_parsed", switch = "y",
              scales = "free_y") +
   labs(x = "multiplier", y = "") +
@@ -1276,7 +1376,7 @@ p_stats
 
 
 ### estimate correlation
-max_catch_cor <- foreach(fhist = c("one-way", "random")) %:%
+max_catch_cor <- foreach(fhist = c("one-way", "roller-coaster", "random")) %:%
   foreach(stat = c("Catch_rel", "multiplier")) %do% {
     #browser()
     data_i <- max_catch %>%
@@ -1290,8 +1390,8 @@ max_catch_cor <- foreach(fhist = c("one-way", "random")) %:%
 }
 lapply(do.call(c, max_catch_cor), cat)
 # Correlation for fhist: one-way; stat: Catch_rel
-#   
-#  	Pearson's product-moment correlation 
+# 
+# Pearson's product-moment correlation 
 #   
 #  data:  data_i$k and data_i$stat 
 #  t = -14.189, df = 27, p-value = 4.903e-14 
@@ -1303,23 +1403,55 @@ lapply(do.call(c, max_catch_cor), cat)
 #  -0.9390145  
 #   
 # 
+# 
 # Correlation for fhist: one-way; stat: multiplier
 #   
 #  	Pearson's product-moment correlation 
+# 
+# data:  data_i$k and data_i$stat 
+# t = -10.358, df = 27, p-value = 6.636e-11 
+# alternative hypothesis: true correlation is not equal to 0 
+# 95 percent confidence interval: 
+#   -0.9493434 -0.7842543 
+# sample estimates: 
+#   cor  
+# -0.8938402  
+# 
+# 
+# 
+# Correlation for fhist: roller-coaster; stat: Catch_rel
+# 
+# Pearson's product-moment correlation 
 #   
 #  data:  data_i$k and data_i$stat 
-#  t = -10.358, df = 27, p-value = 6.636e-11 
+#  t = -14.109, df = 27, p-value = 5.613e-14 
 #  alternative hypothesis: true correlation is not equal to 0 
 #  95 percent confidence interval: 
-#   -0.9493434 -0.7842543 
+#   -0.9709556 -0.8716632 
 #  sample estimates: 
 #         cor  
-#  -0.8938402  
+#  -0.9383839  
 #   
 # 
-# Correlation for fhist: random; stat: Catch_rel
+# 
+# Correlation for fhist: roller-coaster; stat: multiplier
 #   
 #  	Pearson's product-moment correlation 
+# 
+# data:  data_i$k and data_i$stat 
+# t = -11.025, df = 27, p-value = 1.682e-11 
+# alternative hypothesis: true correlation is not equal to 0 
+# 95 percent confidence interval: 
+#   -0.9545954 -0.8049094 
+# sample estimates: 
+#   cor  
+# -0.9045649  
+# 
+# 
+# 
+# Correlation for fhist: random; stat: Catch_rel
+# 
+# Pearson's product-moment correlation 
 #   
 #  data:  data_i$k and data_i$stat 
 #  t = -10.302, df = 27, p-value = 7.47e-11 
@@ -1331,18 +1463,20 @@ lapply(do.call(c, max_catch_cor), cat)
 #  -0.892857  
 #   
 # 
+# 
 # Correlation for fhist: random; stat: multiplier
 #   
 #  	Pearson's product-moment correlation 
-#   
-#  data:  data_i$k and data_i$stat 
-#  t = -8.5716, df = 27, p-value = 3.473e-09 
-#  alternative hypothesis: true correlation is not equal to 0 
-#  95 percent confidence interval: 
+# 
+# data:  data_i$k and data_i$stat 
+# t = -8.5716, df = 27, p-value = 3.473e-09 
+# alternative hypothesis: true correlation is not equal to 0 
+# 95 percent confidence interval: 
 #   -0.9301314 -0.7116912 
-#  sample estimates: 
-#         cor  
-#  -0.8551425
+# sample estimates: 
+#   cor  
+# -0.8551425  
+
 
 
 ### prepare for plotting
@@ -1351,16 +1485,17 @@ max_catch_p <- max_catch %>%
   pivot_longer(c(multiplier, Catch_rel, risk_Blim), 
                names_to = "key", values_to = "value") %>%
   mutate(stat = factor(key, levels = c("multiplier", "Catch_rel", "risk_Blim"), 
-                       labels = c("multiplier~(x)", "catch/MSY", "B[lim]~risk")))
+                       labels = c("multiplier~(x)", "Catch/MSY", "B[lim]~risk")))
 ### plot
 p_max_catch <- max_catch_p %>%
-  filter(stat %in% c("multiplier~(x)", "catch/MSY")) %>%
-  ggplot(aes(x = k, y = value, colour = fhist, shape = fhist, linetype = fhist)) +
+  filter(stat %in% c("multiplier~(x)", "Catch/MSY")) %>%
+  ggplot(aes(x = k, y = value, colour = fhist, shape = fhist, 
+             linetype = fhist)) +
   geom_smooth(method = lm, se = FALSE, size = 0.3) +
   geom_point(size = 0.4) +
-  scale_colour_brewer("fishing history", palette = "Set1") +
+  scale_linetype_manual("fishing history", values = res_def_linetype) +
+  scale_colour_manual("fishing history", values = res_def_colours) +
   scale_shape("fishing history") +
-  scale_linetype("fishing history") +
   facet_wrap(~ stat, scales = "free_y", strip.position = "left",
              labeller = "label_parsed", ncol = 1) +
   #ylim(c(0, NA)) +  xlim(c(0, NA)) +
@@ -1373,7 +1508,8 @@ p_max_catch <- max_catch_p %>%
         axis.title.y = element_blank(),
         legend.background = element_blank(),
         legend.key = element_blank(),
-        legend.key.height = unit(0.6, "lines"),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.6, "lines"),
         legend.position = c(0.77, 0.92))
 p_max_catch
 
