@@ -1051,6 +1051,371 @@ ggsave(filename = "output/plots/paper/pol_sensitivity_stats.pdf", plot = p,
        width = 17, height = 8, units = "cm")
 
 ### ------------------------------------------------------------------------ ###
+### sensitivity - index selectivity for pollack ####
+### ------------------------------------------------------------------------ ###
+
+### collate results
+df_sel <- foreach(data = c("projection", "summary")) %:%
+  foreach(stock = c("pol"), .combine = rbind) %:%
+  foreach(fhist = c("random", "one-way", "roller-coaster"), .combine = rbind) %:%
+  foreach(idx_sel = c("tsb", "ssb", "catch", "dome_shaped"), 
+          .combine = rbind) %do% {
+  #browser()
+  res <- readRDS(paste0("output/hr/500_50/sensitivity_idx_sel/", fhist, "/",
+                        stock, "/mp_length_1_TRUE_1_1_1_Inf_0_0.2_0.2_0_0_",
+                        "0.6_0_0.75", 
+                        ifelse(identical(idx_sel, "tsb"), "", 
+                               paste0("_", idx_sel)),
+                        ".rds"))
+  ### collapse correction
+  res_corrected <- collapse_correction(stk = res@stock, yrs = 100:150)
+  ### get catch and ssb
+  ssb_rel <- res_corrected$ssb/c(refpts(brps[[stock]])["msy", "ssb"])
+  catch_rel <- res_corrected$catch/c(refpts(brps[[stock]])["msy", "yield"])
+  ssb_rel_median <- iterMedians(ssb_rel)
+  catch_rel_median <- iterMedians(catch_rel)
+  
+  res_desc <- data.frame(stock = stock, fhist = fhist, idx_sel = idx_sel, 
+                         stringsAsFactors = FALSE)
+  res_projection <- data.frame(year = as.numeric(dimnames(ssb_rel_median)$year),
+                               catch = c(catch_rel_median),
+                               ssb = c(ssb_rel_median))
+  res_projection <- bind_cols(res_desc, res_projection)
+  res_summary <- data.frame(catch = c(catch_rel), ssb = c(ssb_rel))
+  res_summary <- bind_cols(res_desc, res_summary)
+  
+  if (identical(data, "projection")) {
+    return(res_projection)
+  } else if (identical(data, "summary")) {
+    return(res_summary)
+  }
+}
+saveRDS(df_sel, file = "output/hr_sensitivity_sel.rds")
+df_sel <- readRDS("output/hr_sensitivity_sel.rds")
+
+df_sel <- lapply(df_sel, function(x) {
+  x <- x %>%
+    mutate(idx_sel = factor(idx_sel, 
+                            levels = c("ssb", "dome_shaped", "catch", "tsb"),
+                            labels = c("SSB", "dome shaped", "commercial", 
+                                       "total biomass")))
+  return(x)
+})
+names(df_sel) <- c("projection", "summary")
+
+#brewer.pal(n = 3, name = "Dark2")
+cols_sel <- c("SSB" = brewer.pal(n = 3, name = "Dark2")[1], 
+              "dome shaped" = brewer.pal(n = 3, name = "Dark2")[2], 
+              "commercial" = brewer.pal(n = 3, name = "Dark2")[3], 
+              "total biomass" = "azure4")
+
+p_ssb_proj_ow <- df_sel$projection %>%
+  filter(fhist == "one-way") %>%
+  ggplot(aes(x = year - 100, y = ssb, colour = idx_sel)) +
+  geom_line(size = 0.3) +
+  facet_wrap(~ "Projection") +
+  scale_colour_manual("", values = cols_sel) + 
+  scale_x_continuous(breaks = c(0, 5, 10)) + 
+  coord_cartesian(ylim = c(0, 2.5), xlim = c(0, 10.5),
+                  expand = FALSE) +
+  labs(x = "year",
+       y = expression(SSB/B[MSY])) + 
+  theme_bw(base_size = 8) +
+  theme(legend.position = c(0.22, 0.80),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.6, "lines"),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        plot.margin = unit(c(4, 0.1, 4, 4), "pt"),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank())
+p_ssb_smry_ow <- df_sel$summary %>%
+  filter(fhist == "one-way") %>%
+  mutate(x = 1) %>%
+  ggplot(aes(y = ssb, x = x, fill = idx_sel, group = idx_sel)) +
+  geom_boxplot(outlier.size = 0.3, size = 0.3,
+               width = 1, position = position_dodge(1),
+               show.legend = FALSE) +
+  facet_wrap(~ "Summary") +
+  scale_fill_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.5), xlim = c(0.4, 1.6),  
+                  expand = FALSE) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.margin = unit(c(4, 4, 4, 0), "pt"))
+p_catch_proj_ow <- df_sel$projection %>%
+  filter(fhist == "one-way") %>%
+  ggplot(aes(x = year - 100, y = catch, colour = idx_sel)) +
+  geom_line(size = 0.3, show.legend = FALSE) +
+  scale_x_continuous(breaks = c(0, 5, 10)) + 
+  scale_colour_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.05), xlim = c(0, 10.5),
+                  expand = FALSE) +
+  labs(x = "year",
+       y = expression(Catch/MSY)) + 
+  theme_bw(base_size = 8) +
+  theme(plot.margin = unit(c(0, 0.1, 4, 4), "pt"))
+p_catch_smry_ow <- df_sel$summary %>%
+  filter(fhist == "one-way") %>%
+  mutate(x = 1) %>%
+  ggplot(aes(y = catch, x = x, fill = idx_sel, group = idx_sel)) +
+  geom_boxplot(outlier.size = 0.3, size = 0.3,
+               width = 1, position = position_dodge(1),
+               show.legend = FALSE) +
+  scale_fill_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.05), xlim = c(0.4, 1.6),  
+                  expand = FALSE) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.margin = unit(c(0, 4, 4, 0), "pt"))
+    
+p_ow <- p_ssb_proj_ow + p_ssb_smry_ow + 
+  p_catch_proj_ow + p_catch_smry_ow + 
+  plot_layout(ncol = 2, widths = c(1, 0.5))
+p_ow
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_ow.png", 
+       type = "cairo", plot = p_ow,
+       width = 8.5, height = 6, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_ow.pdf", plot = p_ow,
+       width = 8.5, height = 6, units = "cm")
+
+### same for roller-coaster
+p_ssb_proj_rc <- df_sel$projection %>%
+  filter(fhist == "roller-coaster") %>%
+  ggplot(aes(x = year - 100, y = ssb, colour = idx_sel)) +
+  geom_line(size = 0.3) +
+  facet_wrap(~ "Projection") +
+  scale_colour_manual("", values = cols_sel) + 
+  scale_x_continuous(breaks = c(0, 5, 10)) + 
+  coord_cartesian(ylim = c(0, 2.5), xlim = c(0, 10.5),
+                  expand = FALSE) +
+  labs(x = "year",
+       y = expression(SSB/B[MSY])) + 
+  theme_bw(base_size = 8) +
+  theme(legend.position = c(0.22, 0.80),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.6, "lines"),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        plot.margin = unit(c(4, 0.1, 4, 4), "pt"),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank())
+p_ssb_smry_rc <- df_sel$summary %>%
+  filter(fhist == "roller-coaster") %>%
+  mutate(x = 1) %>%
+  ggplot(aes(y = ssb, x = x, fill = idx_sel, group = idx_sel)) +
+  geom_boxplot(outlier.size = 0.3, size = 0.3,
+               width = 1, position = position_dodge(1),
+               show.legend = FALSE) +
+  facet_wrap(~ "Summary") +
+  scale_fill_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.5), xlim = c(0.4, 1.6),  
+                  expand = FALSE) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.margin = unit(c(4, 4, 4, 0), "pt"))
+p_catch_proj_rc <- df_sel$projection %>%
+  filter(fhist == "roller-coaster") %>%
+  ggplot(aes(x = year - 100, y = catch, colour = idx_sel)) +
+  geom_line(size = 0.3, show.legend = FALSE) +
+  scale_x_continuous(breaks = c(0, 5, 10)) + 
+  scale_colour_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.05), xlim = c(0, 10.5),
+                  expand = FALSE) +
+  labs(x = "year",
+       y = expression(Catch/MSY)) + 
+  theme_bw(base_size = 8) +
+  theme(plot.margin = unit(c(0, 0.1, 4, 4), "pt"))
+p_catch_smry_rc <- df_sel$summary %>%
+  filter(fhist == "roller-coaster") %>%
+  mutate(x = 1) %>%
+  ggplot(aes(y = catch, x = x, fill = idx_sel, group = idx_sel)) +
+  geom_boxplot(outlier.size = 0.3, size = 0.3,
+               width = 1, position = position_dodge(1),
+               show.legend = FALSE) +
+  scale_fill_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.05), xlim = c(0.4, 1.6),  
+                  expand = FALSE) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.margin = unit(c(0, 4, 4, 0), "pt"))
+p_rc <- p_ssb_proj_rc + p_ssb_smry_rc + 
+  p_catch_proj_rc + p_catch_smry_rc + 
+  plot_layout(ncol = 2, widths = c(1, 0.5))
+
+### and for random
+p_ssb_proj_rnd <- df_sel$projection %>%
+  filter(fhist == "random") %>%
+  ggplot(aes(x = year - 100, y = ssb, colour = idx_sel)) +
+  geom_line(size = 0.3) +
+  facet_wrap(~ "Projection") +
+  scale_colour_manual("", values = cols_sel) + 
+  scale_x_continuous(breaks = c(0, 5, 10)) + 
+  coord_cartesian(ylim = c(0, 2.5), xlim = c(0, 10.5),
+                  expand = FALSE) +
+  labs(x = "year",
+       y = expression(SSB/B[MSY])) + 
+  theme_bw(base_size = 8) +
+  theme(legend.position = c(0.22, 0.80),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.6, "lines"),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        plot.margin = unit(c(4, 0.1, 4, 4), "pt"),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank())
+p_ssb_smry_rnd <- df_sel$summary %>%
+  filter(fhist == "random") %>%
+  mutate(x = 1) %>%
+  ggplot(aes(y = ssb, x = x, fill = idx_sel, group = idx_sel)) +
+  geom_boxplot(outlier.size = 0.3, size = 0.3,
+               width = 1, position = position_dodge(1),
+               show.legend = FALSE) +
+  facet_wrap(~ "Summary") +
+  scale_fill_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.5), xlim = c(0.4, 1.6),  
+                  expand = FALSE) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.margin = unit(c(4, 4, 4, 0), "pt"))
+p_catch_proj_rnd <- df_sel$projection %>%
+  filter(fhist == "random") %>%
+  ggplot(aes(x = year - 100, y = catch, colour = idx_sel)) +
+  geom_line(size = 0.3, show.legend = FALSE) +
+  scale_x_continuous(breaks = c(0, 5, 10)) + 
+  scale_colour_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.05), xlim = c(0, 10.5),
+                  expand = FALSE) +
+  labs(x = "year",
+       y = expression(Catch/MSY)) + 
+  theme_bw(base_size = 8) +
+  theme(plot.margin = unit(c(0, 0.1, 4, 4), "pt"))
+p_catch_smry_rnd <- df_sel$summary %>%
+  filter(fhist == "random") %>%
+  mutate(x = 1) %>%
+  ggplot(aes(y = catch, x = x, fill = idx_sel, group = idx_sel)) +
+  geom_boxplot(outlier.size = 0.3, size = 0.3,
+               width = 1, position = position_dodge(1),
+               show.legend = FALSE) +
+  scale_fill_manual(values = cols_sel) + 
+  coord_cartesian(ylim = c(0, 2.05), xlim = c(0.4, 1.6),  
+                  expand = FALSE) +
+  theme_bw(base_size = 8) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        plot.margin = unit(c(0, 4, 4, 0), "pt"))
+p_rnd <- p_ssb_proj_rnd + p_ssb_smry_rnd + 
+  p_catch_proj_rnd + p_catch_smry_rnd + 
+  plot_layout(ncol = 2, widths = c(1, 0.5))
+
+### combine all fishing histories
+p <- wrap_plots(
+  p_ssb_proj_ow + labs(title = "(a) one-way"), p_ssb_smry_ow,
+  p_ssb_proj_rc + labs(title = "(b) roller-coaster"), p_ssb_smry_rc,
+  p_catch_proj_ow, p_catch_smry_ow,
+  p_catch_proj_rc, p_catch_smry_rc,
+  p_ssb_proj_rnd + labs(title = "(c) random"), p_ssb_smry_rnd, 
+  plot_spacer(), plot_spacer(),
+  p_catch_proj_rnd, p_catch_smry_rnd,
+  plot_spacer(), plot_spacer(),
+  ncol = 4, widths = c(1, 0.5, 1, 0.5)
+)
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_fhist.png", 
+       type = "cairo", plot = p,
+       width = 16, height = 12, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_fhist.pdf", 
+       plot = p, width = 16, height = 12, units = "cm")
+
+
+### plot selectivity
+idx_sel <- foreach(idx_sel = c("tsb", "ssb", "catch", "dome_shaped"), 
+          .combine = rbind) %do% {
+  #browser()
+  res <- readRDS(paste0("output/hr/500_50/sensitivity_idx_sel/", "one-way", "/",
+                        "pol", "/mp_length_1_TRUE_1_1_1_Inf_0_0.2_0.2_0_0_",
+                        "0.6_0_0.75", 
+                        ifelse(identical(idx_sel, "tsb"), "", 
+                               paste0("_", idx_sel)),
+                        ".rds"))
+  sel <- iterMedians(res@oem@observations$idx$sel[, 1])
+  if (identical(idx_sel, "tsb")) sel[] <- 1
+  
+  res <- data.frame(stock = "pol", idx_sel = idx_sel, 
+                    age = as.numeric(dimnames(sel)$age),
+                    selectivity = c(sel),
+                    stringsAsFactors = FALSE)
+  return(res)
+}
+
+idx_sel <- idx_sel %>%
+  mutate(idx_sel = factor(idx_sel, 
+                          levels = c("ssb", "dome_shaped", "catch", "tsb"),
+                          labels = c("SSB", "dome shaped", "commercial", 
+                                     "total biomass")))
+p <- idx_sel %>%
+  ggplot(aes(x = age, y = selectivity, colour = idx_sel)) +
+  geom_line(size = 0.3) +
+  scale_colour_manual(name = "Index", values = cols_sel) + 
+  labs(x = "Age [years]", y = "Index selectivity") +
+  scale_x_continuous(limits = c(0, 16)) + 
+  theme_bw(base_size = 8) + 
+  theme(legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.6, "lines"),
+        legend.background = element_blank(),
+        legend.key = element_blank())
+p
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_age.png", 
+       type = "cairo", plot = p,
+       width = 8.5, height = 5, units = "cm", dpi = 600)
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_age.pdf", plot = p,
+       width = 8.5, height = 5, units = "cm")
+
+
+### ------------------------------------------------------------------------ ###
 ### pure harvest rate - catch ~ depletion & HR ####
 ### ------------------------------------------------------------------------ ###
 
