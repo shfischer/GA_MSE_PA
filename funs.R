@@ -3,6 +3,7 @@
 ### ------------------------------------------------------------------------ ###
 obs_generic <- function(stk, observations, deviances, args, tracking,
                         ssb_idx = FALSE, tsb_idx = FALSE, ### use SSB idx
+                        idx_timing = FALSE, ### consider survey timing?
                         idx_dev = FALSE,
                         lngth = FALSE, ### catch length data?
                         lngth_dev = FALSE, 
@@ -23,7 +24,13 @@ obs_generic <- function(stk, observations, deviances, args, tracking,
       observations$idx$idxB <- tsb(observations$stk)
   ### otherwise calculate biomass index
   } else {
-    observations$idx$idxB <- quantSums(stk@stock.n * stk@stock.wt * 
+    sn <- stk@stock.n
+    ### reduce by F and M?
+    if (isTRUE(idx_timing)) {
+      sn <- sn * exp(-(harvest(stk) * harvest.spwn(stk) +
+                         m(stk) * m.spwn(stk)))
+    }
+    observations$idx$idxB <- quantSums(sn * stk@stock.wt * 
                                        observations$idx$sel)
   }
   ### use mean length in catch?
@@ -714,7 +721,56 @@ hr_par <- function(input, lhist,
                    hr, hr_ref, multiplier, comp_b, interval, 
                    idxB_lag, idxB_range_3,
                    upper_constraint, lower_constraint,
-                   cap_below_b) {
+                   cap_below_b,
+                   idx_sel = "tsb") {
+  
+  ### update index if not total stock biomass
+  if (!identical(idx_sel, "tsb")) {
+    ### turn off tsb index
+    input$oem@args$tsb_idx <- input$oem@args$ssb <- FALSE
+    ### turn on timing of survey (to mimic tsb() behaviour)
+    input$oem@args$idx_timing <- TRUE
+    ### change selectivity
+    input$oem@observations$idx$sel <- input$oem@observations$idx$sel %=% 1
+    if (identical(idx_sel, "ssb")) {
+      input$oem@observations$idx$sel <- input$oem@observations$stk@mat
+    } else if (identical(idx_sel, "catch")) {
+      ### estimate selectivity of catch (i.e. catch numbers/stock numbers)
+      cn <- input$oem@observations$stk@catch.n
+      sn <- input$oem@observations$stk@stock.n
+      csel <- cn/sn
+      csel_max <- csel
+      for (age in seq(dim(csel)[1]))
+        csel_max[age, ] <- csel[dim(csel)[1], ]
+      csel <- csel/csel_max
+      ### standardise for all years
+      csel <- yearMeans(csel)
+      input$oem@observations$idx$sel[] <- csel
+    } else if (identical(idx_sel, "dome_shaped")) {
+      ### get life-history parameters
+      if (is.na(lhist$t0)) lhist$t0 <- -0.1
+      if (is.na(lhist$a50))
+        lhist$a50 <- -log(1 - lhist$l50/lhist$linf)/lhist$k + lhist$t0
+      ages <- as.numeric(dimnames(input$om@stock)$age)
+      ### define selectivity (follow FLife's double normal function)
+      sel_dn <- function(t, t1, sl, sr) {
+        ifelse(t < t1, 2^(-((t - t1)/sl)^2), 2^(-((t - t1)/sr)^2))
+      }
+      sel <- sel_dn(t = ages, t1 = lhist$a50, sl = 1, sr = 10)
+      input$oem@observations$idx$sel[] <- sel
+    } else {
+      stop("unknown survey selectivity requested")
+    }
+    ### update biomass index with new selectivity
+    ### get stock numbers and reduce by F and M
+    sn <- input$om@stock@stock.n
+    sn <- sn * exp(-(harvest(input$om@stock) * harvest.spwn(input$om@stock) +
+                       m(input$om@stock) * m.spwn(input$om@stock)))
+    ### calculate index
+    input$oem@observations$idx$idxB <- 
+      quantSums(sn * input$om@stock@stock.wt * input$oem@observations$idx$sel)
+    
+  }
   
   ### harvest rate (catch/index)
   if (identical(hr, "uniform")) {

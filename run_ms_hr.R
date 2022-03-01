@@ -61,6 +61,8 @@ for (i in seq_along(args)) eval(parse(text = args[[i]]))
   if (!exists("sigmaR_rho")) sigmaR_rho <- 0.0
   ### recruitment steepness
   if (!exists("steepness")) steepness <- 0.75
+  ### index selectivity
+  if (!exists("idx_sel")) idx_sel <- "tsb"
   
   ### what to save
   if (!exists("check_file")) check_file <- TRUE
@@ -226,7 +228,9 @@ if (isFALSE(ga_search)) {
                           sigmaB_rho = sigmaB_rho,
                           sigmaR = sigmaR,
                           sigmaR_rho = sigmaR_rho,
-                          steepness = steepness)
+                          steepness = steepness,
+                          idx_sel = idx_sel,
+                          stringsAsFactors = FALSE)
   
   ### ---------------------------------------------------------------------- ###
   ### go through runs ####
@@ -250,7 +254,8 @@ if (isFALSE(ga_search)) {
                       interval = par_i$interval, 
                       upper_constraint = par_i$upper_constraint,
                       lower_constraint = par_i$lower_constraint,
-                      cap_below_b = cap_below_b)
+                      cap_below_b = cap_below_b,
+                      idx_sel = par_i$idx_sel)
     
     ## --------------------------------------------------------------------- ###
     ## observation uncertainty ####
@@ -372,19 +377,22 @@ if (isFALSE(ga_search)) {
                       interval = par_i$interval, 
                       upper_constraint = par_i$upper_constraint,
                       lower_constraint = par_i$lower_constraint,
-                      cap_below_b = cap_below_b)
+                      cap_below_b = cap_below_b,
+                      idx_sel = par_i$idx_sel)
     
     ### -------------------------------------------------------------------- ###
     ### paths ####
     ### -------------------------------------------------------------------- ###
     ### generate file name
-    file_out <- paste0(c(hr, par_i$multiplier, par_i$comp_b, par_i$idxB_lag, 
-                         par_i$idxB_range_3, par_i$interval, 
-                         par_i$upper_constraint, par_i$lower_constraint,
-                         par_i$sigmaL, par_i$sigmaB, 
-                         par_i$sigmaL_rho, par_i$sigmaB_rho, 
-                         par_i$sigmaR, par_i$sigmaR_rho, par_i$steepness), 
-                       collapse = "_")
+    file_pars <- c(hr, par_i$multiplier, par_i$comp_b, par_i$idxB_lag, 
+                   par_i$idxB_range_3, par_i$interval, 
+                   par_i$upper_constraint, par_i$lower_constraint,
+                   par_i$sigmaL, par_i$sigmaB, 
+                   par_i$sigmaL_rho, par_i$sigmaB_rho, 
+                   par_i$sigmaR, par_i$sigmaR_rho, par_i$steepness,
+                   ifelse(identical(par_i$idx_sel, "tsb"), NA, par_i$idx_sel))
+    file_pars <- file_pars[!is.na(file_pars)]
+    file_out <- paste0(file_pars, collapse = "_")
     path_out <- paste0("output/hr/", n_iter, "_", n_yrs, "/", scenario, "/",
                        fhist, "/", paste0(stock, collapse = "_"), "/")
     dir.create(path_out, recursive = TRUE)
