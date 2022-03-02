@@ -2796,3 +2796,87 @@ ggsave(filename = "output/plots/paper/all_mult.png",
 ggsave(filename = "output/plots/paper/all_mult.pdf",
        width = 8.5, height = 6, units = "cm", dpi = 600)
 
+### ------------------------------------------------------------------------ ###
+### visualise fishing histories ####
+### ------------------------------------------------------------------------ ###
+
+### Fmsy relative to Fcrash for plotting (for pollack)
+Fmsy_rel <- c(refpts(brps$pol)["msy", "harvest"]/
+                refpts(brps$pol)["crash", "harvest"])
+
+
+### random scenario
+set.seed(2)
+n_iter <- 500
+yrs_hist <- 100
+start <- rep(0, n_iter)
+middle <- runif(n = n_iter, min = 0, max = 1)
+end <- runif(n = n_iter, min = 0, max = 1)
+df <- t(sapply(seq(n_iter), 
+  function(x) {
+    c(approx(x = c(1, yrs_hist/2), 
+             y = c(start[x], middle[x]), 
+             n = yrs_hist/2)$y,
+      approx(x = c(yrs_hist/2, yrs_hist + 1), 
+             y = c(middle[x], end[x]), 
+             n = (yrs_hist/2) + 1)$y[-1])
+}))
+df_rnd <- as.data.frame(t(df)) %>%
+  mutate(year = -99:0) %>%
+  pivot_longer(-year) %>%
+  mutate(iter = gsub(x = name, pattern = "V", replacement = "")) %>%
+  mutate(iter = as.numeric(iter)) %>%
+  select(-name) %>%
+  mutate(fhist = "random")
+
+### one-way scenario
+fs <- rep(Fmsy_rel * 0.5, 74)
+f0 <- Fmsy_rel * 0.5
+fmax <- 0.8
+rate <- exp((log(fmax) - log(f0)) / (25))
+fs <- c(fs, rate ^ (1:25) * f0)
+df_ow <- data.frame(year = -98:0, value = fs, fhist = "one-way")
+
+### roller-coaster
+fs <- rep(Fmsy_rel * 0.5, 75)
+f0_up <- Fmsy_rel * 0.5
+fmax_up <- 0.8
+yrs_up <- 15
+rate_up <- exp((log(fmax_up) - log(f0_up)) / yrs_up)
+yrs_down <- 6
+f0_down <- Fmsy_rel
+rate_down <- exp((log(fmax_up) - log(f0_down)) / yrs_down)
+fs <- c(fs, rate_up ^ seq(yrs_up) * f0_up, rep(fmax_up, 3),
+        rev(rate_down ^ seq(yrs_down) * f0_down))
+df_rc <- data.frame(year = -98:0, value = c(fs), fhist = "roller-coaster")
+
+### combine all fishing histories
+df_all <- bind_rows(df_rnd, df_ow, df_rc) %>%
+  mutate(fhist = factor(fhist, 
+                        levels = c("one-way", "roller-coaster", "random")))
+
+res_def_colours <- c("one-way" = brewer.pal(n = 4, name = "Set1")[1], 
+                     "roller-coaster" = brewer.pal(n = 4, name = "Set1")[4], 
+                     "random" = brewer.pal(n = 4, name = "Set1")[2])
+ggplot() +
+  geom_line(data = df_all %>% filter(fhist == "random"),
+            aes(x = year, y = value, group = iter, colour = fhist),
+            size = 0.1, show.legend = FALSE, alpha = 0.2) +
+  geom_line(data = df_all %>% filter(fhist != "random"),
+            aes(x = year, y = value, group = iter, colour = fhist),
+            size = 0.4, show.legend = FALSE) +
+  facet_wrap(~ fhist) + 
+  scale_colour_manual(values = res_def_colours) + 
+  scale_x_continuous(breaks = c(-50, 0)) + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ ./Fmsy_rel,
+                                         name = expression(F/F[MSY]))) + 
+  coord_cartesian(xlim = c(-100, 0), ylim = c(0, 1), expand = FALSE) + 
+  labs(y = expression(F/F[crash])) + 
+  theme_bw(base_size = 8) +
+  theme(panel.spacing.x = unit(0, "pt"),
+        axis.title.y.right = element_text(angle = 90))
+ggsave(filename = "output/plots/paper/fhist.png", 
+       width = 8.5, height = 4, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper/fhist.pdf",
+       width = 8.5, height = 4, units = "cm", dpi = 600)
+
