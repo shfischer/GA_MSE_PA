@@ -1095,14 +1095,14 @@ df_sel <- lapply(df_sel, function(x) {
   x <- x %>%
     mutate(idx_sel = factor(idx_sel, 
                             levels = c("ssb", "dome_shaped", "catch", "tsb"),
-                            labels = c("SSB", "dome shaped", "commercial", 
+                            labels = c("maturity", "dome shaped", "commercial", 
                                        "total biomass")))
   return(x)
 })
 names(df_sel) <- c("projection", "summary")
 
 #brewer.pal(n = 3, name = "Dark2")
-cols_sel <- c("SSB" = brewer.pal(n = 3, name = "Dark2")[1], 
+cols_sel <- c("maturity" = brewer.pal(n = 3, name = "Dark2")[1], 
               "dome shaped" = brewer.pal(n = 3, name = "Dark2")[2], 
               "commercial" = brewer.pal(n = 3, name = "Dark2")[3], 
               "total biomass" = "azure4")
@@ -1392,12 +1392,12 @@ idx_sel <- foreach(idx_sel = c("tsb", "ssb", "catch", "dome_shaped"),
 idx_sel <- idx_sel %>%
   mutate(idx_sel = factor(idx_sel, 
                           levels = c("ssb", "dome_shaped", "catch", "tsb"),
-                          labels = c("SSB", "dome shaped", "commercial", 
+                          labels = c("maturity", "dome shaped", "commercial", 
                                      "total biomass")))
 p <- idx_sel %>%
   ggplot(aes(x = age, y = selectivity, colour = idx_sel)) +
   geom_line(size = 0.3) +
-  scale_colour_manual(name = "Index", values = cols_sel) + 
+  scale_colour_manual(name = "", values = cols_sel) + 
   labs(x = "Age [years]", y = "Index selectivity") +
   scale_x_continuous(limits = c(0, 16)) + 
   theme_bw(base_size = 8) + 
