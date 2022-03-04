@@ -571,74 +571,72 @@ ggsave(filename = "output/plots/length_procedure_combined_2.pdf",
 ### HR principle visualisation ####
 ### ------------------------------------------------------------------------ ###
 
-ggplot() +
-  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
-           linetype = "dotted") +
-  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
-           linetype = "dotted") +
-  geom_line(data = data.frame(x = seq(0, 1, length.out = 1000), 
-                              y = seq(0, 1, length.out = 1000),
-                              z = seq(0, 1, length.out = 1000)),
-            aes(x = x, y = y, colour = z),
-            size = 1, show.legend = FALSE) +
-  scale_colour_gradient(low = "red", high = "yellow") +
-  geom_line(data = data.frame(x = c(1, 2), 
-                              y = c(1, 1)),
-            aes(x = x, y = y), colour = "green3", size = 1) +
-  scale_x_continuous("index I", expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
-  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, "H")) +
-  theme_classic()
-ggsave(filename = "output/plots/HR_principle.png",
-       width = 8.5, height = 5, units = "cm", dpi = 600,
-       type = "cairo")
-ggsave(filename = "output/plots/HR_principle.pdf",
-       width = 8.5, height = 5, units = "cm")
-
-data.frame(x = c(0, 1, 2),
-           y = c(0, 1, 1)) %>%
-  ggplot(aes(x = x, y = y)) +
-  annotation_raster(matrix(colorRampPalette(c("red", "orange", "yellow"))(255),
-                           nrow = 1),
-                    xmin = 0, xmax = 1, ymin = 0, ymax = 1, interpolate = TRUE) +
-  annotate("polygon", x = c(0, 1, 0), y = c(0, 1.01, 1.01), fill = "white") +
-  annotate("polygon", x = c(1, 2, 2, 1), y = c(0, 0, 1, 1), fill = "green") +
-  geom_line() +
-  scale_x_continuous("index I", expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
-  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, "H")) +
-  annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
-           linetype = "dotted") +
-  annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
-           linetype = "dotted") +
-  #theme(panel.background = element_blank())
-  theme_classic()
-ggsave(filename = "output/plots/HR_principle_area.png",
-       width = 8.5, height = 5, units = "cm", dpi = 600,
-       type = "cairo")
-ggsave(filename = "output/plots/HR_principle_area.pdf",
-       width = 8.5, height = 5, units = "cm")
 ### no colours
 data.frame(x = c(0, 1, 2),
            y = c(0, 1, 1)) %>%
   ggplot(aes(x = x, y = y)) +
   geom_line() +
-  scale_x_continuous("index I", expand = c(0, 0),
+  scale_x_continuous("Index I", expand = c(0, 0),
                      breaks = c(0, 1), labels = c(0, expression(I[trigger]))) +
-  scale_y_continuous("target harvest rate", limits = c(0, 1.2), expand = c(0, 0),
-                     breaks = c(0, 1), labels = c(0, "H")) +
+  scale_y_continuous("Harvest rate", limits = c(0, 1.2), expand = c(0, 0),
+                     breaks = c(0, 1), 
+                     labels = c(0, expression(H[target]))) +
   annotate(geom = "segment", x = 1, xend = 1, y = 0, yend = 1,
            linetype = "dotted") +
   annotate(geom = "segment", x = 0, xend = 1, y = 1, yend = 1,
            linetype = "dotted") +
   theme_classic()
-ggsave(filename = "output/plots/HR_principle_bw.png",
+ggsave(filename = "output/plots/paper/HR_principle_bw.png",
        width = 8.5, height = 5, units = "cm", dpi = 600,
        type = "cairo")
-ggsave(filename = "output/plots/HR_principle_bw.pdf",
+ggsave(filename = "output/plots/paper/HR_principle_bw.pdf",
        width = 8.5, height = 5, units = "cm")
+
+### ------------------------------------------------------------------------ ###
+### HR principle: plot catch and index selectivity ####
+### ------------------------------------------------------------------------ ###
+
+paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
+       "*year^-1)")
+### extract fishery selectivity and maturity for all stocks
+df_sel <- foreach(stock = stocks$stock, .combine = bind_rows) %do% {
+  #browser()
+  brp_i <- brps[[stock]]
+  df_i <- as.data.frame(FLQuants(maturity = brp_i@mat,
+                                 selectivity = brp_i@landings.sel/
+                                   max(brp_i@landings.sel))) %>%
+    select(age, data, qname) %>%
+    mutate(stock = stock)
+  return(df_i)
+}
+df_sel <- df_sel %>%
+  full_join(stocks %>% 
+              select(stock, k) %>%
+              mutate(ID = 1:29)) %>%
+  mutate(stock_id = paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
+                           ")")) 
+df_sel <- df_sel %>%
+  mutate(stock_id = factor(stock_id, levels = unique(df_sel$stock_id))) %>%
+  mutate(qname = factor(qname, levels = c("maturity", "selectivity"))) %>%
+  rename(value = data)
+
+df_sel %>%
+  ggplot(aes(x = age, y = value, colour = qname)) +
+  geom_line(size = 0.3) +
+  facet_wrap(~ stock_id, scales = "free_x", labeller = "label_parsed", 
+             ncol = 5) +
+  labs(x = "Age [years]", y = "Maturity | Selectivity") + 
+  scale_x_continuous(breaks = pretty_breaks(n = 3), limits = c(0, NA)) +
+  scale_colour_discrete("") +
+  theme_bw(base_size = 8) +
+  theme(legend.position = c(0.9, 0.075),
+        legend.key.height = unit(0.5, "lines"),
+        legend.key.width = unit(0.5, "lines"))
+ggsave(filename = "output/plots/paper/HR_OMs_sel_mat.png",
+       width = 16, height = 16, units = "cm", dpi = 600,
+       type = "cairo")
+ggsave(filename = "output/plots/paper/HR_OMs_sel_mat.pdf",
+       width = 16, height = 16, units = "cm")
 
 
 ### ------------------------------------------------------------------------ ###
