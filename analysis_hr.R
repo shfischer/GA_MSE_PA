@@ -1012,7 +1012,7 @@ p_sens_period <- stats_sens_plot %>%
   stat_smooth(n = 50, span = 0.1, se = FALSE, geom = "line", size = 0.4) + 
   geom_point(size = 0.15, stroke = 0, shape = 21) +
   geom_blank(data = df_blank, aes(x = x, y = value)) +
-  facet_grid(name ~ "'Projection\n\ \ \ \ time'", scales = "free", 
+  facet_grid(name ~ "'Implementation\n\ \ \ \ \ \ \ period'", scales = "free", 
              labeller = "label_parsed",
              switch = "y") +
   scale_linetype_manual("fishing history", values = res_def_linetype) +
