@@ -2801,7 +2801,9 @@ ggsave(filename = "output/plots/paper/all_mult.pdf",
 ### Fmsy relative to Fcrash for plotting (for pollack)
 Fmsy_rel <- c(refpts(brps$pol)["msy", "harvest"]/
                 refpts(brps$pol)["crash", "harvest"])
-
+Fcrash <- c(refpts(brps$pol)["crash", "harvest"])
+Bmsy_rel <- c(refpts(brps$pol)["msy", "ssb"]/
+                refpts(brps$pol)["virgin", "ssb"])
 
 ### random scenario
 set.seed(2)
@@ -2869,7 +2871,7 @@ ggplot() +
   scale_y_continuous(sec.axis = sec_axis(trans = ~ ./Fmsy_rel,
                                          name = expression(F/F[MSY]))) + 
   coord_cartesian(xlim = c(-100, 0), ylim = c(0, 1), expand = FALSE) + 
-  labs(y = expression(F/F[crash])) + 
+  labs(y = expression(F/F[crash]), x = "Year") + 
   theme_bw(base_size = 8) +
   theme(panel.spacing.x = unit(0, "pt"),
         axis.title.y.right = element_text(angle = 90))
@@ -2878,3 +2880,65 @@ ggsave(filename = "output/plots/paper/fhist.png",
 ggsave(filename = "output/plots/paper/fhist.pdf",
        width = 8.5, height = 4, units = "cm", dpi = 600)
 
+
+### get SSB and F from pollack OM
+pol_fhist <- foreach(fhist = c("one-way", "roller-coaster", "random"), 
+                     .combine = bind_rows) %do% {
+  #browser()
+  om <- readRDS(paste0("input/hr/500_50/OM_1_hist/", fhist, "/pol.rds"))
+  tmp <- as.data.frame(FLQuants(SSB = ssb(om$stk)/1000, 
+                                Fbar = fbar(om$stk)/Fcrash)) %>%
+    select(year, data, qname, iter) %>%
+    mutate(qname = as.character(qname),
+           fhist = fhist) %>%
+    filter(year <= 100) %>%
+    mutate(year = year - 100)
+  return(tmp)
+}
+pol_fhist <- pol_fhist %>%
+  mutate(fhist = factor(fhist, 
+                        levels = c("one-way", "roller-coaster", "random")))
+
+pol_fhist %>%
+  ggplot(aes(x = year, y = data, group = iter)) +
+  geom_line() +
+  facet_grid(qname ~ fhist, scales = "free")
+
+p_fbar <- pol_fhist %>%
+  filter(qname == "Fbar") %>%
+  ggplot(aes(x = year, y = data, group = iter, colour = fhist)) +
+  geom_line(size = 0.1, show.legend = FALSE, alpha = 0.2) +
+  facet_wrap(~ fhist) + 
+  scale_colour_manual(values = res_def_colours) + 
+  scale_x_continuous(breaks = c(-50, 0)) + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ ./Fmsy_rel,
+                                         name = expression(F/F[MSY]))) + 
+  coord_cartesian(xlim = c(-100, 0), ylim = c(0, 1), expand = FALSE) + 
+  labs(y = expression(F/F[crash])) + 
+  theme_bw(base_size = 8) +
+  theme(panel.spacing.x = unit(0, "pt"),
+        axis.title.y.right = element_text(angle = 90),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+p_ssb <- pol_fhist %>%
+  filter(qname == "SSB") %>%
+  ggplot(aes(x = year, y = data, group = iter, colour = fhist)) +
+  geom_line(size = 0.1, show.legend = FALSE, alpha = 0.2) +
+  facet_wrap(~ fhist) + 
+  scale_colour_manual(values = res_def_colours) + 
+  scale_x_continuous(breaks = c(-50, 0)) + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ ./Bmsy_rel,
+                                         name = expression(B/B[MSY]))) +
+  coord_cartesian(xlim = c(-100, 0), ylim = c(0, 1.5), expand = FALSE) + 
+  labs(y = expression(B/B[0]), x = "Year") + 
+  theme_bw(base_size = 8) +
+  theme(panel.spacing.x = unit(0, "pt"),
+        axis.title.y.right = element_text(angle = 90),
+        strip.text = element_blank())
+
+p <- p_fbar + p_ssb + plot_layout(ncol = 1)
+ggsave(filename = "output/plots/paper/fhist_fbar_ssb.png", plot = p,
+       width = 8.5, height = 7, units = "cm", dpi = 600, type = "cairo")
+ggsave(filename = "output/plots/paper/fhist_fbar_ssb.pdf", plot = p,
+       width = 8.5, height = 7, units = "cm", dpi = 600)
