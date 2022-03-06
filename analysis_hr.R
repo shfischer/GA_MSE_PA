@@ -2782,7 +2782,7 @@ all_mult_plot %>%
   scale_colour_brewer("", palette = "Set1") +
   scale_shape_discrete("") +
   coord_cartesian(xlim = c(0, 1), ylim = c(0, 2)) +
-  labs(x = expression(italic(k)~"year"^{-1})) + 
+  labs(x = expression(italic(k)~'[year'^{-1}*']'), y = "Multiplier") + 
   theme_bw(base_size = 8) +
   theme(legend.position = c(0.75, 0.82),
         legend.key.width = unit(0.5, "lines"),
