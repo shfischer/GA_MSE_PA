@@ -63,7 +63,7 @@ Platform: x86_64-conda_cos6-linux-gnu (64-bit)
 Running under: CentOS Linux 7 (Core)
 ```
 
-The package versions and their dependencies are recorded with the R package [renv](https://rstudio.github.io/renv/) and stored in the file [renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/master/renv.lock). The exact package version can be restored by cloning this repository, navigating into this folder in R (or setting up a project), installing the renv package
+The package versions and their dependencies are recorded with the R package [renv](https://rstudio.github.io/renv/) and stored in the file [renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/harvest_rate/renv.lock). The exact package version can be restored by cloning this repository, navigating into this folder in R (or setting up a project), installing the renv package
 
 ```{r, eval = FALSE}
 install.packages("renv")
@@ -77,7 +77,7 @@ renv::restore()
 
 See [renv](https://rstudio.github.io/renv/) and the package documentation for details.
 
-The framework is based on the Fisheries Library in R (FLR) framework and uses the [FLR packages](https://flr-project.org/) `FLCore`, `FLash`, `FLBRP`, `ggplotFL`, `mse`. See [renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/master/renv.lock) for version details and sources.
+The framework is based on the Fisheries Library in R (FLR) framework and uses the [FLR packages](https://flr-project.org/) `FLCore`, `FLash`, `FLBRP`, `ggplotFL`, `mse`. See [renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/harvest_rate/renv.lock) for version details and sources.
 
 The FLR package versions can also be installed manually with `remotes` (requires suitable tools to compile R packages):
 ```{r, eval = FALSE}

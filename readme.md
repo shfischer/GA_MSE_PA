@@ -93,7 +93,7 @@ Running under: CentOS Linux 7 (Core)
 
 The package versions and their dependencies are recorded with the R
 package [renv](https://rstudio.github.io/renv/) and stored in the file
-[renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/master/renv.lock).
+[renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/harvest_rate/renv.lock).
 The exact package version can be restored by cloning this repository,
 navigating into this folder in R (or setting up a project), installing
 the renv package
@@ -114,7 +114,7 @@ documentation for details.
 The framework is based on the Fisheries Library in R (FLR) framework and
 uses the [FLR packages](https://flr-project.org/) `FLCore`, `FLash`,
 `FLBRP`, `ggplotFL`, `mse`. See
-[renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/master/renv.lock)
+[renv.lock](https://github.com/shfischer/GA_MSE_HR/blob/harvest_rate/renv.lock)
 for version details and sources.
 
 The FLR package versions can also be installed manually with `remotes`
