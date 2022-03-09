@@ -3,7 +3,9 @@
 ### ------------------------------------------------------------------------ ###
 
 library(mse)
-library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
 library(doParallel)
 library(scales)
 library(cowplot)
@@ -32,17 +34,18 @@ brps <- readRDS("input/brps.rds")
 ### collate data: pollack HR components ####
 pol_GA <- foreach(stock = "pol", .combine = bind_rows) %:%
   #foreach(optimised = c(TRUE, FALSE), .combine = rbind) %:%
-  foreach(parameters = c("all", "caps", "upper_cap", "lower_cap", "multiplier",
-                         "interval", "idx_range", "all_no_caps", "idx_lag",
-                         "b_multiplier", "none", 
+  foreach(objective = c("MSY", "MSY-PA"), .combine = bind_rows) %:%
+  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %:% 
+  foreach(parameters = c("none",
+                         "idx_lag", "idx_range", "b_multiplier", "interval", 
+                         "multiplier", "upper_cap", "lower_cap", "caps", 
+                         "all_no_caps", "all", 
                          "mult_cond_cap", "all_cond_cap"), 
           .combine = bind_rows) %:%
-  foreach(objective = c("MSY", "MSY-PA"), .combine = bind_rows) %:%
   foreach(scenario = c("GA"), 
           .combine = bind_rows) %:%
   foreach(catch_rule = "hr", .combine = bind_rows) %:%
-  foreach(stat_yrs = "all", .combine = bind_rows) %:%
-  foreach(fhist = c("one-way", "random"), .combine = bind_rows) %do% {#browser()
+  foreach(stat_yrs = "all", .combine = bind_rows) %do% {#browser()
     
     ### find files
     file_prefix <- switch(parameters,
@@ -59,7 +62,7 @@ pol_GA <- foreach(stock = "pol", .combine = bind_rows) %:%
       "idx_lag" = "idxB_lag",
       "b_multiplier" = "comp_b_multiplier",
       "none" = "multiplier",
-      "mult_cond_cap" = "multiplier-upper_constraint-lower_constraint", 
+      "mult_cond_cap" = "multiplier-upper_constraint1.2-lower_constraint0.7", 
       "all_cond_cap" = paste0("idxB_lag-idxB_range_3-comp_b_multiplier-",
                               "interval-multiplier-upper_constraint1.2-",
                               "lower_constraint0.7")
@@ -2159,11 +2162,11 @@ plot_grid(
   plot_grid(plot_grid(p_MSY_SSB, p_MSY_catch, p_MSY_ICV, p_MSY_risk,
                       p_MSY_fitness,
                       ncol = 1, align = "v", axis = "lr", 
-                      rel_heights = c(1, 1, 1, 1, 2)),
+                      rel_heights = c(1.25, 1, 1, 1, 2.1)),
             plot_grid(p_PA_SSB, p_PA_catch, p_PA_ICV, p_PA_risk, 
                       p_PA_fitness + theme(legend.position = "none"),
                       ncol = 1, align = "v", axis = "lr", 
-                      rel_heights = c(1, 1, 1, 1, 2)),
+                      rel_heights = c(1.25, 1, 1, 1, 2.1)),
             plot_grid(NULL, NULL, NULL, NULL, 
                       plot_grid(get_legend(p_PA_fitness), 
                                 ggplot() + theme_nothing(), ncol = 2,
