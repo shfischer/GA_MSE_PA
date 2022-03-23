@@ -437,6 +437,15 @@ df_cr <- as.data.frame(catch(input$om@stock[, ac(50:100)]) /
                          input$oem@observations$idx$idxB[, ac(50:100)]) %>%
   filter(iter == pos)  %>%
   mutate(year = year - 100)
+### combine dfs and save
+df_list <- list(idxL = df_idxL, catch = df_catch, idxB = df_idxB, cr = df_cr)
+saveRDS(df_list, file = "output/hr_data_pol_visualisation.rds")
+df_list <- readRDS("output/hr_data_pol_visualisation.rds")
+df_idxL <- df_list$idxL
+df_catch <- df_list$catch
+df_idxB <- df_list$idxB
+df_cr <- df_list$cr
+
 
 ### find years where L > LFeM
 df_years <- df_idxL %>% filter(data >= LFeM) %>% select(year) %>% unlist()
@@ -609,8 +618,6 @@ ggsave(filename = "output/plots/paper/HR_principle_bw.pdf",
 ### HR principle: plot catch and index selectivity ####
 ### ------------------------------------------------------------------------ ###
 
-paste0(stock, "~(italic(k)==", sprintf(k, fmt =  "%.2f"), 
-       "*year^-1)")
 ### extract fishery selectivity and maturity for all stocks
 df_sel <- foreach(stock = stocks$stock, .combine = bind_rows) %do% {
   #browser()
@@ -1202,7 +1209,8 @@ p_ow
 ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_ow.png", 
        type = "cairo", plot = p_ow,
        width = 8.5, height = 6, units = "cm", dpi = 600)
-ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_ow.pdf", plot = p_ow,
+ggsave(filename = "output/plots/paper/pol_sensitivity_idx_sel_ow.pdf", 
+       plot = p_ow,
        width = 8.5, height = 6, units = "cm")
 
 ### same for roller-coaster
@@ -1401,6 +1409,10 @@ idx_sel <- foreach(idx_sel = c("tsb", "ssb", "catch", "dome_shaped"),
                     stringsAsFactors = FALSE)
   return(res)
 }
+saveRDS(idx_sel, file = "output/hr_sensitivity_sel_curves.rds")
+idx_sel <- readRDS("output/hr_sensitivity_sel_curves.rds")
+
+
 
 idx_sel <- idx_sel %>%
   mutate(idx_sel = factor(idx_sel, 
@@ -2290,10 +2302,14 @@ ggsave(filename = "output/plots/paper/hr_GA_pol_comps_fitness.pdf",
 ### ------------------------------------------------------------------------ ###
 
 ### stats from 2 over 3 rule
-stats_2over3 <- readRDS("../GA_MSE/output/all_stocks_2over_stats.rds")
+# file.copy(from = "../GA_MSE/output/all_stocks_2over_stats.rds", 
+#           to = "output/2over3_all_stocks_stats.rds")
+stats_2over3 <- readRDS("output/2over3_all_stocks_stats.rds")
 
 ### stats from rfb-rule
-stats_rfb <- readRDS("../GA_MSE/output/all_stocks_GA_optimised_stats.rds")
+# file.copy(from = "../GA_MSE/output/all_stocks_GA_optimised_stats.rds", 
+#           to = "output/rfb_all_stocks_GA_optimised_stats.rds")
+stats_rfb <- readRDS("output/rfb_all_stocks_GA_optimised_stats.rds")
 
 stats_hr <- readRDS("output/hr_all_GA_stats.rds")
 
@@ -2366,8 +2382,8 @@ stats_plot <- stats_plot %>%
                               "(f) hr: default",
                               "(g) hr: mult", "(h) hr: all")))
 
-saveRDS(stats_plot, "output/plots/data_all_comparison_table.rds")
-stats_plot <- readRDS("output/plots/data_all_comparison_table.rds")
+saveRDS(stats_plot, "output/data_all_comparison_table.rds")
+stats_plot <- readRDS("output/data_all_comparison_table.rds")
 
 ### plot (table style)
 p_all_table <- stats_plot %>%
@@ -2412,9 +2428,9 @@ ggsave(filename = "output/plots/paper/all_comparison_table.pdf",
 ### ------------------------------------------------------------------------ ###
 
 ### stats from 2 over 3 rule
-stats_2over3 <- readRDS("../GA_MSE/output/all_stocks_2over_stats.rds")
+stats_2over3 <- readRDS("output/2over3_all_stocks_stats.rds")
 ### stats from rfb-rule
-stats_rfb <- readRDS("../GA_MSE/output/all_stocks_GA_optimised_stats.rds")
+stats_rfb <- readRDS("output/rfb_all_stocks_GA_optimised_stats.rds")
 ### harvest rate
 stats_hr <- readRDS("output/hr_all_GA_stats.rds")
 
@@ -2542,10 +2558,10 @@ stats_plot_dev <- stats_plot_full %>%
                        ifelse(Catch_rel > 1, "+", "-"))) %>%
   filter(abs(value) >= 0.1)
 
-saveRDS(stats_plot_full, "output/plots/data_all_comparison_full.rds")
-stats_plot_full <- readRDS("output/plots/data_all_comparison_full.rds")
-saveRDS(stats_plot_dev, "output/plots/data_all_comparison_full_dev.rds")
-stats_plot_dev <- readRDS("output/plots/data_all_comparison_full_dev.rds")
+saveRDS(stats_plot_full, "output/data_all_comparison_full.rds")
+stats_plot_full <- readRDS("output/data_all_comparison_full.rds")
+saveRDS(stats_plot_dev, "output/data_all_comparison_full_dev.rds")
+stats_plot_dev <- readRDS("output/data_all_comparison_full_dev.rds")
 
 plot_comparison <- function(stock, data, data_dev, ylim, breaks) {
   data %>% 
@@ -2580,7 +2596,7 @@ plot_comparison <- function(stock, data, data_dev, ylim, breaks) {
 }
 
 plot_comparison(stock = stocks$stock[12], data = stats_plot_full, 
-                data_dev = data_dev, ylim = ylim, breaks = breaks)
+                data_dev = data_dev, ylim = c(-8.5, 0), breaks = breaks)
 
 plot_comparison_six <- function(stocks, data, data_dev, ylim, breaks) {
   #browser()
@@ -2657,25 +2673,25 @@ for (i in seq_along(split(stocks$stock, ceiling(seq_along(stocks$stock)/6)))) {
 ### tmp: ang3 and cond. cap with multiplier ####
 ### ------------------------------------------------------------------------ ###
 
-runs <- readRDS("C:/Users/sf02/OneDrive - CEFAS/data-limited/GA_MSE_HR/output/hr/500_50/GA_cond_cap/random/ang3/multiplier-upper_constraint1.2-lower_constraint0.7--obj_SSB_C_risk_ICV_runs.rds")
-res <- readRDS("C:/Users/sf02/OneDrive - CEFAS/data-limited/GA_MSE_HR/output/hr/500_50/GA_cond_cap/random/ang3/multiplier-upper_constraint1.2-lower_constraint0.7--obj_SSB_C_risk_ICV_res.rds")
-res@solution
-
-runs <- lapply(runs, function(x) {
-  #browser()
-  tmp <- c(x$pars, x$stats[1:11])
-  names(tmp) <- c(names(x$pars), dimnames(x$stats)[[1]][1:11])
-  tmp <- as.data.frame(tmp)
-  return(tmp)
-})
-runs <- do.call(bind_rows, runs)
-
-
-ggplot(data = runs,
-       aes(x = multiplier, y = risk_Blim)) +
-  geom_line() +
-  geom_hline(yintercept = 0.05) +
-  ylim(c(0, NA))
+# runs <- readRDS("C:/Users/sf02/OneDrive - CEFAS/data-limited/GA_MSE_HR/output/hr/500_50/GA_cond_cap/random/ang3/multiplier-upper_constraint1.2-lower_constraint0.7--obj_SSB_C_risk_ICV_runs.rds")
+# res <- readRDS("C:/Users/sf02/OneDrive - CEFAS/data-limited/GA_MSE_HR/output/hr/500_50/GA_cond_cap/random/ang3/multiplier-upper_constraint1.2-lower_constraint0.7--obj_SSB_C_risk_ICV_res.rds")
+# res@solution
+# 
+# runs <- lapply(runs, function(x) {
+#   #browser()
+#   tmp <- c(x$pars, x$stats[1:11])
+#   names(tmp) <- c(names(x$pars), dimnames(x$stats)[[1]][1:11])
+#   tmp <- as.data.frame(tmp)
+#   return(tmp)
+# })
+# runs <- do.call(bind_rows, runs)
+# 
+# 
+# ggplot(data = runs,
+#        aes(x = multiplier, y = risk_Blim)) +
+#   geom_line() +
+#   geom_hline(yintercept = 0.05) +
+#   ylim(c(0, NA))
 
 ### ------------------------------------------------------------------------ ###
 ### supplementary tables: optimised parameterisations ####

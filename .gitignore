@@ -7,6 +7,6 @@ input/*/*
 input/*.pdf
 input/*.png
 output/*/*
-output/*.rds
+output/*.csv
 output/*.xlsx
 renv/*
