@@ -45,17 +45,16 @@ The operating models provided as an input are those from the repository [shfisch
 > * `input/brps.rds` contains the FLBRP objects which are the basis for the OMs
 > * `input/catch_rates.rds` examples catch rates
 > 
-> The following outputs summarising the results from running the optimisation are provided:
+> Summarised outputs are provided in:
 > 
-> * `output/hr_pol_comps_stats.csv` results for exploration of parameters of harvest rate rule for pollack
-> * `output/hr_pol_sensitivity.csv` summarised results from sensitivity runs for pollack 
-> * `output/hr_all_GA_stats.csv` results for all stocks
-> * `output/hr_all_mult_runs_stats.csv` results for all stocks with multiplier and conditional uncertainty caps
+> * `output/`
+
+
 
 
 ## R, R packages and version info
 
-The MSE simulations were run on a high performance computing cluster:
+The MSE simulations were run on a high-performance computing cluster:
 ```{r, eval = FALSE}
 > sessionInfo()
 R version 3.6.1 (2019-07-05)
