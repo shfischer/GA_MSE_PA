@@ -37,8 +37,10 @@ pol_GA <- foreach(stock = "pol", .combine = bind_rows) %:%
   foreach(objective = c("MSY", "MSY-PA"), .combine = bind_rows) %:%
   foreach(fhist = c("one-way", "random"), .combine = bind_rows) %:% 
   foreach(parameters = c("none",
-                         "idx_lag", "idx_range", "b_multiplier", "interval", 
-                         "multiplier", "upper_cap", "lower_cap", "caps", 
+                         "multiplier", 
+                         "idx_lag", "idx_range", "b_multiplier", 
+                         "interval",
+                         "upper_cap", "lower_cap", "caps", 
                          "all_no_caps", "all", 
                          "mult_cond_cap", "all_cond_cap"), 
           .combine = bind_rows) %:%
@@ -139,16 +141,23 @@ pol_GA <- foreach(stock = "pol", .combine = bind_rows) %:%
 }
 pol_GA <- pol_GA %>%
   mutate(parameters = factor(as.character(parameters), 
-  levels = c("none", "idx_range", "idx_lag", 
-             "multiplier", "interval", "b_multiplier", 
-             "upper_cap", "lower_cap", "caps",
-             "all_no_caps", "all", "mult_cond_cap", "all_cond_cap"),
-  labels = c("not optimised", "index range", "time lag",
-             "multiplier", "interval", "index trigger\nbuffer",
-             "upper cap", "lower cap", "both caps", 
-             "all without caps", "all",
-             "multiplier (cond. cap)",
-             "all (cond. cap)")))
+    levels = c("none", 
+               "multiplier", 
+               "idx_lag", "idx_range", "b_multiplier", 
+               "interval", 
+               "upper_cap", "lower_cap", "caps",
+               "all_no_caps", "all", "mult_cond_cap", "all_cond_cap"),
+    labels = c("not optimised", 
+               "multiplier", 
+               "time lag", "index range", "index trigger\nbuffer",
+               "interval", 
+               "upper cap", "lower cap", "both caps", 
+               "all without caps", "all",
+               "multiplier (cond. cap)",
+               "all (cond. cap)")),
+  ) %>%
+  mutate(fhist = factor(as.character(fhist), 
+                        levels = c("one-way", "random")))
 
 saveRDS(pol_GA, file = "output/hr_pol_comps_stats.rds")
 write.csv(pol_GA, file = "output/hr_pol_comps_stats.csv", 
@@ -2151,7 +2160,7 @@ p_MSY_fitness <- pol_GA %>%
         legend.spacing.y = unit(-20, "pt")) +
   scale_y_continuous(limits = c(-6, 0), breaks = c(0, -3, -6))
 
-plot_grid(
+p <- plot_grid(
   plot_grid(ggplot() + theme_nothing(), 
             ggplot() + theme_nothing(), 
             ggplot() + theme_nothing(),
@@ -2176,8 +2185,8 @@ plot_grid(
   ncol = 1, rel_heights = c(0.2, 6))
 
 ggsave(filename = "output/plots/paper/hr_GA_pol_comps.png", type = "cairo",
-       width = 17, height = 12, units = "cm", dpi = 600)
-ggsave(filename = "output/plots/paper/hr_GA_pol_comps.pdf",
+       width = 17, height = 12, units = "cm", dpi = 600, plot = p)
+ggsave(filename = "output/plots/paper/hr_GA_pol_comps.pdf", plot = p,
        width = 17, height = 12, units = "cm")
 
 
@@ -2185,8 +2194,7 @@ ggsave(filename = "output/plots/paper/hr_GA_pol_comps.pdf",
 
 p_MSY <- pol_GA %>% 
   filter(objective == "MSY") %>%
-  mutate(parameters = factor(parameters, levels = rev(levels(parameters))),
-         fhist = factor(fhist, levels = c("random", "one-way"))) %>%
+  mutate(parameters = factor(parameters, levels = rev(levels(parameters)))) %>%
   mutate(fitness_colour = ifelse(risk_Blim >= 0.055 & objective == "MSY-PA", 
                                  NA, fitness)) %>%
   ggplot(aes(x = parameters, y = fitness)) +
@@ -2222,8 +2230,7 @@ p_MSY <- pol_GA %>%
         plot.title = element_text(face = "bold", size = 9))
 p_PA <- pol_GA %>% 
   filter(objective == "MSY-PA") %>%
-  mutate(parameters = factor(parameters, levels = rev(levels(parameters))),
-         fhist = factor(fhist, levels = c("random", "one-way"))) %>%
+  mutate(parameters = factor(parameters, levels = rev(levels(parameters)))) %>%
   mutate(fitness_colour = ifelse(risk_Blim >= 0.055 & objective == "MSY-PA", 
                                  NA, fitness)) %>%
   ggplot(aes(x = parameters, y = fitness)) +
@@ -2726,8 +2733,8 @@ df <- bind_rows(
   left_join(fitness_default) %>%
   mutate(fitness_improvement = round((1 - fitness/fitness_default)*100)) %>%
   select(scenario, scenario_no, objective, parameters, fhist, stock, iter, 
-         idxB_lag, idxB_range_3, comp_b_multiplier, interval, multiplier,
-         upper_constraint, lower_constraint, 
+         multiplier, idxB_lag, idxB_range_3, comp_b_multiplier, 
+         interval, upper_constraint, lower_constraint, 
          SSB_rel, Catch_rel, ICV, risk_Blim, 
          fitness_improvement) %>% 
   arrange(scenario_no, objective, fhist) %>%
