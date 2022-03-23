@@ -60,6 +60,27 @@
         "FLCore"
       ]
     },
+    "GA": {
+      "Package": "GA",
+      "Version": "3.2.1",
+      "Source": "GitHub",
+      "Repository": "CRAN",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "GA",
+      "RemoteUsername": "shfischer",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "ec26bb0d2f7716ad0b8d83135ce3327b65c949a1",
+      "Hash": "cc92a67c76445c9e3d3b185fd47a7c34",
+      "Requirements": [
+        "Rcpp",
+        "RcppArmadillo",
+        "cli",
+        "crayon",
+        "foreach",
+        "iterators"
+      ]
+    },
     "MASS": {
       "Package": "MASS",
       "Version": "7.3-51.5",
@@ -101,6 +122,16 @@
       "Repository": "CRAN",
       "Hash": "dab19adae4440ae55aa8a9d238b246bb",
       "Requirements": []
+    },
+    "RcppArmadillo": {
+      "Package": "RcppArmadillo",
+      "Version": "0.10.4.0.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "a8df2d4278c6501b2c209f4acc6a3036",
+      "Requirements": [
+        "Rcpp"
+      ]
     },
     "Rmpi": {
       "Package": "Rmpi",

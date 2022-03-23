@@ -12,6 +12,7 @@ library(cowplot)
 library(patchwork)
 library(RColorBrewer)
 library(akima)
+library(GA)
 source("funs.R")
 source("funs_GA.R")
 
