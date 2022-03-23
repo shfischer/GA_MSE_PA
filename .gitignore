@@ -10,3 +10,5 @@ output/*/*
 output/*.csv
 output/*.xlsx
 renv/*
+*.xlsx
+*.pptx
