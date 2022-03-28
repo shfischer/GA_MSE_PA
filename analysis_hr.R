@@ -1880,7 +1880,7 @@ p_max_catch <- max_catch_p %>%
   ggplot(aes(x = k, y = value, colour = fhist, shape = fhist, 
              linetype = fhist)) +
   geom_smooth(method = lm, se = FALSE, size = 0.3) +
-  geom_point(size = 0.4) +
+  geom_point(size = 0.5) +
   scale_linetype_manual("fishing history", values = res_def_linetype) +
   scale_colour_manual("fishing history", values = res_def_colours) +
   scale_shape("fishing history") +
