@@ -1,10 +1,10 @@
-Exploration of harvest-rate based fisheries management for data-limited
-stocks
+Exploring a relative harvest rate strategy for moderately data-limited
+fisheries management
 ================
 
 This repository ([GA_MSE_HR](https://github.com/shfischer/GA_MSE_HR)) is
 a mirror of [GA_MSE](https://github.com/shfischer/GA_MSE) and
-([GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA)) with the
+[GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA) with the
 `harvest_rate` branch displayed as default branch.
 
 ## Introduction
@@ -19,18 +19,23 @@ during the Workshop on development of MSE algorithms with R/FLR/a4a
 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
 This is the **`harvest_rate`** branch which explores the use of harvest
-rates. The code is based on code from other branches.
+rates and contains the code for the publication:
 
-The `master` branch contains the code for the publication:
+> Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
+> (accepted). Exploring a relative harvest rate strategy for moderately
+> data-limited fisheries management.
+
+The `master` branch ([GA_MSE](https://github.com/shfischer/GA_MSE))
+contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Using a genetic algorithm to optimise a data-limited catch
 > rule. ICES Journal of Marine Science. 78: 1311-1323.
 > <https://doi.org/10.1093/icesjms/fsab018>.
 
-The `PA branch` includes the optimisation with specific risk limits for
-the ICES precautionary approach (PA) and contains the code for the
-publication:
+The `PA` branch ([GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA))
+includes the optimisation with specific risk limits for the ICES
+precautionary approach (PA) and contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Application of explicit precautionary principles in
