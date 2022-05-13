@@ -1,6 +1,10 @@
 Using a genetic algorithm to optimise a data-limited catch rule
 ================
 
+This repository ([GA_MSE](https://github.com/shfischer/GA_MSE)) is a
+mirror of [GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA) with the
+`master` branch displayed as default branch.
+
 ## Introduction
 
 This repository contains the code for the publication:
@@ -23,18 +27,9 @@ during the Workshop on development of MSE algorithms with R/FLR/a4a
 ([Jardim et al.,
 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
-The operating models provided as an input are those from the repository
-[shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
-described in:
-
-> Fischer, S. H., De Oliveira, J. A. A., and Kell, L. T. (2020). Linking
-> the performance of a data-limited empirical catch rule to life-history
-> traits. ICES Journal of Marine Science, 77: 1914-1926.
-> <https://doi.org/10.1093/icesjms/fsaa054>.
-
-The [PA branch](https://github.com/shfischer/GA_MSE/tree/PA) (also
+The [`PA branch`](https://github.com/shfischer/GA_MSE/tree/PA) (also
 available from
-[shfischer/GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA)) of this
+[shfischer/GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA)) of this
 repository includes the optimisation with specific risk limits for the
 ICES precautionary approach (PA) and contains the code for the
 publication:
@@ -43,6 +38,25 @@ publication:
 > (2021). Application of explicit precautionary principles in
 > data-limited fisheries management. ICES Journal of Marine Science.
 > 12pp. <https://doi.org/10.1093/icesjms/fsab169>.
+
+The
+[`harvest_rate`](https://github.com/shfischer/GA_MSE/tree/harvest_rate)
+branch (also available from
+[GA_MSE_HR](https://github.com/shfischer/GA_MSE_HR)) explores the use of
+harvest rates and contains the code for the publication:
+
+> Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
+> (accepted). Exploring a relative harvest rate strategy for moderately
+> data-limited fisheries management.
+
+The operating models provided as an input are those from the repository
+[shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
+described in:
+
+> Fischer, S. H., De Oliveira, J. A. A., and Kell, L. T. (2020). Linking
+> the performance of a data-limited empirical catch rule to life-history
+> traits. ICES Journal of Marine Science, 77: 1914-1926.
+> <https://doi.org/10.1093/icesjms/fsaa054>.
 
 ## Repository structure
 
