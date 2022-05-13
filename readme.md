@@ -2,14 +2,14 @@ Application of explicit precautionary principles in data-limited
 fisheries management
 ================
 
-This repository ([GA\_MSE\_PA](https://github.com/shfischer/GA_MSE_PA))
-is a mirror of [GA\_MSE](https://github.com/shfischer/GA_MSE) with the
-PA branch displayed as default branch.
+This repository ([GA_MSE_PA](https://github.com/shfischer/GA_MSE_PA)) is
+a mirror of [GA_MSE](https://github.com/shfischer/GA_MSE) with the PA
+branch displayed as default branch.
 
 ## Introduction
 
 This repository contains the code for optimising the data-limited
-empirical rfb-rule ([ICES
+empirical rfb rule ([ICES
 WKMSYCat34](http://www.ices.dk/sites/pub/Publication%20Reports/Expert%20Group%20Report/acom/2017/WKMSYCAT34/01.%20WKMSYCAT34%20REPORT%202017.pdf)
 catch rule 3.2.1, [Fischer et al.,
 2020](https://doi.org/10.1093/icesjms/fsaa054)) with a genetic
@@ -20,21 +20,30 @@ during the Workshop on development of MSE algorithms with R/FLR/a4a
 ([Jardim et al.,
 2017](https://ec.europa.eu/jrc/en/publication/assessment-all-initiativea4a-workshop-development-mse-algorithms-rflra4a)).
 
-The master branch contains the code for the publication:
+The `master` branch ([GA_MSE](https://github.com/shfischer/GA_MSE))
+contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Using a genetic algorithm to optimise a data-limited catch
 > rule. ICES Journal of Marine Science. 78: 1311-1323.
 > <https://doi.org/10.1093/icesjms/fsab018>.
 
-This is the **PA branch** which includes the optimisation with specific
-risk limits for the ICES precautionary approach (PA) and contains the
-code for the publication:
+This is the **`PA branch`** which includes the optimisation with
+specific risk limits for the ICES precautionary approach (PA) and
+contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2021). Application of explicit precautionary principles in
 > data-limited fisheries management. ICES Journal of Marine Science.
 > 12pp. <https://doi.org/10.1093/icesjms/fsab169>.
+
+The `harvest_rate` branch
+([GA_MSE_HR](https://github.com/shfischer/GA_MSE_HR)) explores the use
+of harvest rates and contains the code for the publication:
+
+> Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
+> (accepted). Exploring a relative harvest rate strategy for moderately
+> data-limited fisheries management.
 
 The operating models provided as an input are those from the repository
 [shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
@@ -48,7 +57,7 @@ described in:
 ## Repository structure
 
 The code, input and output files from the master branch
-([GA\_MSE](https://github.com/shfischer/GA_MSE)) are retained:
+([GA_MSE](https://github.com/shfischer/GA_MSE)) are retained:
 
 > The root folder contains the following R scripts:
 >
@@ -82,7 +91,7 @@ The code, input and output files from the master branch
 > -   `output/groups_MSY_stats.csv` optimisation results for stock
 >     groups
 
-The following additional files specific to the PA are provided:
+The following additional files specific to the `PA` branch are provided:
 
 -   `OM_sensitivity.R`, `run_ms_sensitivity.R`, and
     `analysis_PA_sensitivity.R` for the sensitivity analysis (for
@@ -100,14 +109,14 @@ Also, the following summary tables are provided:
     `pol_PA_sensitivity_risk_100yrs.csv`: further results from the
     sensitivity analysis for pollack
 -   `pol_PA_components_stats.csv`: exploration of including/excluding
-    elements of the rfb-rule into the optimisation for pollack
+    elements of the rfb rule into the optimisation for pollack
 -   `all_stocks_PA_multiplier_stats.csv`: optimisation towards the PA
-    with only the multiplier of the rfb-rule for all stocks
+    with only the multiplier of the rfb rule for all stocks
 -   `all_stocks_GA_optimised_stats.csv`: combined optimisation results
-    of the rfb-rule for the PA and MSY fitness functions
+    of the rfb rule for the PA and MSY fitness functions
 -   `all_stocks_2over_stats.csv`: results of the 2 over 3 rule for all
     stocks
--   `PA_summary_table_parameters.csv`: optimised rfb-rule
+-   `PA_summary_table_parameters.csv`: optimised rfb rule
     parameterisations
 
 ## R, R packages and version info
