@@ -1591,6 +1591,30 @@ for (i in seq_along(groups)) {
          width = 17, height = ifelse(i < 2, 6, 8), 
          units = "cm")
 }
+### figure with examples for paper
+### without grid lines
+stats3 <- stats2 %>%
+  filter(stock %in% stocks$stock[groups[[1]]]) %>% 
+  filter(years %in% c(10, 50))
+max_y_local <- max(stats3$catch, na.rm = TRUE)
+p <- stats3 %>%
+  ggplot(aes(x = Status, y = HR, fill = catch)) +
+  facet_grid(years_label ~ stock_k, labeller = label_parsed) +
+  geom_raster(interpolate = FALSE) +
+  scale_fill_gradientn(expression(catch/MSY),
+                       colours = c("brown", "white", "darkblue"),
+                       values = c(0, 1, max_y_global)/max_y_local
+  ) +
+  labs(x = expression(initial~stock~status~(SSB[y==0]/B[MSY])),
+       y = "harvest rate") +
+  xlim(c(0, 3)) +
+  theme_bw(base_size = 7) + 
+  theme(panel.grid.minor = element_blank())
+### save as postscript file, then convert to PDF
+cairo_ps(filename = "output/plots/paper/HR_principle_catch_examples_ps.ps", 
+         width = 17/2.54, height = 6/2.54, fallback_resolution = 600)
+print(p)
+dev.off()
 
 ### ------------------------------------------------------------------------ ###
 ### HR (length target) - multipliers - 50 years ####
@@ -2413,7 +2437,8 @@ p_all_table <- stats_plot %>%
         legend.title = element_text(size = 7),
         axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5,
                                    lineheight = 0.7),
-        axis.text.y = element_text(hjust = 0)
+        axis.text.y = element_text(hjust = 0),
+        panel.grid = element_blank()
   )
 p_all_table
 ggsave(filename = "output/plots/paper/all_comparison_table.png", 
@@ -2885,7 +2910,7 @@ df_all <- bind_rows(df_rnd, df_ow, df_rc) %>%
 res_def_colours <- c("one-way" = brewer.pal(n = 4, name = "Set1")[1], 
                      "roller-coaster" = brewer.pal(n = 4, name = "Set1")[4], 
                      "random" = brewer.pal(n = 4, name = "Set1")[2])
-ggplot() +
+p <- ggplot() +
   geom_line(data = df_all %>% filter(fhist == "random"),
             aes(x = year, y = value, group = iter, colour = fhist),
             size = 0.1, show.legend = FALSE, alpha = 0.2) +
@@ -2902,11 +2927,16 @@ ggplot() +
   theme_bw(base_size = 8) +
   theme(panel.spacing.x = unit(0, "pt"),
         axis.title.y.right = element_text(angle = 90))
-ggsave(filename = "output/plots/paper/fhist.png", 
+ggsave(filename = "output/plots/paper/fhist.png", plot = p,
        width = 8.5, height = 4, units = "cm", dpi = 600, type = "cairo")
-ggsave(filename = "output/plots/paper/fhist.pdf",
+ggsave(filename = "output/plots/paper/fhist.pdf", plot = p,
        width = 8.5, height = 4, units = "cm", dpi = 600)
-
+### for paper: remove transparency with raster graphics
+### 1st: save as postscript file, then convert to PDF
+cairo_ps(filename = "output/plots/paper/fhist_ps_600.ps", 
+         width = 8.5/2.54, height = 4/2.54, fallback_resolution = 600)
+print(p)
+dev.off()
 
 ### get SSB and F from pollack OM
 pol_fhist <- foreach(fhist = c("one-way", "roller-coaster", "random"), 
