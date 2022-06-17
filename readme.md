@@ -22,8 +22,8 @@ This is the **`harvest_rate`** branch which explores the use of harvest
 rates and contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
-> (accepted). Exploring a relative harvest rate strategy for moderately
-> data-limited fisheries management.
+> (in press). Exploring a relative harvest rate strategy for moderately
+> data-limited fisheries management. ICES Journal of Marine Science.
 
 The `master` branch ([GA_MSE](https://github.com/shfischer/GA_MSE))
 contains the code for the publication:
