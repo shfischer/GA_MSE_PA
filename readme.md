@@ -46,8 +46,9 @@ branch (also available from
 harvest rates and contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
-> (accepted). Exploring a relative harvest rate strategy for moderately
-> data-limited fisheries management.
+> (2022). Exploring a relative harvest rate strategy for moderately
+> data-limited fisheries management. ICES Journal of Marine Science. 12
+> pp. <https://doi.org/10.1093/icesjms/fsac103>.
 
 The operating models provided as an input are those from the repository
 [shfischer/wklifeVII](https://github.com/shfischer/wklifeVII) as
