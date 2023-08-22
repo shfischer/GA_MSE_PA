@@ -23,8 +23,8 @@ rates and contains the code for the publication:
 
 > Fischer, S. H., De Oliveira, J. A. A., Mumford, J. D., and Kell, L. T.
 > (2022). Exploring a relative harvest rate strategy for moderately
-> data-limited fisheries management. ICES Journal of Marine Science. 12
-> pp. <https://doi.org/10.1093/icesjms/fsac103>.
+> data-limited fisheries management. ICES Journal of Marine Science. 79:
+> 1730-1741. <https://doi.org/10.1093/icesjms/fsac103>.
 
 The `master` branch ([GA_MSE](https://github.com/shfischer/GA_MSE))
 contains the code for the publication:
@@ -56,28 +56,27 @@ described in:
 
 The root folder contains the following R scripts:
 
--   `OM_hr.R`: This script creates the operating models (OMs),
--   `funs.R` contains functions and methods used for the creation of the
-    operating models and for running the MSE,
--   `funs_GA.R` contains the function used in the optimisation
-    procedure,
--   `run_ms_hr.R` is an R script for running MSE projections and is
-    called from a job submission script
--   `run*.pbs` are job submission scripts which are used on a high
-    performance computing cluster and call `run_ms.R`
--   `analysis_hr.R` is for analysing the results
+- `OM_hr.R`: This script creates the operating models (OMs),
+- `funs.R` contains functions and methods used for the creation of the
+  operating models and for running the MSE,
+- `funs_GA.R` contains the function used in the optimisation procedure,
+- `run_ms_hr.R` is an R script for running MSE projections and is called
+  from a job submission script
+- `run*.pbs` are job submission scripts which are used on a high
+  performance computing cluster and call `run_ms.R`
+- `analysis_hr.R` is for analysing the results
 
 The following input files are provided:
 
--   `input/stocks.csv` contains the stock definitions and life-history
-    parameters
--   `input/brps.rds` contains the FLBRP objects which are the basis for
-    the OMs
--   `input/catch_rates.rds` examples catch rates
+- `input/stocks.csv` contains the stock definitions and life-history
+  parameters
+- `input/brps.rds` contains the FLBRP objects which are the basis for
+  the OMs
+- `input/catch_rates.rds` examples catch rates
 
 Summarised outputs are provided in:
 
--   `output/`
+- `output/`
 
 ## R, R packages and version info
 
